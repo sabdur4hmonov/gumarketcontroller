@@ -36,23 +36,29 @@ from gulbot.bot.callbacks import (
     ConfirmCB,
     DayCB,
     EditOccasionCB,
+    FlowerCB,
     MonthCB,
     OccasionActionCB,
     OccasionTypeCB,
     RecipientCB,
     RecipientListCB,
+    ReminderCountCB,
+    SendTimeCB,
     YearSkipCB,
     YesNoCB,
 )
 from gulbot.bot.keyboards import (
     confirm_keyboard,
     day_keyboard,
+    flower_keyboard,
     label_preset_keyboard,
     main_menu_keyboard,
     month_keyboard,
     occasion_type_keyboard,
     recipient_detail_keyboard,
     recipient_list_keyboard,
+    reminder_count_keyboard,
+    send_time_keyboard,
     year_keyboard,
     yes_no_keyboard,
 )
@@ -69,6 +75,12 @@ from gulbot.services.occasions import (
     is_valid_year,
     record_store_dates_consent,
     update_occasion_date,
+)
+from gulbot.services.preferences import (
+    has_answered_reminder_preferences,
+    set_preferred_hashtag,
+    set_reminder_count,
+    set_send_time,
 )
 from gulbot.services.recipients import (
     create_recipient,
@@ -487,12 +499,68 @@ async def more_dates_yes(callback: CallbackQuery, state: FSMContext, lang: str) 
     )
 
 
-async def more_dates_no(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
-    await callback.answer()
+async def _ask_more_people(target: Message, state: FSMContext, lang: str) -> None:
     await state.set_state(AddOccasion.asking_more_people)
-    await _reply_target(callback).answer(
+    await target.answer(
         t("recipients.ask_more_people", lang), reply_markup=yes_no_keyboard(lang, "people")
     )
+
+
+async def more_dates_no(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Ask this person's flower preference, unless they already have one."""
+    await callback.answer()
+    target = _reply_target(callback)
+    data = await state.get_data()
+    recipient_id = data.get("recipient_id")
+
+    recipient = (
+        None
+        if recipient_id is None
+        else await get_recipient(
+            session,
+            shop_id=customer.shop_id,
+            customer_id=customer.id,
+            recipient_id=int(recipient_id),
+        )
+    )
+    if recipient is None or recipient.preferred_hashtag is not None:
+        await _ask_more_people(target, state, lang)
+        return
+
+    await state.set_state(AddOccasion.asking_flower)
+    await target.answer(
+        t("prefs.ask_flower", lang, label=escape(recipient.label)),
+        reply_markup=flower_keyboard(lang),
+    )
+
+
+async def pick_flower(
+    callback: CallbackQuery,
+    callback_data: FlowerCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """ "Boshqa" stores NULL: no preference is a valid answer, not a failure."""
+    await callback.answer()
+    data = await state.get_data()
+    recipient_id = data.get("recipient_id")
+    if recipient_id is not None:
+        await set_preferred_hashtag(
+            session,
+            shop_id=customer.shop_id,
+            customer_id=customer.id,
+            recipient_id=int(recipient_id),
+            hashtag=None if callback_data.choice == "skip" else callback_data.choice,
+        )
+    await _ask_more_people(_reply_target(callback), state, lang)
 
 
 async def more_people_yes(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
@@ -507,13 +575,66 @@ async def more_people_yes(callback: CallbackQuery, state: FSMContext, lang: str)
     )
 
 
-async def more_people_no(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
-    await callback.answer()
+async def _finish_chain(target: Message, state: FSMContext, lang: str) -> None:
     data = await state.get_data()
     was_onboarding = bool(data.get("onboarding"))
     await state.clear()
     key = "recipients.onboarding_done" if was_onboarding else "menu.title"
-    await _reply_target(callback).answer(t(key, lang), reply_markup=main_menu_keyboard(lang))
+    await target.answer(t(key, lang), reply_markup=main_menu_keyboard(lang))
+
+
+async def more_people_no(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Ask the customer-level preferences once, then finish."""
+    await callback.answer()
+    target = _reply_target(callback)
+    if await has_answered_reminder_preferences(session, customer_id=customer.id):
+        await _finish_chain(target, state, lang)
+        return
+    await state.set_state(AddOccasion.asking_reminder_count)
+    await target.answer(
+        t("prefs.ask_reminder_count", lang), reply_markup=reminder_count_keyboard(lang)
+    )
+
+
+async def pick_reminder_count(
+    callback: CallbackQuery,
+    callback_data: ReminderCountCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Skipping leaves the column NULL, which is how CP5 tells "not asked"
+    from "chose 3"."""
+    await callback.answer()
+    if callback_data.value != "skip":
+        await set_reminder_count(session, customer=customer, count=int(callback_data.value))
+    await state.set_state(AddOccasion.asking_send_time)
+    await _reply_target(callback).answer(
+        t("prefs.ask_send_time", lang), reply_markup=send_time_keyboard(lang)
+    )
+
+
+async def pick_send_time(
+    callback: CallbackQuery,
+    callback_data: SendTimeCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    target = _reply_target(callback)
+    if callback_data.value != "skip":
+        await set_send_time(session, customer=customer, slot=callback_data.value)
+        await target.answer(t("prefs.saved", lang))
+    await _finish_chain(target, state, lang)
 
 
 # --- renaming --------------------------------------------------------------
@@ -742,6 +863,15 @@ def build_occasions_router() -> Router:
         more_people_no,
         AddOccasion.asking_more_people,
         YesNoCB.filter((F.scope == "people") & (F.answer == "no")),
+    )
+
+    # Preferences. Button-only, so no new text-waiting surface.
+    router.callback_query.register(pick_flower, AddOccasion.asking_flower, FlowerCB.filter())
+    router.callback_query.register(
+        pick_reminder_count, AddOccasion.asking_reminder_count, ReminderCountCB.filter()
+    )
+    router.callback_query.register(
+        pick_send_time, AddOccasion.asking_send_time, SendTimeCB.filter()
     )
 
     # Renaming.

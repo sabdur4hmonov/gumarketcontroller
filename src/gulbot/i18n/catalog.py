@@ -177,6 +177,34 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "Sana yangilandi: {date}",
         "ru": "Дата обновлена: {date}",
     },
+    # --- preferences ------------------------------------------------------
+    "prefs.ask_flower": {
+        "uz": "{label} qanday gullarni yoqtiradi?",
+        "ru": "Какие цветы любит {label}?",
+    },
+    "prefs.ask_reminder_count": {
+        "uz": "Necha marta oldindan eslataylik?",
+        "ru": "Сколько раз напомнить заранее?",
+    },
+    "prefs.ask_send_time": {
+        "uz": "Qaysi vaqtda eslataylik?",
+        "ru": "В какое время напоминать?",
+    },
+    "prefs.saved": {
+        "uz": "Sozlamalar saqlandi.",
+        "ru": "Настройки сохранены.",
+    },
+    "flower.atirgul": {"uz": "Atirgul", "ru": "Розы"},
+    "flower.tyulpan": {"uz": "Tyulpan", "ru": "Тюльпаны"},
+    "flower.lola": {"uz": "Lola", "ru": "Лола"},
+    "ibtn.flower_other": {"uz": "Boshqa", "ru": "Другое"},
+    "ibtn.count_1": {"uz": "1 marta", "ru": "1 раз"},
+    "ibtn.count_2": {"uz": "2 marta", "ru": "2 раза"},
+    "ibtn.count_3": {"uz": "3 marta", "ru": "3 раза"},
+    "ibtn.time_morning": {"uz": "Ertalab (09:00)", "ru": "Утром (09:00)"},
+    "ibtn.time_noon": {"uz": "Tushlikda (13:00)", "ru": "Днём (13:00)"},
+    "ibtn.time_evening": {"uz": "Kechqurun (20:00)", "ru": "Вечером (20:00)"},
+    "ibtn.skip": {"uz": "O'tkazib yuborish", "ru": "Пропустить"},
     # --- occasion type presets ------------------------------------------
     "occtype.wife": {"uz": "Xotinim", "ru": "Жена"},
     "occtype.spouse": {"uz": "Turmush o'rtog'im", "ru": "Супруг(а)"},

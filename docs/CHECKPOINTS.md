@@ -15,9 +15,9 @@ product on its own: reminders work with no catalog and no ordering.
 | CP2 | Bot skeleton, i18n, router discipline, shadow sweep as a build gate | done |
 | CP3 | Occasions: list, add (picker-driven), deactivate; versioned consent | done |
 | CP4 | Occurrence engine — pure functions, no I/O | done |
-| CP3.5 | Recipients, chained onboarding, minimal edit | in progress |
-| CP3.6 | Preferences: flower preset, reminder count, send time | |
-| CP5 | `scheduled_notifications` + nightly materializer | |
+| CP3.5 | Recipients, chained onboarding, minimal edit | done |
+| CP3.6 | Preferences: flower preset, reminder count, send time | done |
+| CP5 | `scheduled_notifications` + nightly materializer | next |
 | CP6 | Beat tick + reminder send — **ship line** | |
 | CP7 | Catalog schema, hashtag normalisation, price parser | |
 | CP8 | Channel indexer (albums, edits) | |
@@ -45,8 +45,20 @@ that does not gate the ship line.
 
 **CP5** must source `(offsets, send_time)` from the per-customer fields added in
 CP3.6 — `customers.reminder_count` and `customers.preferred_send_time` — with
-the shop-level values as fallback for customers who skipped the questions. Do
-not build CP5 against a shop-wide constant. Full brief to come.
+fallbacks for customers who skipped. Do not build CP5 against a shop-wide
+constant. Full brief to come. What CP3.6 left ready:
+
+- `REMINDER_COUNT_OFFSETS` in `models/customer.py`: `1 -> (0,)`,
+  `2 -> (-1, 0)`, `3 -> (-7, -1, 0)`.
+- `SEND_TIME_CHOICES`: `morning -> 09:00`, `noon -> 13:00`, `evening -> 20:00`.
+- `DEFAULT_REMINDER_COUNT = 3` and `DEFAULT_SEND_TIME = 20:00`, to apply when
+  the column is NULL. Both columns are NULLABLE with no server default on
+  purpose: NULL means "never answered", which a server default would erase.
+- **Open question for the CP5 brief:** `shops` has `reminder_offsets` but no
+  shop-level send time, so "shop default" currently has no column to read for
+  the time. Either use `DEFAULT_SEND_TIME`, or add a shop column in CP5.
+- `tests/test_preferences.py::test_cp36_does_not_reach_into_cp5` fails the build
+  if the scheduling package starts reading these columns before CP5.
 
 **CP9** should use `recipients.preferred_hashtag` as a ranking hint when
 suggesting bouquets. CP3.6 only stores a normalised preset value; nothing

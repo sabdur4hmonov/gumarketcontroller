@@ -27,6 +27,11 @@ from gulbot.db.base import Base, IdMixin, TimestampMixin
 
 LABEL_MAX_LENGTH = 64
 
+# The only values preferred_hashtag may take. Deliberately a tiny fixed set:
+# CP9 matches it against real catalogue hashtags, and free text would not
+# survive that.
+FLOWER_PRESETS: tuple[str, ...] = ("atirgul", "tyulpan", "lola")
+
 
 class Recipient(IdMixin, TimestampMixin, Base):
     __tablename__ = "recipients"
@@ -38,9 +43,10 @@ class Recipient(IdMixin, TimestampMixin, Base):
     # Which preset the customer picked, or 'custom' for a typed label.
     type: Mapped[str] = mapped_column(String(16), nullable=False)
 
-    # CP3.6 stores a normalised preset here (atirgul / tyulpan / lola / NULL).
-    # CP9 uses it as a ranking hint. Nothing matches it against the real
-    # catalogue yet, so the allowed-value CHECK arrives with CP3.6.
+    # A normalised preset, NOT free text and NOT matched against the real
+    # catalogue -- CP9 uses it as a ranking hint. NULL means the customer chose
+    # "Boshqa", or was never asked; both are indistinguishable on purpose,
+    # because both mean "no preference to rank by".
     preferred_hashtag: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
@@ -60,6 +66,10 @@ class Recipient(IdMixin, TimestampMixin, Base):
             name="type_known",
         ),
         CheckConstraint("length(btrim(label)) > 0", name="label_not_blank"),
+        CheckConstraint(
+            "preferred_hashtag IS NULL OR preferred_hashtag IN ('atirgul', 'tyulpan', 'lola')",
+            name="preferred_hashtag_known",
+        ),
         Index("ix_recipients_customer_active", "customer_id", "active"),
     )
 

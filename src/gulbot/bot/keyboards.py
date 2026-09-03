@@ -17,16 +17,20 @@ from gulbot.bot.callbacks import (
     ConfirmCB,
     DayCB,
     EditOccasionCB,
+    FlowerCB,
     MonthCB,
     OccasionActionCB,
     OccasionTypeCB,
     RecipientCB,
     RecipientListCB,
+    ReminderCountCB,
+    SendTimeCB,
     YearSkipCB,
     YesNoCB,
 )
 from gulbot.i18n import t
 from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionType
+from gulbot.models.recipient import FLOWER_PRESETS
 
 
 def _kb(rows: list[list[str]]) -> ReplyKeyboardMarkup:
@@ -278,4 +282,72 @@ def label_preset_keyboard(lang: str) -> InlineKeyboardMarkup:
         ]
     )
     rows.append([_back_button(lang)])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# --- preferences -----------------------------------------------------------
+# All button-only. Nothing here opens a text-waiting state, so the shadow
+# sweep's message surface does not grow.
+
+
+def flower_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """Three presets plus "Boshqa", which stores NULL."""
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=t(f"flower.{preset}", lang),
+                callback_data=FlowerCB(choice=preset).pack(),
+            )
+        ]
+        for preset in FLOWER_PRESETS
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=t("ibtn.flower_other", lang),
+                callback_data=FlowerCB(choice="skip").pack(),
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def reminder_count_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(f"ibtn.count_{n}", lang),
+                    callback_data=ReminderCountCB(value=str(n)).pack(),
+                )
+                for n in (1, 2, 3)
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.skip", lang),
+                    callback_data=ReminderCountCB(value="skip").pack(),
+                )
+            ],
+        ]
+    )
+
+
+def send_time_keyboard(lang: str) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=t(f"ibtn.time_{slot}", lang),
+                callback_data=SendTimeCB(value=slot).pack(),
+            )
+        ]
+        for slot in ("morning", "noon", "evening")
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=t("ibtn.skip", lang),
+                callback_data=SendTimeCB(value="skip").pack(),
+            )
+        ]
+    )
     return InlineKeyboardMarkup(inline_keyboard=rows)

@@ -69,7 +69,9 @@ def test_models_match_migrations(settings: Settings) -> None:
     )
     try:
         with engine.connect() as conn:
-            context = MigrationContext.configure(conn, opts={"compare_type": True})
+            context = MigrationContext.configure(
+                conn, opts={"compare_type": True, "compare_server_default": True}
+            )
             diff = compare_metadata(context, Base.metadata)
     finally:
         engine.dispose()

@@ -33,6 +33,7 @@ from tests.bot_harness import (
 from gulbot.bot.callbacks import (
     ConfirmCB,
     DayCB,
+    FlowerCB,
     MonthCB,
     OccasionTypeCB,
     YearSkipCB,
@@ -132,6 +133,15 @@ class Driver:
         await self.tap(YearSkipCB(action="skip").pack())
         await self.tap(ConfirmCB(action="save").pack())
 
+    async def finish_person(self) -> None:
+        """No more dates, no flower preference.
+
+        CP3.6 put the flower question between "no more dates" and "another
+        person?", so it has to be answered to reach the next loop edge.
+        """
+        await self.tap(YesNoCB(scope="dates", answer="no").pack())
+        await self.tap(FlowerCB(choice="skip").pack())
+
     @property
     def sent(self) -> list[str]:
         return self.recorder.sent_texts
@@ -174,7 +184,7 @@ async def test_cancel_wins_after_looping_back_for_another_person(
     """Loop edge: asking_more_people --yes--> choosing_type."""
     bot, _ = bot_and_session
     await driver.save_one_date("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
     assert await _fsm_state(dispatcher, bot) == "AddOccasion:choosing_type"
 
@@ -195,7 +205,7 @@ async def test_start_wins_deep_inside_a_second_lap(
     """
     bot, _ = bot_and_session
     await driver.save_one_date("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
     await driver.tap(OccasionTypeCB(type="custom").pack())
     assert await _fsm_state(dispatcher, bot) == "AddOccasion:entering_label"
@@ -223,7 +233,7 @@ async def test_cancel_wins_from_both_chained_questions(
         .pack()
     )
     await driver.save_one_date("father", 4, 9)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     assert await _fsm_state(dispatcher, bot) == "AddOccasion:asking_more_people"
     await driver.text(CATALOG["btn.nav.cancel"]["uz"])
     assert await _fsm_state(dispatcher, bot) is None

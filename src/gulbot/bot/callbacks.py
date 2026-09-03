@@ -10,6 +10,7 @@ from __future__ import annotations
 from aiogram.filters.callback_data import CallbackData
 
 from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionType
+from gulbot.models.recipient import FLOWER_PRESETS
 
 
 class OccasionTypeCB(CallbackData, prefix="occtype"):
@@ -127,6 +128,39 @@ class RecipientListCB(CallbackData, prefix="rcplist"):
         return [cls(action="back").pack()]
 
 
+class FlowerCB(CallbackData, prefix="flower"):
+    """Per-recipient flower preset. "skip" stores NULL."""
+
+    choice: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(choice=c).pack() for c in (*FLOWER_PRESETS, "skip")]
+
+
+class ReminderCountCB(CallbackData, prefix="remcount"):
+    value: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(value=v).pack() for v in ("1", "2", "3", "skip")]
+
+
+class SendTimeCB(CallbackData, prefix="sendtime"):
+    """Named slots, not clock times.
+
+    aiogram packs callback data with ":" as the field separator, so "09:00"
+    would be parsed as two fields. The name maps to a real time in
+    customer.SEND_TIME_CHOICES.
+    """
+
+    value: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(value=v).pack() for v in ("morning", "noon", "evening", "skip")]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OccasionTypeCB,
     MonthCB,
@@ -140,6 +174,9 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     RecipientCB,
     EditOccasionCB,
     RecipientListCB,
+    FlowerCB,
+    ReminderCountCB,
+    SendTimeCB,
 )
 
 

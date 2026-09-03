@@ -36,7 +36,12 @@ class AddOccasion(StatesGroup):
     # The chained "yana ...?" loops. Both are button-only, so neither widens
     # the text-waiting surface.
     asking_more_dates = State()
+    # Asked once per recipient, only when they have no preference yet.
+    asking_flower = State()
     asking_more_people = State()
+    # Customer-level, asked once, at the very end of the chain.
+    asking_reminder_count = State()
+    asking_send_time = State()
 
 
 class EditRecipient(StatesGroup):

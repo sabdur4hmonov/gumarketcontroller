@@ -23,11 +23,14 @@ from gulbot.bot.callbacks import (
     ConfirmCB,
     DayCB,
     EditOccasionCB,
+    FlowerCB,
     MonthCB,
     OccasionActionCB,
     OccasionTypeCB,
     RecipientCB,
     RecipientListCB,
+    ReminderCountCB,
+    SendTimeCB,
     YearSkipCB,
     YesNoCB,
 )
@@ -85,6 +88,25 @@ class Driver:
     async def add_person(self, preset: str, month: int, day: int) -> None:
         await self.tap(OccasionTypeCB(type=preset).pack())
         await self.date(month, day)
+
+    async def finish_person(self) -> None:
+        """No more dates for this person, and no flower preference.
+
+        CP3.6 inserted the flower question between "no more dates" and
+        "another person?", so it has to be answered to reach the next step.
+        """
+        await self.tap(YesNoCB(scope="dates", answer="no").pack())
+        await self.tap(FlowerCB(choice="skip").pack())
+
+    async def finish_all(self) -> None:
+        """No more people, and skip both customer-level preferences.
+
+        Tapping the preference skips is harmless when they are not asked: the
+        chain has already ended, so the callbacks match nothing.
+        """
+        await self.tap(YesNoCB(scope="people", answer="no").pack())
+        await self.tap(ReminderCountCB(value="skip").pack())
+        await self.tap(SendTimeCB(value="skip").pack())
 
     async def open_menu_list(self) -> None:
         await self.text(CATALOG["btn.menu.occasions"]["uz"])
@@ -179,7 +201,7 @@ async def test_more_dates_yes_reuses_the_same_recipient(
 @pytest.mark.infra
 async def test_more_people_yes_starts_a_new_recipient(driver: Driver, db: AsyncConnection) -> None:
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
     await driver.add_person("father", 5, 9)
 
@@ -192,9 +214,9 @@ async def test_more_people_yes_starts_a_new_recipient(driver: Driver, db: AsyncC
 @pytest.mark.infra
 async def test_finishing_onboarding_says_so(driver: Driver) -> None:
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     driver.recorder.calls.clear()
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_all()
     assert CATALOG["recipients.onboarding_done"]["uz"] in driver.sent
 
 
@@ -204,15 +226,15 @@ async def test_a_later_addition_returns_to_the_menu_not_the_onboarding_message(
 ) -> None:
     """Same loop, different ending, because this is no longer first-run."""
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     await driver.open_menu_list()
     await driver.tap(AddOccasionCB(action="start").pack())
     await driver.add_person("father", 5, 9)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     driver.recorder.calls.clear()
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_all()
 
     assert CATALOG["menu.title"]["uz"] in driver.sent
     assert CATALOG["recipients.onboarding_done"]["uz"] not in driver.sent
@@ -224,7 +246,7 @@ async def test_two_recipients_may_share_a_label_and_a_date(
 ) -> None:
     """The old label-keyed unique constraint made this impossible."""
     await driver.add_person("friend", 6, 6)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
     await driver.add_person("friend", 6, 6)
 
@@ -343,8 +365,8 @@ async def test_forged_day_callback_is_still_refused(driver: Driver) -> None:
 @pytest.mark.infra
 async def test_rename_with_a_preset(driver: Driver, db: AsyncConnection) -> None:
     await driver.add_person("friend", 6, 6)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     recipient_id = (await _recipients(db))[0]["id"]
     await driver.open_menu_list()
@@ -360,8 +382,8 @@ async def test_rename_with_a_preset(driver: Driver, db: AsyncConnection) -> None
 @pytest.mark.infra
 async def test_rename_with_free_text_is_sanitized(driver: Driver, db: AsyncConnection) -> None:
     await driver.add_person("friend", 6, 6)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     recipient_id = (await _recipients(db))[0]["id"]
     await driver.open_menu_list()
@@ -379,8 +401,8 @@ async def test_editing_a_date_reuses_the_creation_subflow(
     driver: Driver, db: AsyncConnection
 ) -> None:
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     occasion = (await _occasions(db))[0]
     await driver.open_menu_list()
@@ -398,8 +420,8 @@ async def test_editing_a_date_reuses_the_creation_subflow(
 @pytest.mark.infra
 async def test_adding_a_date_to_an_existing_recipient(driver: Driver, db: AsyncConnection) -> None:
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     recipient_id = (await _recipients(db))[0]["id"]
     await driver.open_menu_list()
@@ -419,8 +441,8 @@ async def test_deactivating_a_recipient_hides_their_dates(
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
     await driver.date(11, 2)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     recipient_id = (await _recipients(db))[0]["id"]
     await driver.open_menu_list()
@@ -437,8 +459,8 @@ async def test_deactivating_a_single_date_leaves_the_person(
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
     await driver.date(11, 2)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     first = (await _occasions(db))[0]
     await driver.open_menu_list()
@@ -452,8 +474,8 @@ async def test_deactivating_a_single_date_leaves_the_person(
 @pytest.mark.infra
 async def test_back_from_the_detail_view_returns_to_the_list(driver: Driver) -> None:
     await driver.add_person("mother", 3, 8)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
-    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.finish_person()
+    await driver.finish_all()
 
     await driver.open_menu_list()
     driver.recorder.calls.clear()
@@ -545,7 +567,7 @@ async def test_consent_is_written_once_across_the_whole_chain(
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
     await driver.date(11, 2)
-    await driver.tap(YesNoCB(scope="dates", answer="no").pack())
+    await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
     await driver.add_person("father", 5, 9)
 

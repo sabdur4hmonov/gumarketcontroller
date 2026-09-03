@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import time
 from enum import StrEnum
 
 from sqlalchemy import (
@@ -9,13 +10,37 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     ForeignKey,
+    SmallInteger,
     String,
+    Time,
     UniqueConstraint,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gulbot.db.base import Base, IdMixin, TimestampMixin
+
+# What CP5 must apply when a customer never answered the preference
+# questions. Stored here rather than in the schema so that NULL keeps
+# meaning "not asked" -- a server default would make "answered 3" and
+# "never asked" indistinguishable.
+DEFAULT_REMINDER_COUNT = 3
+DEFAULT_SEND_TIME = time(20, 0)
+
+# reminder_count -> offsets. CP5 owns the wiring; this is the agreed mapping.
+REMINDER_COUNT_OFFSETS: dict[int, tuple[int, ...]] = {
+    1: (0,),
+    2: (-1, 0),
+    3: (-7, -1, 0),
+}
+
+# The only send times offered. Colons cannot appear in aiogram callback
+# data, so the buttons carry names and this maps them to real times.
+SEND_TIME_CHOICES: dict[str, time] = {
+    "morning": time(9, 0),
+    "noon": time(13, 0),
+    "evening": time(20, 0),
+}
 
 
 class CustomerStatus(StrEnum):
@@ -49,6 +74,12 @@ class Customer(IdMixin, TimestampMixin, Base):
     )
 
     lang: Mapped[str] = mapped_column(String(2), nullable=False, server_default=text("'uz'"))
+
+    # Reminder preferences. NULLABLE ON PURPOSE: onboarding must never block on
+    # them, and NULL is how CP5 tells "skipped" from "chose 3". CP3.6 only
+    # STORES these; nothing reads them until CP5.
+    reminder_count: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
+    preferred_send_time: Mapped[time | None] = mapped_column(Time, nullable=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
 
     __table_args__ = (
@@ -63,6 +94,14 @@ class Customer(IdMixin, TimestampMixin, Base):
             name="status_known",
         ),
         CheckConstraint("lang IN ('uz', 'ru')", name="lang_known"),
+        CheckConstraint(
+            "reminder_count IS NULL OR reminder_count IN (1, 2, 3)",
+            name="reminder_count_known",
+        ),
+        CheckConstraint(
+            "preferred_send_time IS NULL OR preferred_send_time IN ('09:00', '13:00', '20:00')",
+            name="preferred_send_time_known",
+        ),
     )
 
     def __repr__(self) -> str:
