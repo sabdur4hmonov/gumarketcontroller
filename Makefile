@@ -5,10 +5,10 @@
 
 PY := .venv/Scripts/python.exe
 
-.PHONY: help venv install up down logs ps fmt lint typecheck test check clean
+.PHONY: help venv install up down logs ps fmt lint typecheck shadow test check clean
 
 help:
-	@echo "venv install up down logs ps fmt lint typecheck test check clean"
+	@echo "venv install up down logs ps fmt lint typecheck shadow test check clean"
 
 venv:
 	py -3.11 -m venv .venv
@@ -40,12 +40,16 @@ lint:
 typecheck:
 	$(PY) -m mypy
 
+# Registration-order gate. Walks the LIVE dispatcher; a source scan cannot
+# see registration order and would not catch the bug.
+shadow:
+	$(PY) -m gulbot.bot.shadow_sweep
+
 test:
 	$(PY) -m pytest
 
 # The gate. Anything that must never regress belongs here.
-# CP2 adds the handler-shadowing sweep to this target.
-check: lint typecheck test
+check: lint typecheck shadow test
 
 clean:
 	docker compose down -v

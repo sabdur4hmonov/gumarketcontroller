@@ -44,8 +44,36 @@ Separated so a broker purge can never wipe live FSM state.
 
 ## The `check` target
 
-`check` is the build gate and must stay green on every commit. It exits non-zero
-on any failure. CP2 adds the aiogram handler-shadowing sweep to it.
+`check` is the build gate: `lint -> typecheck -> shadow -> test`. It stops at the
+first failure and exits 1. It must stay green on every commit.
+
+## The handler-shadowing sweep
+
+Handler shadowing is a **registration-order** bug: aiogram dispatches to the
+first handler whose filters pass, so a handler registered earlier can make a
+later one unreachable. Ordering exists only at registration time, which is why
+`make shadow` walks the **live dispatcher** after every router is included. A
+static scan of the source cannot see registration order and would not catch it.
+
+The sweep probes every `(state, trigger)` pair the bot can receive -- every
+button label in every language, plus free text and `/start`, in every declared
+FSM state and at state `None` -- and evaluates the real filter chain of every
+registered handler in order. It reports:
+
+* `DUPLICATE` -- two or more non-fallback handlers match the same probe.
+* `FALLBACK_FIRST` -- a handler flagged `fallback` matches before a real one,
+  i.e. a catch-all is swallowing input meant for a flow.
+
+A fallback matching *after* the real handler is correct and is not reported.
+
+Two rules keep it meaningful:
+
+1. Every text-waiting handler carries a state gate (`StateFilter(None)` counts).
+2. Intentional catch-alls are registered last and declare `flags={"fallback": True}`.
+
+Routers are built by factory functions, not module-level singletons: an aiogram
+`Router` can only be attached to one `Dispatcher`, so a singleton makes a second
+dispatcher -- in tests, or in the sweep -- impossible to build.
 
 ## Tests
 
