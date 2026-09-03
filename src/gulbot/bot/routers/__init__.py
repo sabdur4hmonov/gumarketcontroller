@@ -14,6 +14,7 @@ from aiogram import Router
 from gulbot.bot.routers.fallback import build_fallback_router
 from gulbot.bot.routers.menu import build_menu_router
 from gulbot.bot.routers.nav import build_nav_router
+from gulbot.bot.routers.occasions import build_occasions_router
 from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.settings import build_settings_router
 
@@ -24,6 +25,7 @@ def build_routers() -> tuple[Router, ...]:
         build_nav_router(),
         build_onboarding_router(),
         build_settings_router(),
+        build_occasions_router(),
         build_menu_router(),
         build_fallback_router(),
     )

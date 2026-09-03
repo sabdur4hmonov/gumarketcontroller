@@ -11,14 +11,21 @@ receive -- every button label in every language, plus free text and /start, in
 every declared FSM state and at state None -- then evaluate the real filter
 chain of every registered handler against it, in registration order.
 
-A probe matched by more than one handler means the later ones are dead code.
+Some handlers are catch-alls BY DESIGN: the global unknown-text fallback, and
+any state that waits for free text (a label, a year) and must accept whatever
+arrives. Those declare `flags={"catch_all": True}`. A catch-all is allowed to be
+shadowed, and is allowed to shadow another catch-all -- a state-scoped one
+legitimately sits in front of the global one.
+
 Two cases are reported:
 
-  DUPLICATE      two or more non-fallback handlers match the same probe.
-  FALLBACK_FIRST a handler flagged `fallback` matches before a real handler,
-                 i.e. a catch-all is swallowing input meant for a flow.
+  DUPLICATE          two or more specific (non-catch-all) handlers match the
+                     same probe, so the later ones are unreachable.
+  CATCH_ALL_SHADOWS  a catch-all is registered BEFORE a specific handler and
+                     swallows input meant for it. This is the registration-order
+                     bug proper.
 
-A fallback matching AFTER the real handler is correct and is not reported.
+A catch-all matching AFTER the specific handler is correct and is not reported.
 """
 
 from __future__ import annotations
@@ -30,9 +37,10 @@ from datetime import UTC, datetime
 
 from aiogram import Dispatcher, Router
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Chat, Message, TelegramObject, User
+from aiogram.types import CallbackQuery, Chat, Message, TelegramObject, User
 
 from gulbot.bot import states as states_module
+from gulbot.bot.callbacks import all_callback_samples
 from gulbot.i18n.translator import button_labels
 
 PROBE_USER = User(id=424242, is_bot=False, first_name="Probe")
@@ -48,10 +56,10 @@ class HandlerId:
     router: str
     name: str
     location: str
-    is_fallback: bool
+    is_catch_all: bool
 
     def __str__(self) -> str:
-        tag = " [fallback]" if self.is_fallback else ""
+        tag = " [catch-all]" if self.is_catch_all else ""
         return f"{self.router}.{self.name}{tag} ({self.location})"
 
 
@@ -133,6 +141,16 @@ def make_message(text: str) -> Message:
     )
 
 
+def make_callback(data: str) -> CallbackQuery:
+    return CallbackQuery(
+        id="probe",
+        from_user=PROBE_USER,
+        chat_instance="probe",
+        data=data,
+        message=make_message("carrier"),
+    )
+
+
 async def matching_handlers(
     dispatcher: Dispatcher, event: TelegramObject, raw_state: str | None, event_type: str
 ) -> list[HandlerId]:
@@ -153,30 +171,55 @@ async def matching_handlers(
                         router=router.name,
                         name=getattr(handler.callback, "__name__", repr(handler.callback)),
                         location=_location(handler.callback),
-                        is_fallback=bool(handler.flags.get("fallback", False)),
+                        is_catch_all=bool(handler.flags.get("catch_all", False)),
                     )
                 )
     return matched
 
 
+def probes() -> list[tuple[str, str, TelegramObject]]:
+    """(event_type, trigger, event) for everything the bot can receive.
+
+    Message triggers come from the i18n catalog, so a new button is covered the
+    moment it is added. Callback triggers come from each CallbackData factory's
+    samples(), so a new inline factory is covered the moment it is defined.
+    Neither list has to be maintained by hand.
+    """
+    items: list[tuple[str, str, TelegramObject]] = [
+        ("message", trigger, make_message(trigger))
+        for trigger in sorted(button_labels()) + [FREE_TEXT, "/start"]
+    ]
+    items += [
+        ("callback_query", data, make_callback(data)) for data in sorted(all_callback_samples())
+    ]
+    return items
+
+
 async def sweep(dispatcher: Dispatcher) -> list[Violation]:
-    triggers = sorted(button_labels()) + [FREE_TEXT, "/start"]
     violations: list[Violation] = []
+    all_probes = probes()
 
     for raw_state in declared_states():
-        for trigger in triggers:
-            event = make_message(trigger)
-            matched = await matching_handlers(dispatcher, event, raw_state, "message")
+        for event_type, trigger, event in all_probes:
+            matched = await matching_handlers(dispatcher, event, raw_state, event_type)
             if len(matched) < 2:
                 continue
 
-            real = [h for h in matched if not h.is_fallback]
-            if matched[0].is_fallback:
+            specific = [h for h in matched if not h.is_catch_all]
+            if len(specific) > 1:
+                violations.append(Violation("DUPLICATE", str(raw_state), trigger, tuple(specific)))
+                continue
+
+            # A catch-all standing in front of a specific handler eats input
+            # meant for it. A catch-all in front of another catch-all is fine:
+            # a state-scoped one legitimately precedes the global fallback.
+            first_catch_all = next((i for i, h in enumerate(matched) if h.is_catch_all), None)
+            if first_catch_all is None:
+                continue
+            if any(not h.is_catch_all for h in matched[first_catch_all + 1 :]):
                 violations.append(
-                    Violation("FALLBACK_FIRST", str(raw_state), trigger, tuple(matched))
+                    Violation("CATCH_ALL_SHADOWS", str(raw_state), trigger, tuple(matched))
                 )
-            elif len(real) > 1:
-                violations.append(Violation("DUPLICATE", str(raw_state), trigger, tuple(real)))
     return violations
 
 

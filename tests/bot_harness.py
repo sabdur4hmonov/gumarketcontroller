@@ -18,7 +18,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import TelegramMethod
 from aiogram.methods.base import TelegramType
-from aiogram.types import Chat, Message, Update, User
+from aiogram.types import CallbackQuery, Chat, Message, Update, User
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
 TEST_TOKEN = "42:TESTTOKENTESTTOKENTESTTOKENTESTTOKEN"
@@ -80,6 +80,26 @@ def text_update(text: str, *, user_id: int, update_id: int = 1) -> Update:
             chat=Chat(id=user_id, type="private"),
             from_user=User(id=user_id, is_bot=False, first_name="Aziz"),
             text=text,
+        ),
+    )
+
+
+def callback_update(data: str, *, user_id: int, update_id: int = 1, message_id: int = 1) -> Update:
+    """An inline button tap, carrying the message it was attached to."""
+    return Update(
+        update_id=update_id,
+        callback_query=CallbackQuery(
+            id=f"cb{update_id}",
+            from_user=User(id=user_id, is_bot=False, first_name="Aziz"),
+            chat_instance=f"chat{user_id}",
+            data=data,
+            message=Message(
+                message_id=message_id,
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=user_id, type="private"),
+                from_user=User(id=1, is_bot=True, first_name="bot"),
+                text="carrier",
+            ),
         ),
     )
 

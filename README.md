@@ -66,10 +66,18 @@ registered handler in order. It reports:
 
 A fallback matching *after* the real handler is correct and is not reported.
 
+It probes both `message` and `callback_query`: message triggers come from the
+i18n catalog, callback triggers from each `CallbackData` factory's `samples()`.
+Adding a button or an inline factory therefore extends the gate automatically --
+there is no list to keep in sync.
+
 Two rules keep it meaningful:
 
 1. Every text-waiting handler carries a state gate (`StateFilter(None)` counts).
-2. Intentional catch-alls are registered last and declare `flags={"fallback": True}`.
+2. Intentional catch-alls declare `flags={"catch_all": True}`. That covers the
+   global unknown-text fallback AND any state that waits for free text, since
+   such a state accepts anything by design. A catch-all may be shadowed, and may
+   precede another catch-all; it may not precede a *specific* handler.
 
 Routers are built by factory functions, not module-level singletons: an aiogram
 `Router` can only be attached to one `Dispatcher`, so a singleton makes a second

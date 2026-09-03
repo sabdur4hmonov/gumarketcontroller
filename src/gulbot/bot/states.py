@@ -16,3 +16,20 @@ class Onboarding(StatesGroup):
 
 class SettingsFlow(StatesGroup):
     choosing_language = State()
+
+
+class AddOccasion(StatesGroup):
+    """Adding a recurring date.
+
+    Only `entering_label` and `entering_year` wait for text; every other step is
+    an inline picker. Keeping the text-waiting surface this small is deliberate:
+    free-text dates in uz/ru produce garbage no parser fixes, and every
+    text-waiting state is somewhere shadowing can bite.
+    """
+
+    choosing_type = State()
+    entering_label = State()
+    choosing_month = State()
+    choosing_day = State()
+    entering_year = State()
+    confirming = State()
