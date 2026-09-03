@@ -9,6 +9,7 @@ from aiogram.types import Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.keyboards import language_keyboard, main_menu_keyboard
+from gulbot.bot.routers.occasions import begin_onboarding_chain
 from gulbot.bot.states import Onboarding
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
@@ -41,10 +42,15 @@ async def _choose(
     customer: Customer,
     chosen: str,
 ) -> None:
+    """First-contact language choice, which chains straight into onboarding.
+
+    The equivalent handler in the settings router deliberately does NOT chain:
+    a returning customer switching language wants the menu, not a date wizard.
+    """
     await set_language(session, customer=customer, lang=chosen)
     await state.clear()
-    await message.answer(t("language.saved", chosen))
-    await message.answer(t("menu.title", chosen), reply_markup=main_menu_keyboard(chosen))
+    await message.answer(t("language.saved", chosen), reply_markup=main_menu_keyboard(chosen))
+    await begin_onboarding_chain(message, state, chosen)
 
 
 async def choose_uz(

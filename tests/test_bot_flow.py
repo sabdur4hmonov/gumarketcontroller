@@ -95,7 +95,8 @@ async def test_choosing_russian_persists_and_switches_the_interface(
         )
     ).scalar_one()
     assert stored == "ru"
-    assert CATALOG["menu.title"]["ru"] in recorder.sent_texts
+    # CP3.5: first contact chains straight into onboarding, in the new language.
+    assert CATALOG["occasions.choose_type"]["ru"] in recorder.sent_texts
 
 
 @pytest.mark.infra
@@ -110,10 +111,16 @@ async def test_help_button_answers_in_the_customers_language(
         bot,
         text_update(CATALOG["btn.language.uz"]["uz"], user_id=USER_ID, update_id=2),
     )
+    # CP3.5 leaves first-contact customers inside the onboarding chain.
     await feed(
         dispatcher,
         bot,
-        text_update(CATALOG["btn.menu.help"]["uz"], user_id=USER_ID, update_id=3),
+        text_update(CATALOG["btn.nav.cancel"]["uz"], user_id=USER_ID, update_id=3),
+    )
+    await feed(
+        dispatcher,
+        bot,
+        text_update(CATALOG["btn.menu.help"]["uz"], user_id=USER_ID, update_id=4),
     )
 
     assert CATALOG["help.text"]["uz"] in recorder.sent_texts
@@ -150,21 +157,27 @@ async def test_back_inside_a_flow_returns_to_settings_not_the_main_menu(
         bot,
         text_update(CATALOG["btn.language.uz"]["uz"], user_id=USER_ID, update_id=2),
     )
+    # CP3.5 leaves first-contact customers inside the onboarding chain.
     await feed(
         dispatcher,
         bot,
-        text_update(CATALOG["btn.menu.settings"]["uz"], user_id=USER_ID, update_id=3),
+        text_update(CATALOG["btn.nav.cancel"]["uz"], user_id=USER_ID, update_id=3),
     )
     await feed(
         dispatcher,
         bot,
-        text_update(CATALOG["btn.settings.change_language"]["uz"], user_id=USER_ID, update_id=4),
+        text_update(CATALOG["btn.menu.settings"]["uz"], user_id=USER_ID, update_id=4),
+    )
+    await feed(
+        dispatcher,
+        bot,
+        text_update(CATALOG["btn.settings.change_language"]["uz"], user_id=USER_ID, update_id=5),
     )
     recorder.calls.clear()
     await feed(
         dispatcher,
         bot,
-        text_update(CATALOG["btn.nav.back"]["uz"], user_id=USER_ID, update_id=5),
+        text_update(CATALOG["btn.nav.back"]["uz"], user_id=USER_ID, update_id=6),
     )
 
     assert recorder.sent_texts == [CATALOG["settings.title"]["uz"]]

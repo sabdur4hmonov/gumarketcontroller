@@ -19,6 +19,7 @@ from tests.test_tenancy import _make_customer, _make_shop
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.consent import STORE_DATES_TEXT_VERSION, ConsentSource, ConsentType
 from gulbot.services.occasions import create_occasion, record_store_dates_consent
+from gulbot.services.recipients import create_recipient
 
 # Recomputed from the catalog. Bump BOTH this and STORE_DATES_TEXT_VERSION when
 # the wording changes -- that is the point.
@@ -109,10 +110,14 @@ async def test_consent_row_is_written_alongside_the_first_occasion(
     customer = await _make_customer(db, shop, tg_id=1)
 
     async with sessions() as session:
+        recipient = await create_recipient(
+            session, shop_id=shop, customer_id=customer, label="Onam", type_="mother"
+        )
         await create_occasion(
             session,
             shop_id=shop,
             customer_id=customer,
+            recipient_id=recipient.id,
             type_="mother",
             label="Onam",
             month=3,

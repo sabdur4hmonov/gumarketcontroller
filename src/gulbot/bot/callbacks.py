@@ -80,6 +80,53 @@ class AddOccasionCB(CallbackData, prefix="occadd"):
         return [cls(action="start").pack()]
 
 
+class YesNoCB(CallbackData, prefix="occyn"):
+    """Answers to the chained "yana ...?" questions.
+
+    `scope` distinguishes the two loops so the same Ha/Yo'q pair can appear
+    twice without the handlers becoming ambiguous.
+    """
+
+    scope: str
+    answer: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(scope=scope, answer=answer).pack()
+            for scope in ("dates", "people")
+            for answer in ("yes", "no")
+        ]
+
+
+class RecipientCB(CallbackData, prefix="rcp"):
+    action: str
+    recipient_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(action=action, recipient_id=1).pack()
+            for action in ("open", "rename", "deactivate", "add_date")
+        ]
+
+
+class EditOccasionCB(CallbackData, prefix="occedit"):
+    occasion_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(occasion_id=1).pack()]
+
+
+class RecipientListCB(CallbackData, prefix="rcplist"):
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action="back").pack()]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OccasionTypeCB,
     MonthCB,
@@ -89,6 +136,10 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     BackCB,
     OccasionActionCB,
     AddOccasionCB,
+    YesNoCB,
+    RecipientCB,
+    EditOccasionCB,
+    RecipientListCB,
 )
 
 

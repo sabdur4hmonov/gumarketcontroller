@@ -60,29 +60,34 @@ async def create_occasion(
     *,
     shop_id: int,
     customer_id: int,
+    recipient_id: int,
     type_: str,
     label: str,
     month: int,
     day: int,
     year: int | None,
 ) -> Occasion | None:
-    """Insert an occasion. Returns None if an identical one already exists.
+    """Insert an occasion. Returns None if the recipient already has that date.
 
     ON CONFLICT DO NOTHING rather than a prior SELECT: a double-tapped confirm
     button arrives as two updates, and check-then-act loses that race.
+
+    `label` and `type` are written only to keep the deprecated columns in step
+    with the recipient; nothing reads them.
     """
     stmt = (
         insert(Occasion)
         .values(
             shop_id=shop_id,
             customer_id=customer_id,
+            recipient_id=recipient_id,
             type=type_,
             label=label,
             month=month,
             day=day,
             year=year,
         )
-        .on_conflict_do_nothing(index_elements=["customer_id", "month", "day", "label"])
+        .on_conflict_do_nothing(index_elements=["recipient_id", "month", "day"])
         .returning(Occasion.id)
     )
     new_id = await session.scalar(stmt)
@@ -142,3 +147,42 @@ async def record_store_dates_consent(
     )
     await session.flush()
     return True
+
+
+async def update_occasion_date(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    occasion_id: int,
+    month: int,
+    day: int,
+    year: int | None,
+) -> bool:
+    """Move an existing occasion to a new date. False if it was not theirs."""
+    result = await session.execute(
+        update(Occasion)
+        .where(
+            Occasion.id == occasion_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer_id,
+            Occasion.active.is_(True),
+        )
+        .values(month=month, day=day, year=year)
+        .returning(Occasion.id)
+    )
+    return result.first() is not None
+
+
+async def get_occasion(
+    session: AsyncSession, *, shop_id: int, customer_id: int, occasion_id: int
+) -> Occasion | None:
+    occasion: Occasion | None = await session.scalar(
+        select(Occasion).where(
+            Occasion.id == occasion_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer_id,
+            Occasion.active.is_(True),
+        )
+    )
+    return occasion

@@ -33,3 +33,19 @@ class AddOccasion(StatesGroup):
     choosing_day = State()
     entering_year = State()
     confirming = State()
+    # The chained "yana ...?" loops. Both are button-only, so neither widens
+    # the text-waiting surface.
+    asking_more_dates = State()
+    asking_more_people = State()
+
+
+class EditRecipient(StatesGroup):
+    """Renaming a person.
+
+    Changing a DATE reuses AddOccasion's month -> day -> year -> confirm
+    sub-flow rather than duplicating it; the FSM data carries the occasion
+    being edited. Two states here instead of six.
+    """
+
+    choosing_label = State()
+    entering_label = State()

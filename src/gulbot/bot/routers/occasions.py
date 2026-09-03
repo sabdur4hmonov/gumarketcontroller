@@ -1,12 +1,28 @@
-"""Occasions: list, add (picker-driven), deactivate.
+"""Recipients and their dates: list, chained add, minimal edit, deactivate.
 
-Every step except the label and the year is an inline picker. The day keyboard
-is built from the chosen month, so Feb 30 and Apr 31 cannot be produced at all;
-the Python validator and the database CHECK are the second and third lines of
-defence, not the first.
+The flow is recipient-first. A person is created once, then dates are chained
+onto them:
+
+    choosing_type -> [entering_label] -> choosing_month -> choosing_day
+                  -> entering_year -> confirming
+                  -> asking_more_dates --yes--> choosing_month (SAME recipient)
+                                      --no---> asking_more_people
+                                               --yes--> choosing_type (NEW person)
+                                               --no---> done
+
+Two loop-back edges, both button-only. Nothing is written until the customer
+taps Ha on `confirming`, which restates the person, the type and the date.
+
+The recipient row is created at CONFIRM, not at type-pick: creating it earlier
+would leave an orphan person behind every abandoned flow.
+
+Editing a date re-enters the SAME month -> day -> confirm sub-flow with
+`editing_occasion_id` in the FSM data, rather than duplicating six states.
 """
 
 from __future__ import annotations
+
+from typing import Any
 
 from aiogram import F, Router
 from aiogram.filters import StateFilter
@@ -19,21 +35,28 @@ from gulbot.bot.callbacks import (
     BackCB,
     ConfirmCB,
     DayCB,
+    EditOccasionCB,
     MonthCB,
     OccasionActionCB,
     OccasionTypeCB,
+    RecipientCB,
+    RecipientListCB,
     YearSkipCB,
+    YesNoCB,
 )
 from gulbot.bot.keyboards import (
     confirm_keyboard,
     day_keyboard,
+    label_preset_keyboard,
     main_menu_keyboard,
     month_keyboard,
-    occasion_list_keyboard,
     occasion_type_keyboard,
+    recipient_detail_keyboard,
+    recipient_list_keyboard,
     year_keyboard,
+    yes_no_keyboard,
 )
-from gulbot.bot.states import AddOccasion
+from gulbot.bot.states import AddOccasion, EditRecipient
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
@@ -41,10 +64,19 @@ from gulbot.models.occasion import OccasionType
 from gulbot.services.occasions import (
     create_occasion,
     deactivate_occasion,
+    get_occasion,
     is_valid_month_day,
     is_valid_year,
-    list_active_occasions,
     record_store_dates_consent,
+    update_occasion_date,
+)
+from gulbot.services.recipients import (
+    create_recipient,
+    deactivate_recipient,
+    get_recipient,
+    list_recipient_occasions,
+    list_recipients,
+    rename_recipient,
 )
 from gulbot.utils.render import escape, format_date
 from gulbot.utils.text import sanitize_label
@@ -64,28 +96,99 @@ def _reply_target(callback: CallbackQuery) -> Message:
     return message
 
 
+def _type_name(lang: str, type_: str) -> str:
+    return t(f"occtype.{type_}", lang)
+
+
 # --- listing ---------------------------------------------------------------
 
 
-async def show_occasions(
-    message: Message, session: AsyncSession, customer: Customer, lang: str
+async def _render_recipient_list(
+    target: Message, session: AsyncSession, customer: Customer, lang: str
 ) -> None:
-    occasions = await list_active_occasions(
-        session, shop_id=customer.shop_id, customer_id=customer.id
-    )
-    if not occasions:
-        await message.answer(
-            t("occasions.empty", lang), reply_markup=occasion_list_keyboard(lang, [])
+    recipients = await list_recipients(session, shop_id=customer.shop_id, customer_id=customer.id)
+    if not recipients:
+        await target.answer(
+            t("recipients.empty", lang), reply_markup=recipient_list_keyboard(lang, [])
         )
         return
-    lines = [f"• {escape(o.label)} — {format_date(o.day, o.month, o.year)}" for o in occasions]
-    await message.answer(
-        t("occasions.list_title", lang) + "\n" + "\n".join(lines),
-        reply_markup=occasion_list_keyboard(lang, [(o.id, o.label) for o in occasions]),
+    await target.answer(
+        t("recipients.list_title", lang),
+        reply_markup=recipient_list_keyboard(lang, [(r.id, r.label) for r in recipients]),
     )
 
 
-async def deactivate(
+async def _render_recipient_detail(
+    target: Message,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+    recipient_id: int,
+) -> None:
+    recipient = await get_recipient(
+        session, shop_id=customer.shop_id, customer_id=customer.id, recipient_id=recipient_id
+    )
+    if recipient is None:
+        await target.answer(t("recipients.not_found", lang))
+        return
+    occasions = await list_recipient_occasions(session, recipient_id=recipient.id)
+    shown = [(o.id, format_date(o.day, o.month, o.year)) for o in occasions]
+    dates = "\n".join(f"• {label}" for _, label in shown) or t("recipients.no_dates", lang)
+    await target.answer(
+        t("recipients.detail", lang, label=escape(recipient.label), dates=dates),
+        reply_markup=recipient_detail_keyboard(lang, recipient.id, shown),
+    )
+
+
+async def show_recipients(
+    message: Message, session: AsyncSession, customer: Customer, lang: str
+) -> None:
+    await _render_recipient_list(message, session, customer, lang)
+
+
+async def back_to_list(
+    callback: CallbackQuery, session: AsyncSession, customer: Customer, lang: str
+) -> None:
+    await callback.answer()
+    await _render_recipient_list(_reply_target(callback), session, customer, lang)
+
+
+async def open_recipient(
+    callback: CallbackQuery,
+    callback_data: RecipientCB,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    await _render_recipient_detail(
+        _reply_target(callback), session, customer, lang, callback_data.recipient_id
+    )
+
+
+async def remove_recipient(
+    callback: CallbackQuery,
+    callback_data: RecipientCB,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    label = await deactivate_recipient(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        recipient_id=callback_data.recipient_id,
+    )
+    await callback.answer()
+    target = _reply_target(callback)
+    if label is None:
+        await target.answer(t("recipients.not_found", lang))
+        return
+    await target.answer(t("recipients.deactivated", lang, label=escape(label)))
+    await _render_recipient_list(target, session, customer, lang)
+
+
+async def remove_occasion(
     callback: CallbackQuery,
     callback_data: OccasionActionCB,
     session: AsyncSession,
@@ -104,6 +207,7 @@ async def deactivate(
         await target.answer(t("occasions.not_found", lang))
         return
     await target.answer(t("occasions.deactivated", lang, label=escape(label)))
+    await _render_recipient_list(target, session, customer, lang)
 
 
 # --- add flow --------------------------------------------------------------
@@ -111,10 +215,18 @@ async def deactivate(
 
 async def start_add(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
     await state.set_state(AddOccasion.choosing_type)
+    await state.update_data(recipient_id=None, editing_occasion_id=None)
     await callback.answer()
     await _reply_target(callback).answer(
         t("occasions.choose_type", lang), reply_markup=occasion_type_keyboard(lang)
     )
+
+
+async def begin_onboarding_chain(target: Message, state: FSMContext, lang: str) -> None:
+    """Entry point used by first-contact onboarding, straight after language."""
+    await state.set_state(AddOccasion.choosing_type)
+    await state.update_data(onboarding=True, recipient_id=None, editing_occasion_id=None)
+    await target.answer(t("occasions.choose_type", lang), reply_markup=occasion_type_keyboard(lang))
 
 
 async def pick_type(
@@ -126,7 +238,9 @@ async def pick_type(
         await state.set_state(AddOccasion.entering_label)
         await target.answer(t("occasions.enter_label", lang))
         return
-    await state.update_data(type=callback_data.type, label=t(f"occtype.{callback_data.type}", lang))
+    await state.update_data(
+        pending_type=callback_data.type, pending_label=_type_name(lang, callback_data.type)
+    )
     await state.set_state(AddOccasion.choosing_month)
     await target.answer(t("occasions.choose_month", lang), reply_markup=month_keyboard(lang))
 
@@ -139,9 +253,69 @@ async def enter_label(message: Message, state: FSMContext, lang: str) -> None:
         return
     if len(raw.strip()) > len(label):
         await message.answer(t("occasions.label_trimmed", lang))
-    await state.update_data(type=OccasionType.CUSTOM.value, label=label)
+    await state.update_data(pending_type=OccasionType.CUSTOM.value, pending_label=label)
     await state.set_state(AddOccasion.choosing_month)
     await message.answer(t("occasions.choose_month", lang), reply_markup=month_keyboard(lang))
+
+
+async def add_date_for_recipient(
+    callback: CallbackQuery,
+    callback_data: RecipientCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Add a date to an EXISTING person, from their detail view."""
+    recipient = await get_recipient(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        recipient_id=callback_data.recipient_id,
+    )
+    await callback.answer()
+    target = _reply_target(callback)
+    if recipient is None:
+        await target.answer(t("recipients.not_found", lang))
+        return
+    await state.set_state(AddOccasion.choosing_month)
+    await state.update_data(
+        recipient_id=recipient.id,
+        pending_label=recipient.label,
+        pending_type=recipient.type,
+        editing_occasion_id=None,
+    )
+    await target.answer(t("occasions.choose_month", lang), reply_markup=month_keyboard(lang))
+
+
+async def edit_occasion_date(
+    callback: CallbackQuery,
+    callback_data: EditOccasionCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Re-enter the creation sub-flow, marked as an edit."""
+    occasion = await get_occasion(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        occasion_id=callback_data.occasion_id,
+    )
+    await callback.answer()
+    target = _reply_target(callback)
+    if occasion is None:
+        await target.answer(t("occasions.not_found", lang))
+        return
+    await state.set_state(AddOccasion.choosing_month)
+    await state.update_data(
+        recipient_id=occasion.recipient_id,
+        pending_label=occasion.label,
+        pending_type=occasion.type,
+        editing_occasion_id=occasion.id,
+    )
+    await target.answer(t("occasions.choose_month", lang), reply_markup=month_keyboard(lang))
 
 
 async def pick_month(
@@ -151,8 +325,7 @@ async def pick_month(
     await state.update_data(month=callback_data.month)
     await state.set_state(AddOccasion.choosing_day)
     await _reply_target(callback).answer(
-        t("occasions.choose_day", lang),
-        reply_markup=day_keyboard(lang, callback_data.month),
+        t("occasions.choose_day", lang), reply_markup=day_keyboard(lang, callback_data.month)
     )
 
 
@@ -182,7 +355,8 @@ async def _go_to_confirm(
     summary = t(
         "occasions.confirm",
         lang,
-        label=escape(str(data["label"])),
+        label=escape(str(data["pending_label"])),
+        type_name=_type_name(lang, str(data["pending_type"])),
         date=format_date(int(data["day"]), int(data["month"]), year),
     )
     consent = t("occasions.consent", lang)
@@ -211,6 +385,14 @@ async def skip_year(callback: CallbackQuery, state: FSMContext, lang: str) -> No
     await _go_to_confirm(_reply_target(callback), state, lang, None)
 
 
+async def _ask_more_dates(target: Message, state: FSMContext, lang: str, label: str) -> None:
+    await state.set_state(AddOccasion.asking_more_dates)
+    await target.answer(
+        t("recipients.ask_more_dates", lang, label=escape(label)),
+        reply_markup=yes_no_keyboard(lang, "dates"),
+    )
+
+
 async def confirm_save(
     callback: CallbackQuery,
     callback_data: ConfirmCB,
@@ -221,29 +403,65 @@ async def confirm_save(
 ) -> None:
     await callback.answer()
     target = _reply_target(callback)
+    data: dict[str, Any] = await state.get_data()
+
     if callback_data.action == "discard":
         await state.clear()
         await target.answer(t("nav.cancelled", lang), reply_markup=main_menu_keyboard(lang))
         return
 
-    data = await state.get_data()
-    await state.clear()
+    month, day, year = int(data["month"]), int(data["day"]), data.get("year")
+    editing_id = data.get("editing_occasion_id")
+
+    if editing_id is not None:
+        updated = await update_occasion_date(
+            session,
+            shop_id=customer.shop_id,
+            customer_id=customer.id,
+            occasion_id=int(editing_id),
+            month=month,
+            day=day,
+            year=year,
+        )
+        recipient_id = int(data["recipient_id"])
+        await state.clear()
+        if not updated:
+            await target.answer(t("occasions.not_found", lang))
+            return
+        await target.answer(t("occasions.date_updated", lang, date=format_date(day, month, year)))
+        await _render_recipient_detail(target, session, customer, lang, recipient_id)
+        return
+
+    recipient_id_value = data.get("recipient_id")
+    if recipient_id_value is None:
+        recipient = await create_recipient(
+            session,
+            shop_id=customer.shop_id,
+            customer_id=customer.id,
+            label=str(data["pending_label"]),
+            type_=str(data["pending_type"]),
+        )
+        recipient_id_value = recipient.id
+        await state.update_data(recipient_id=recipient_id_value)
+
     occasion = await create_occasion(
         session,
         shop_id=customer.shop_id,
         customer_id=customer.id,
-        type_=str(data["type"]),
-        label=str(data["label"]),
-        month=int(data["month"]),
-        day=int(data["day"]),
-        year=data.get("year"),
+        recipient_id=int(recipient_id_value),
+        type_=str(data["pending_type"]),
+        label=str(data["pending_label"]),
+        month=month,
+        day=day,
+        year=year,
     )
     if occasion is None:
-        await target.answer(t("occasions.duplicate", lang), reply_markup=main_menu_keyboard(lang))
+        await target.answer(t("occasions.duplicate", lang))
+        await _ask_more_dates(target, state, lang, str(data["pending_label"]))
         return
 
-    # Consent is recorded at the moment the first date is stored, carrying the
-    # version of the wording that was shown on the confirm screen above.
+    # Consent is recorded when the first date is stored, carrying the version of
+    # the wording shown on the confirm screen above.
     await record_store_dates_consent(session, shop_id=customer.shop_id, customer_id=customer.id)
     await target.answer(
         t(
@@ -251,9 +469,144 @@ async def confirm_save(
             lang,
             label=escape(occasion.label),
             date=format_date(occasion.day, occasion.month, occasion.year),
-        ),
-        reply_markup=main_menu_keyboard(lang),
+        )
     )
+    await _ask_more_dates(target, state, lang, str(data["pending_label"]))
+
+
+# --- the chained questions -------------------------------------------------
+
+
+async def more_dates_yes(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+    """Loop back into the date sub-flow for the SAME recipient."""
+    await callback.answer()
+    await state.update_data(editing_occasion_id=None)
+    await state.set_state(AddOccasion.choosing_month)
+    await _reply_target(callback).answer(
+        t("occasions.choose_month", lang), reply_markup=month_keyboard(lang)
+    )
+
+
+async def more_dates_no(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+    await callback.answer()
+    await state.set_state(AddOccasion.asking_more_people)
+    await _reply_target(callback).answer(
+        t("recipients.ask_more_people", lang), reply_markup=yes_no_keyboard(lang, "people")
+    )
+
+
+async def more_people_yes(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+    """Loop back to the preset picker for a NEW person."""
+    await callback.answer()
+    await state.update_data(
+        recipient_id=None, pending_label=None, pending_type=None, editing_occasion_id=None
+    )
+    await state.set_state(AddOccasion.choosing_type)
+    await _reply_target(callback).answer(
+        t("occasions.choose_type", lang), reply_markup=occasion_type_keyboard(lang)
+    )
+
+
+async def more_people_no(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+    await callback.answer()
+    data = await state.get_data()
+    was_onboarding = bool(data.get("onboarding"))
+    await state.clear()
+    key = "recipients.onboarding_done" if was_onboarding else "menu.title"
+    await _reply_target(callback).answer(t(key, lang), reply_markup=main_menu_keyboard(lang))
+
+
+# --- renaming --------------------------------------------------------------
+
+
+async def start_rename(
+    callback: CallbackQuery,
+    callback_data: RecipientCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    recipient = await get_recipient(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        recipient_id=callback_data.recipient_id,
+    )
+    await callback.answer()
+    target = _reply_target(callback)
+    if recipient is None:
+        await target.answer(t("recipients.not_found", lang))
+        return
+    await state.set_state(EditRecipient.choosing_label)
+    await state.update_data(recipient_id=recipient.id)
+    await target.answer(
+        t("recipients.choose_new_label", lang), reply_markup=label_preset_keyboard(lang)
+    )
+
+
+async def rename_with_preset(
+    callback: CallbackQuery,
+    callback_data: OccasionTypeCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    target = _reply_target(callback)
+    if callback_data.type == OccasionType.CUSTOM.value:
+        await state.set_state(EditRecipient.entering_label)
+        await target.answer(t("occasions.enter_label", lang))
+        return
+    data = await state.get_data()
+    recipient_id = int(data["recipient_id"])
+    label = await rename_recipient(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        recipient_id=recipient_id,
+        label=_type_name(lang, callback_data.type),
+        type_=callback_data.type,
+    )
+    await state.clear()
+    if label is None:
+        await target.answer(t("recipients.not_found", lang))
+        return
+    await target.answer(t("recipients.renamed", lang, label=escape(label)))
+    await _render_recipient_detail(target, session, customer, lang, recipient_id)
+
+
+async def rename_with_text(
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    raw = message.text or ""
+    label = sanitize_label(raw)
+    if not label:
+        await message.answer(t("occasions.label_empty", lang))
+        return
+    if len(raw.strip()) > len(label):
+        await message.answer(t("occasions.label_trimmed", lang))
+    data = await state.get_data()
+    recipient_id = int(data["recipient_id"])
+    saved = await rename_recipient(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        recipient_id=recipient_id,
+        label=label,
+        type_=OccasionType.CUSTOM.value,
+    )
+    await state.clear()
+    if saved is None:
+        await message.answer(t("recipients.not_found", lang))
+        return
+    await message.answer(t("recipients.renamed", lang, label=escape(saved)))
+    await _render_recipient_detail(message, session, customer, lang, recipient_id)
 
 
 # --- per-state Back --------------------------------------------------------
@@ -310,13 +663,49 @@ async def back_from_confirm(callback: CallbackQuery, state: FSMContext, lang: st
     )
 
 
+async def back_from_rename(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    data = await state.get_data()
+    recipient_id = int(data["recipient_id"])
+    await state.clear()
+    await _render_recipient_detail(_reply_target(callback), session, customer, lang, recipient_id)
+
+
 def build_occasions_router() -> Router:
     router = Router(name="occasions")
 
-    router.message.register(show_occasions, StateFilter(None), F.text.in_(OCCASIONS_LABELS))
-    router.callback_query.register(deactivate, OccasionActionCB.filter(F.action == "deactivate"))
-    router.callback_query.register(start_add, AddOccasionCB.filter(F.action == "start"))
+    # Listing and detail, at state None.
+    router.message.register(show_recipients, StateFilter(None), F.text.in_(OCCASIONS_LABELS))
+    router.callback_query.register(
+        back_to_list, StateFilter(None), RecipientListCB.filter(F.action == "back")
+    )
+    router.callback_query.register(
+        open_recipient, StateFilter(None), RecipientCB.filter(F.action == "open")
+    )
+    router.callback_query.register(
+        remove_recipient, StateFilter(None), RecipientCB.filter(F.action == "deactivate")
+    )
+    router.callback_query.register(
+        remove_occasion, StateFilter(None), OccasionActionCB.filter(F.action == "deactivate")
+    )
+    router.callback_query.register(
+        add_date_for_recipient, StateFilter(None), RecipientCB.filter(F.action == "add_date")
+    )
+    router.callback_query.register(edit_occasion_date, StateFilter(None), EditOccasionCB.filter())
+    router.callback_query.register(
+        start_rename, StateFilter(None), RecipientCB.filter(F.action == "rename")
+    )
+    router.callback_query.register(
+        start_add, StateFilter(None), AddOccasionCB.filter(F.action == "start")
+    )
 
+    # Add flow.
     router.callback_query.register(pick_type, AddOccasion.choosing_type, OccasionTypeCB.filter())
     # catch_all: within its state this accepts ANY text, so nav and commands
     # registered ahead of it are meant to win.
@@ -333,6 +722,36 @@ def build_occasions_router() -> Router:
     )
     router.callback_query.register(confirm_save, AddOccasion.confirming, ConfirmCB.filter())
 
+    # The chained questions. Scope keeps the two Ha/Yo'q pairs distinguishable.
+    router.callback_query.register(
+        more_dates_yes,
+        AddOccasion.asking_more_dates,
+        YesNoCB.filter((F.scope == "dates") & (F.answer == "yes")),
+    )
+    router.callback_query.register(
+        more_dates_no,
+        AddOccasion.asking_more_dates,
+        YesNoCB.filter((F.scope == "dates") & (F.answer == "no")),
+    )
+    router.callback_query.register(
+        more_people_yes,
+        AddOccasion.asking_more_people,
+        YesNoCB.filter((F.scope == "people") & (F.answer == "yes")),
+    )
+    router.callback_query.register(
+        more_people_no,
+        AddOccasion.asking_more_people,
+        YesNoCB.filter((F.scope == "people") & (F.answer == "no")),
+    )
+
+    # Renaming.
+    router.callback_query.register(
+        rename_with_preset, EditRecipient.choosing_label, OccasionTypeCB.filter()
+    )
+    router.message.register(
+        rename_with_text, EditRecipient.entering_label, F.text, flags={"catch_all": True}
+    )
+
     # One Back per state.
     router.callback_query.register(back_from_type, AddOccasion.choosing_type, BackCB.filter())
     router.callback_query.register(back_from_label, AddOccasion.entering_label, BackCB.filter())
@@ -340,4 +759,5 @@ def build_occasions_router() -> Router:
     router.callback_query.register(back_from_day, AddOccasion.choosing_day, BackCB.filter())
     router.callback_query.register(back_from_year, AddOccasion.entering_year, BackCB.filter())
     router.callback_query.register(back_from_confirm, AddOccasion.confirming, BackCB.filter())
+    router.callback_query.register(back_from_rename, EditRecipient.choosing_label, BackCB.filter())
     return router

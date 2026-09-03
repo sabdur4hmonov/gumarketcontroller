@@ -68,6 +68,13 @@ class Occasion(IdMixin, TimestampMixin, Base):
     shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
+    # Nullable only between the two migrations that add it; migration
+    # 6a4f76c77864 validates the backfill and sets NOT NULL.
+    recipient_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    # DEPRECATED as of CP3.5: the person now lives in `recipients`. Kept and
+    # still written so the column can be dropped in its own release, once
+    # nothing reads it. Do not add new readers.
     label: Mapped[str] = mapped_column(String(LABEL_MAX_LENGTH), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
 
@@ -96,9 +103,21 @@ class Occasion(IdMixin, TimestampMixin, Base):
             name="type_known",
         ),
         CheckConstraint("length(btrim(label)) > 0", name="label_not_blank"),
+        # The recipient must belong to the same customer. Postgres enforces it.
+        ForeignKeyConstraint(
+            ["recipient_id", "customer_id"],
+            ["recipients.id", "recipients.customer_id"],
+            ondelete="CASCADE",
+        ),
         # Double-tapping confirm must not create two identical occasions.
-        UniqueConstraint("customer_id", "month", "day", "label"),
+        #
+        # Keyed on the RECIPIENT, not on (customer_id, label). Two recipients
+        # may share a label -- a customer can have several friends called
+        # "Do'stim" -- and the old label-based key wrongly rejected the second
+        # one's date as a duplicate.
+        UniqueConstraint("recipient_id", "month", "day"),
         Index("ix_occasions_customer_active", "customer_id", "active"),
+        Index("ix_occasions_recipient", "recipient_id"),
     )
 
     def __repr__(self) -> str:

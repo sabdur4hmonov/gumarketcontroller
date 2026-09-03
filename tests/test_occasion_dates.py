@@ -91,12 +91,33 @@ def test_year_range_is_enforced(year: int) -> None:
 # --- the database is the last line of defence ------------------------------
 
 
+async def _make_recipient(db: AsyncConnection, shop: int, customer: int) -> int:
+    """occasions.recipient_id is NOT NULL as of CP3.5."""
+    result = await db.execute(
+        text(
+            "INSERT INTO recipients (shop_id, customer_id, label, type) "
+            "VALUES (:s, :c, 'X', 'custom') RETURNING id"
+        ),
+        {"s": shop, "c": customer},
+    )
+    return int(result.scalar_one())
+
+
 async def _insert(db: AsyncConnection, shop: int, customer: int, **kwargs: object) -> None:
-    payload = {"s": shop, "c": customer, "label": "X", "type": "custom", **kwargs}
+    recipient = kwargs.pop("recipient", None) or await _make_recipient(db, shop, customer)
+    payload = {
+        "s": shop,
+        "c": customer,
+        "r": recipient,
+        "label": "X",
+        "type": "custom",
+        **kwargs,
+    }
     await db.execute(
         text(
-            "INSERT INTO occasions (shop_id, customer_id, label, type, month, day, year) "
-            "VALUES (:s, :c, :label, :type, :month, :day, :year)"
+            "INSERT INTO occasions "
+            "(shop_id, customer_id, recipient_id, label, type, month, day, year) "
+            "VALUES (:s, :c, :r, :label, :type, :month, :day, :year)"
         ),
         {"year": None, **payload},
     )
@@ -157,7 +178,8 @@ async def test_an_occasion_cannot_be_claimed_by_another_shop(db: AsyncConnection
     shop_a = await _make_shop(db, "A")
     shop_b = await _make_shop(db, "B")
     customer_a = await _make_customer(db, shop_a, tg_id=1)
+    recipient_a = await _make_recipient(db, shop_a, customer_a)
     with pytest.raises(IntegrityError) as excinfo:
         async with db.begin_nested():
-            await _insert(db, shop_b, customer_a, month=3, day=8)
+            await _insert(db, shop_b, customer_a, recipient=recipient_a, month=3, day=8)
     assert "fk_occasions_customer_id_shop_id_customers" in str(excinfo.value)

@@ -100,9 +100,11 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "29-fevral faqat kabisa yilida bo'ladi. Boshqa yil yozing yoki o'tkazib yuboring.",
         "ru": "29 февраля бывает только в високосный год. Укажите другой год или пропустите.",
     },
+    # Restates every field before anything is written. Nothing is saved until
+    # the customer taps Ha.
     "occasions.confirm": {
-        "uz": "{label} — {date}\n\nSaqlaymizmi?",
-        "ru": "{label} — {date}\n\nСохраняем?",
+        "uz": "Kim: {label}\nTuri: {type_name}\nSana: {date}\n\nSaqlaymizmi?",
+        "ru": "Кто: {label}\nТип: {type_name}\nДата: {date}\n\nСохраняем?",
     },
     "occasions.saved": {
         "uz": "Saqlandi: {label} — {date}",
@@ -125,6 +127,55 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
             "Saqlash orqali siz shu sanani eslatma yuborish uchun saqlashimizga rozilik bildirasiz."
         ),
         "ru": ("Сохраняя, вы соглашаетесь на хранение этой даты для отправки напоминаний."),
+    },
+    # --- recipients & chaining -------------------------------------------
+    "recipients.empty": {
+        "uz": "Sizda hali saqlangan odam yo'q.",
+        "ru": "У вас пока нет сохранённых людей.",
+    },
+    "recipients.list_title": {
+        "uz": "Sizning odamlaringiz:",
+        "ru": "Ваши люди:",
+    },
+    "recipients.detail": {
+        "uz": "{label}\n\nSanalari:\n{dates}",
+        "ru": "{label}\n\nДаты:\n{dates}",
+    },
+    "recipients.no_dates": {
+        "uz": "Hali sana yo'q.",
+        "ru": "Пока нет дат.",
+    },
+    "recipients.ask_more_dates": {
+        "uz": "{label} uchun yana muhim sana bormi?",
+        "ru": "Есть ещё важные даты для {label}?",
+    },
+    "recipients.ask_more_people": {
+        "uz": "Yana odam qo'shamizmi?",
+        "ru": "Добавим ещё человека?",
+    },
+    "recipients.onboarding_done": {
+        "uz": "Ajoyib! Hammasi saqlandi. Vaqti kelganda eslatamiz.",
+        "ru": "Отлично! Всё сохранено. Напомним, когда придёт время.",
+    },
+    "recipients.renamed": {
+        "uz": "Nomi o'zgartirildi: {label}",
+        "ru": "Имя изменено: {label}",
+    },
+    "recipients.deactivated": {
+        "uz": "O'chirildi: {label}",
+        "ru": "Удалено: {label}",
+    },
+    "recipients.not_found": {
+        "uz": "Bu odam topilmadi.",
+        "ru": "Этот человек не найден.",
+    },
+    "recipients.choose_new_label": {
+        "uz": "Yangi nomni tanlang yoki yozing:",
+        "ru": "Выберите новое имя или напишите своё:",
+    },
+    "occasions.date_updated": {
+        "uz": "Sana yangilandi: {date}",
+        "ru": "Дата обновлена: {date}",
     },
     # --- occasion type presets ------------------------------------------
     "occtype.wife": {"uz": "Xotinim", "ru": "Жена"},
@@ -153,6 +204,12 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.save": {"uz": "✅ Saqlash", "ru": "✅ Сохранить"},
     "ibtn.discard": {"uz": "✖️ Bekor qilish", "ru": "✖️ Отмена"},
     "ibtn.back": {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад"},
+    "ibtn.yes": {"uz": "Ha", "ru": "Да"},
+    "ibtn.no": {"uz": "Yo'q", "ru": "Нет"},
+    "ibtn.rename": {"uz": "✏️ Nomini o'zgartirish", "ru": "✏️ Изменить имя"},
+    "ibtn.add_date": {"uz": "➕ Sana qo'shish", "ru": "➕ Добавить дату"},
+    "ibtn.add_person": {"uz": "➕ Odam qo'shish", "ru": "➕ Добавить человека"},
+    "ibtn.custom_label": {"uz": "✍️ O'zim yozaman", "ru": "✍️ Напишу сам"},
     "ibtn.deactivate": {"uz": "🗑 O'chirish", "ru": "🗑 Удалить"},
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
