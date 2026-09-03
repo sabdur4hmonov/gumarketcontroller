@@ -56,3 +56,15 @@ suite needs no reset between runs. `tests/test_harness_isolation.py` fails if
 that rollback ever breaks.
 
 Tests marked `infra` need `.\make.ps1 up` first.
+
+## Celery on Windows (decided at CP5)
+
+Celery's default **prefork pool does not work on Windows**. The VPS runs prefork;
+locally the worker needs `--pool=solo` or `--pool=threads`.
+
+This matters for CP6's concurrency test. The test proves that two workers racing
+the same due notification row produce exactly one send. A solo pool across **two
+separate worker processes** still races correctly and the test is meaningful. A
+solo pool inside **one process** does not race at all, and the test would pass
+vacuously while proving nothing. CP5 must document the exact local invocation,
+and CP6's race test must assert it is running against more than one process.

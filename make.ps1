@@ -24,12 +24,12 @@ switch ($Target) {
     "logs"      { Invoke-Step "docker" @("compose", "logs", "-f", "--tail=100") }
     "ps"        { Invoke-Step "docker" @("compose", "ps") }
     "fmt"       {
-        Invoke-Step $PY @("-m", "ruff", "format", "src", "tests")
-        Invoke-Step $PY @("-m", "ruff", "check", "--fix", "src", "tests")
+        Invoke-Step $PY @("-m", "ruff", "format", "src", "tests", "migrations")
+        Invoke-Step $PY @("-m", "ruff", "check", "--fix", "src", "tests", "migrations")
     }
     "lint"      {
-        Invoke-Step $PY @("-m", "ruff", "check", "src", "tests")
-        Invoke-Step $PY @("-m", "ruff", "format", "--check", "src", "tests")
+        Invoke-Step $PY @("-m", "ruff", "check", "src", "tests", "migrations")
+        Invoke-Step $PY @("-m", "ruff", "format", "--check", "src", "tests", "migrations")
     }
     "typecheck" { Invoke-Step $PY @("-m", "mypy") }
     "test"      { Invoke-Step $PY @("-m", "pytest") }
