@@ -1,0 +1,56 @@
+[project]
+name = "gulbot"
+version = "0.1.0"
+description = "Telegram reminder + ordering bot for a flower shop in Uzbekistan"
+requires-python = ">=3.11,<3.12"
+
+dependencies = [
+    "aiogram>=3.15,<4",
+    "sqlalchemy[asyncio]>=2.0,<3",
+    "asyncpg>=0.30,<0.31",
+    "psycopg[binary]>=3.2,<4",
+    "alembic>=1.14,<2",
+    "celery[redis]>=5.4,<6",
+    "redis>=5.2,<6",
+    "pydantic>=2.10,<3",
+    "pydantic-settings>=2.7,<3",
+    "structlog>=24.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9",
+    "pytest-asyncio>=0.25,<0.26",
+    "ruff>=0.8",
+    "mypy>=1.14",
+    "pyyaml>=6.0",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q --strict-markers"
+markers = [
+    "infra: requires the docker compose stack to be up",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+mypy_path = "src"
+packages = ["gulbot"]

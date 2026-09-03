@@ -1,0 +1,47 @@
+# Gulbot local development stack.
+#
+# Ports are deliberately non-default so this stack can never collide with
+# another Postgres/Redis running on this machine. See tests/test_infrastructure.py
+# which fails the build if these values drift.
+name: gulbot
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gulbot-postgres
+    environment:
+      POSTGRES_USER: gulbot
+      POSTGRES_PASSWORD: gulbot
+      POSTGRES_DB: gulbot
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gulbot -d gulbot"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: gulbot-redis
+    # appendonly so a restart does not silently drop queued Celery work.
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6380:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    name: gulbot_pgdata
+  redisdata:
+    name: gulbot_redisdata

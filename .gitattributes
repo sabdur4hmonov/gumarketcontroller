@@ -1,0 +1,10 @@
+* text=auto eol=lf
+
+# Must stay LF: real `make` chokes on CRLF recipe lines, and these run inside
+# Linux containers.
+Makefile        text eol=lf
+*.sh            text eol=lf
+*.yml           text eol=lf
+
+# PowerShell is native Windows tooling.
+*.ps1           text eol=crlf
