@@ -32,6 +32,7 @@ from gulbot.bot.callbacks import (
     DayCB,
     FlowerCB,
     MonthCB,
+    OccasionKindCB,
     OccasionTypeCB,
     RecipientCB,
     ReminderCountCB,
@@ -238,6 +239,7 @@ class Driver:
 
     async def add_person(self, preset: str, month: int, day: int) -> None:
         await self.tap(OccasionTypeCB(type=preset).pack())
+        await self.tap(OccasionKindCB(kind="birthday").pack())
         await self.tap(MonthCB(month=month).pack())
         await self.tap(DayCB(day=day).pack())
         await self.tap(YearSkipCB(action="skip").pack())
@@ -340,6 +342,7 @@ async def test_flower_question_is_not_repeated_for_a_person_who_has_one(
     recipient_id = (await _recipient(db))["id"]
     await driver.text(CATALOG["btn.menu.occasions"]["uz"])
     await driver.tap(RecipientCB(action="add_date", recipient_id=recipient_id).pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=12).pack())
     await driver.tap(DayCB(day=25).pack())
     await driver.tap(YearSkipCB(action="skip").pack())
@@ -360,7 +363,7 @@ async def test_each_person_gets_their_own_flower_question(
     await driver.tap(YesNoCB(scope="dates", answer="no").pack())
     await driver.tap(FlowerCB(choice="atirgul").pack())
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
-    await driver.add_person("father", 5, 9)
+    await driver.add_person("spouse", 5, 9)
     await driver.tap(YesNoCB(scope="dates", answer="no").pack())
     await driver.tap(FlowerCB(choice="tyulpan").pack())
 
@@ -452,7 +455,7 @@ async def test_preferences_are_asked_only_once(driver: Driver) -> None:
     from gulbot.bot.callbacks import AddOccasionCB
 
     await driver.tap(AddOccasionCB(action="start").pack())
-    await driver.add_person("father", 5, 9)
+    await driver.add_person("spouse", 5, 9)
     await driver.tap(YesNoCB(scope="dates", answer="no").pack())
     await driver.tap(FlowerCB(choice="skip").pack())
     driver.recorder.calls.clear()
@@ -489,7 +492,7 @@ async def test_cannot_set_a_flower_on_another_customers_recipient(
         await db.execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Theirs', 'friend') RETURNING id"
+                "VALUES (:s, :c, 'Theirs', 'older_sister') RETURNING id"
             ),
             {"s": shop_id, "c": other},
         )

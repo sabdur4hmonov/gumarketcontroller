@@ -95,8 +95,9 @@ def committed_world(settings: Settings) -> Iterator[dict]:
 def add_row(world: dict, *, day: int, offset: int, merge_key: str | None) -> int:
     conn = world["conn"]
     occasion = conn.execute(
-        "INSERT INTO occasions (shop_id, customer_id, recipient_id, label, type, month, day) "
-        "VALUES (%s, %s, %s, 'Onam', 'mother', 3, %s) RETURNING id",
+        "INSERT INTO occasions "
+        "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+        "VALUES (%s, %s, %s, 'Onam', 'mother', 'birthday', 3, %s) RETURNING id",
         (world["shop"], world["customer"], world["recipient"], day),
     ).fetchone()[0]
     conn.execute(

@@ -29,6 +29,8 @@ class AddOccasion(StatesGroup):
 
     choosing_type = State()
     entering_label = State()
+    # WHAT the date is. Asked after the person, before the date itself.
+    choosing_kind = State()
     choosing_month = State()
     choosing_day = State()
     entering_year = State()

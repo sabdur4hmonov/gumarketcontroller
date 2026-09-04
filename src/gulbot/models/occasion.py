@@ -26,16 +26,34 @@ from sqlalchemy.orm import Mapped, mapped_column
 from gulbot.db.base import Base, IdMixin, TimestampMixin
 
 
-class OccasionType(StrEnum):
-    """The preset the customer picked. `label` is what gets displayed."""
+class RecipientType(StrEnum):
+    """WHO the date is for. Declaration order is the button order.
 
-    WIFE = "wife"
-    SPOUSE = "spouse"
+    Renamed from OccasionType at the onboarding review: it never described the
+    occasion, only the person, and calling it a type made the confirm screen
+    say "Turi: Onam" -- the recipient's name in the slot meant for the kind of
+    date. What kind of date it is now lives in OccasionKind.
+    """
+
     MOTHER = "mother"
-    FATHER = "father"
-    CHILD = "child"
-    FRIEND = "friend"
+    SPOUSE = "spouse"
+    OLDER_SISTER = "older_sister"
+    YOUNGER_SISTER = "younger_sister"
+    PATERNAL_AUNT = "paternal_aunt"
+    MATERNAL_AUNT = "maternal_aunt"
     CUSTOM = "custom"
+
+
+#: Kept as an alias so nothing breaks mid-refactor.
+OccasionType = RecipientType
+
+
+class OccasionKind(StrEnum):
+    """WHAT the date is. Asked separately from who it is for."""
+
+    BIRTHDAY = "birthday"
+    ANNIVERSARY = "anniversary"
+    OTHER = "other"
 
 
 LABEL_MAX_LENGTH = 64
@@ -45,6 +63,11 @@ LABEL_MAX_LENGTH = 64
 # years. This list is the single source of truth, shared by the day picker, the
 # Python validator and the database CHECK constraint.
 MAX_DAY_IN_MONTH = (31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+
+#: Rendered into the CHECK constraints, so adding a preset in one place
+#: cannot leave the database refusing it.
+RECIPIENT_TYPES_SQL = ", ".join(f"'{t.value}'" for t in RecipientType)
+OCCASION_KINDS_SQL = ", ".join(f"'{k.value}'" for k in OccasionKind)
 
 # Rendered into the CHECK constraint so Postgres refuses Feb 30 and Apr 31 on
 # its own, not merely because the picker happens to be built correctly.
@@ -78,6 +101,10 @@ class Occasion(IdMixin, TimestampMixin, Base):
     label: Mapped[str] = mapped_column(String(LABEL_MAX_LENGTH), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
 
+    # WHAT this date is: a birthday, an anniversary, something else. Asked as
+    # its own question -- the customer picks the person first, then the kind.
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+
     month: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     day: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     # Optional: plenty of customers know the date but not the year.
@@ -98,10 +125,8 @@ class Occasion(IdMixin, TimestampMixin, Base):
         CheckConstraint(DAY_MATCHES_MONTH_SQL, name="day_matches_month"),
         CheckConstraint("year IS NULL OR year BETWEEN 1900 AND 2100", name="year_range"),
         CheckConstraint(LEAP_YEAR_SQL, name="feb29_needs_leap_year"),
-        CheckConstraint(
-            "type IN ('wife', 'spouse', 'mother', 'father', 'child', 'friend', 'custom')",
-            name="type_known",
-        ),
+        CheckConstraint(f"type IN ({RECIPIENT_TYPES_SQL})", name="type_known"),
+        CheckConstraint(f"kind IN ({OCCASION_KINDS_SQL})", name="kind_known"),
         CheckConstraint("length(btrim(label)) > 0", name="label_not_blank"),
         # The recipient must belong to the same customer. Postgres enforces it.
         ForeignKeyConstraint(

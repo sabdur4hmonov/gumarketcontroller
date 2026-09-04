@@ -14,7 +14,7 @@ DEFAULT_LANGUAGE: Final = "uz"
 
 CATALOG: Final[dict[str, dict[str, str]]] = {
     "start.choose_language": {
-        "uz": "Assalomu alaykum! Tilni tanlang:",
+        "uz": "🌸 Assalomu alaykum! Gulbotga xush kelibsiz.\nQaysi tilda gaplashamiz?",
         "ru": "Здравствуйте! Выберите язык:",
     },
     "start.welcome_back": {
@@ -22,7 +22,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "С возвращением, {name}!",
     },
     "language.saved": {
-        "uz": "Til o'zbekchaga o'zgartirildi.",
+        "uz": "Zo'r, o'zbekchada davom etamiz.",
         "ru": "Язык изменён на русский.",
     },
     "menu.title": {
@@ -44,7 +44,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "nav.cancelled": {
-        "uz": "Bekor qilindi.",
+        "uz": "Bekor qildik.",
         "ru": "Отменено.",
     },
     "nav.nothing_to_cancel": {
@@ -52,7 +52,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Нечего отменять.",
     },
     "common.unknown": {
-        "uz": "Tushunmadim. Quyidagi tugmalardan foydalaning.",
+        "uz": "Quyidagi tugmalardan birini tanlang 🙂",
         "ru": "Не понял. Воспользуйтесь кнопками ниже.",
     },
     # --- occasions -------------------------------------------------------
@@ -65,11 +65,11 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Ваши даты:",
     },
     "occasions.choose_type": {
-        "uz": "Bu sana kim uchun?",
+        "uz": "Kimning muhim sanasini eslatib turaylik?",
         "ru": "Для кого эта дата?",
     },
     "occasions.enter_label": {
-        "uz": "Nomini yozing (masalan: Singlim). 64 belgigacha.",
+        "uz": 'Ismini yoki qarindoshligini yozing — masalan, "Singlim Aziza".',
         "ru": "Напишите название (например: Сестра). До 64 символов.",
     },
     "occasions.label_empty": {
@@ -81,41 +81,41 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Название сокращено до 64 символов.",
     },
     "occasions.choose_month": {
-        "uz": "Oyni tanlang:",
+        "uz": "Qaysi oyda?",
         "ru": "Выберите месяц:",
     },
     "occasions.choose_day": {
-        "uz": "Kunni tanlang:",
+        "uz": "Qaysi kuni?",
         "ru": "Выберите день:",
     },
     "occasions.enter_year": {
-        "uz": "Yilni yozing (masalan: 1990) yoki o'tkazib yuboring.",
+        "uz": "Yilini bilsangiz yozing (masalan, 1990). Bilmasangiz — o'tkazib yuboring.",
         "ru": "Напишите год (например: 1990) или пропустите.",
     },
     "occasions.year_invalid": {
-        "uz": "Yil 1900 va 2100 orasida, 4 raqamli bo'lishi kerak.",
+        "uz": "Yilni 4 raqam bilan yozing, masalan 1990.",
         "ru": "Год должен быть четырёхзначным, между 1900 и 2100.",
     },
     "occasions.year_not_leap": {
-        "uz": "29-fevral faqat kabisa yilida bo'ladi. Boshqa yil yozing yoki o'tkazib yuboring.",
+        "uz": "29-fevral faqat kabisa yilida bo'ladi. Boshqa yilni yozing yoki o'tkazib yuboring.",
         "ru": "29 февраля бывает только в високосный год. Укажите другой год или пропустите.",
     },
     # Restates every field before anything is written. Nothing is saved until
     # the customer taps Ha.
     "occasions.confirm": {
-        "uz": "Kim: {label}\nTuri: {type_name}\nSana: {date}\n\nSaqlaymizmi?",
+        "uz": "📅 {label} — {type_name}\n{date}\n\nShu sanani eslatib turaymizmi?",
         "ru": "Кто: {label}\nТип: {type_name}\nДата: {date}\n\nСохраняем?",
     },
     "occasions.saved": {
-        "uz": "Saqlandi: {label} — {date}",
+        "uz": "✅ Saqladik! {label} — {date}. Vaqti kelganda eslatamiz.",
         "ru": "Сохранено: {label} — {date}",
     },
     "occasions.duplicate": {
-        "uz": "Bu sana allaqachon saqlangan.",
+        "uz": "Bu sana allaqachon ro'yxatda bor.",
         "ru": "Эта дата уже сохранена.",
     },
     "occasions.deactivated": {
-        "uz": "O'chirildi: {label}",
+        "uz": "{label} ro'yxatdan olib tashlandi.",
         "ru": "Удалено: {label}",
     },
     "occasions.not_found": {
@@ -123,9 +123,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Эта дата не найдена.",
     },
     "occasions.consent": {
-        "uz": (
-            "Saqlash orqali siz shu sanani eslatma yuborish uchun saqlashimizga rozilik bildirasiz."
-        ),
+        "uz": "Saqlasak, bu sanani faqat sizga eslatma yuborish uchun saqlaymiz.",
         "ru": ("Сохраняя, вы соглашаетесь на хранение этой даты для отправки напоминаний."),
     },
     # --- recipients & chaining -------------------------------------------
@@ -146,15 +144,15 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Пока нет дат.",
     },
     "recipients.ask_more_dates": {
-        "uz": "{label} uchun yana muhim sana bormi?",
+        "uz": "{label} uchun boshqa muhim sana ham bormi?",
         "ru": "Есть ещё важные даты для {label}?",
     },
     "recipients.ask_more_people": {
-        "uz": "Yana odam qo'shamizmi?",
+        "uz": "Yana kimnidir qo'shamizmi?",
         "ru": "Добавим ещё человека?",
     },
     "recipients.onboarding_done": {
-        "uz": "Ajoyib! Hammasi saqlandi. Vaqti kelganda eslatamiz.",
+        "uz": "🌸 Hammasi tayyor! Muhim kunlar yaqinlashganda sizga eslatamiz.",
         "ru": "Отлично! Всё сохранено. Напомним, когда придёт время.",
     },
     "recipients.renamed": {
@@ -179,19 +177,19 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     },
     # --- preferences ------------------------------------------------------
     "prefs.ask_flower": {
-        "uz": "{label} qanday gullarni yoqtiradi?",
+        "uz": "{label} qanday gullarni yoqtiradi? 🌷",
         "ru": "Какие цветы любит {label}?",
     },
     "prefs.ask_reminder_count": {
-        "uz": "Necha marta oldindan eslataylik?",
+        "uz": "Sanadan oldin necha marta eslataylik?",
         "ru": "Сколько раз напомнить заранее?",
     },
     "prefs.ask_send_time": {
-        "uz": "Qaysi vaqtda eslataylik?",
+        "uz": "Kun davomida qaysi vaqtda eslatganimiz qulay?",
         "ru": "В какое время напоминать?",
     },
     "prefs.saved": {
-        "uz": "Sozlamalar saqlandi.",
+        "uz": "Eslatma sozlamalari saqlandi.",
         "ru": "Настройки сохранены.",
     },
     "flower.atirgul": {"uz": "Atirgul", "ru": "Розы"},
@@ -210,25 +208,52 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "🌸 Eslatma!",
         "ru": "🌸 Напоминание!",
     },
-    "reminder.item": {
-        "uz": "• {label} — {date} ({when})",
-        "ru": "• {label} — {date} ({when})",
+    "reminder.single": {
+        "uz": "{when} {label}ning {kind} — {date}.",
+        "ru": "{when}: {label} — {kind}, {date}.",
     },
+    "reminder.merged_intro": {
+        "uz": "Yaqin kunlarda:",
+        "ru": "В ближайшие дни:",
+    },
+    "reminder.item": {
+        "uz": "• {label} — {kind}, {date} ({when})",
+        "ru": "• {label} — {kind}, {date} ({when})",
+    },
+    # Capitalised variants, for when the phrase OPENS a sentence. Separate keys
+    # rather than .capitalize(): a numeric "3 kundan keyin" would be untouched
+    # by it, so the two cases only look the same by accident.
+    "reminder.whencap.today": {"uz": "Bugun", "ru": "Сегодня"},
+    "reminder.whencap.tomorrow": {"uz": "Ertaga", "ru": "Завтра"},
+    "reminder.whencap.in_days": {"uz": "{days} kundan keyin", "ru": "Через {days} дн."},
+    # The kind as it reads INSIDE a sentence, which is not the button label.
+    "occkind.poss.birthday": {"uz": "tug'ilgan kuni", "ru": "день рождения"},
+    "occkind.poss.anniversary": {"uz": "nikoh to'yi", "ru": "годовщина свадьбы"},
+    "occkind.poss.other": {"uz": "muhim sanasi", "ru": "важная дата"},
     "reminder.when.today": {"uz": "bugun", "ru": "сегодня"},
     "reminder.when.tomorrow": {"uz": "ertaga", "ru": "завтра"},
     "reminder.when.in_days": {"uz": "{days} kundan keyin", "ru": "через {days} дн."},
     "reminder.footer": {
-        "uz": "Gul buyurtma qilmoqchimisiz? /start",
+        "uz": "Gul bilan xursand qilamizmi? /start",
         "ru": "Хотите заказать цветы? /start",
     },
     # --- occasion type presets ------------------------------------------
-    "occtype.wife": {"uz": "Xotinim", "ru": "Жена"},
-    "occtype.spouse": {"uz": "Turmush o'rtog'im", "ru": "Супруг(а)"},
+    # Button order follows RecipientType's declaration order.
     "occtype.mother": {"uz": "Onam", "ru": "Мама"},
-    "occtype.father": {"uz": "Otam", "ru": "Папа"},
-    "occtype.child": {"uz": "Farzandim", "ru": "Мой ребёнок"},
-    "occtype.friend": {"uz": "Do'stim", "ru": "Друг"},
+    "occtype.spouse": {"uz": "Turmush o'rtog'im", "ru": "Супруг(а)"},
+    "occtype.older_sister": {"uz": "Opa", "ru": "Старшая сестра"},
+    "occtype.younger_sister": {"uz": "Singil", "ru": "Младшая сестра"},
+    "occtype.paternal_aunt": {"uz": "Amma", "ru": "Тётя (по отцу)"},
+    "occtype.maternal_aunt": {"uz": "Xola", "ru": "Тётя (по матери)"},
     "occtype.custom": {"uz": "Boshqa", "ru": "Другое"},
+    # --- what kind of date it is -----------------------------------------
+    "occkind.birthday": {"uz": "Tug'ilgan kun", "ru": "День рождения"},
+    "occkind.anniversary": {"uz": "Nikoh to'yi", "ru": "Годовщина свадьбы"},
+    "occkind.other": {"uz": "Boshqa muhim sana", "ru": "Другая важная дата"},
+    "occasions.choose_kind": {
+        "uz": "Bu qanday sana?",
+        "ru": "Что это за дата?",
+    },
     # --- months ----------------------------------------------------------
     "month.1": {"uz": "Yanvar", "ru": "Январь"},
     "month.2": {"uz": "Fevral", "ru": "Февраль"},

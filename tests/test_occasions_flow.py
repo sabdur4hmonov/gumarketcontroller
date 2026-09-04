@@ -26,6 +26,7 @@ from gulbot.bot.callbacks import (
     FlowerCB,
     MonthCB,
     OccasionActionCB,
+    OccasionKindCB,
     OccasionTypeCB,
     RecipientCB,
     RecipientListCB,
@@ -87,6 +88,7 @@ class Driver:
 
     async def add_person(self, preset: str, month: int, day: int) -> None:
         await self.tap(OccasionTypeCB(type=preset).pack())
+        await self.tap(OccasionKindCB(kind="birthday").pack())
         await self.date(month, day)
 
     async def finish_person(self) -> None:
@@ -187,8 +189,9 @@ async def test_more_dates_yes_reuses_the_same_recipient(
     driver: Driver, db: AsyncConnection
 ) -> None:
     """The loop that recipients exist for: one person, two dates."""
-    await driver.add_person("wife", 3, 8)
+    await driver.add_person("spouse", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(11, 2)
 
     recipients = await _recipients(db)
@@ -203,11 +206,11 @@ async def test_more_people_yes_starts_a_new_recipient(driver: Driver, db: AsyncC
     await driver.add_person("mother", 3, 8)
     await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
-    await driver.add_person("father", 5, 9)
+    await driver.add_person("spouse", 5, 9)
 
     recipients = await _recipients(db)
     occasions = await _occasions(db)
-    assert [r["type"] for r in recipients] == ["mother", "father"]
+    assert [r["type"] for r in recipients] == ["mother", "spouse"]
     assert len({o["recipient_id"] for o in occasions}) == 2
 
 
@@ -231,7 +234,7 @@ async def test_a_later_addition_returns_to_the_menu_not_the_onboarding_message(
 
     await driver.open_menu_list()
     await driver.tap(AddOccasionCB(action="start").pack())
-    await driver.add_person("father", 5, 9)
+    await driver.add_person("spouse", 5, 9)
     await driver.finish_person()
     driver.recorder.calls.clear()
     await driver.finish_all()
@@ -245,16 +248,16 @@ async def test_two_recipients_may_share_a_label_and_a_date(
     driver: Driver, db: AsyncConnection
 ) -> None:
     """The old label-keyed unique constraint made this impossible."""
-    await driver.add_person("friend", 6, 6)
+    await driver.add_person("older_sister", 6, 6)
     await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
-    await driver.add_person("friend", 6, 6)
+    await driver.add_person("older_sister", 6, 6)
 
     recipients = await _recipients(db)
     occasions = await _occasions(db)
     assert len(recipients) == 2
     assert len(occasions) == 2
-    assert {r["label"] for r in recipients} == {CATALOG["occtype.friend"]["uz"]}
+    assert {r["label"] for r in recipients} == {CATALOG["occtype.older_sister"]["uz"]}
 
 
 # --- explicit confirmation -------------------------------------------------
@@ -263,15 +266,17 @@ async def test_two_recipients_may_share_a_label_and_a_date(
 @pytest.mark.infra
 async def test_confirm_screen_restates_label_type_and_date(driver: Driver) -> None:
     await driver.tap(OccasionTypeCB(type="mother").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=3).pack())
     await driver.tap(DayCB(day=8).pack())
     driver.recorder.calls.clear()
     await driver.tap(YearSkipCB(action="skip").pack())
 
     summary = "\n".join(driver.sent)
-    label = CATALOG["occtype.mother"]["uz"]
-    assert label in summary
-    assert "08.03" in summary
+    assert CATALOG["occtype.mother"]["uz"] in summary, "the person is not restated"
+    assert CATALOG["occkind.birthday"]["uz"] in summary, "the KIND is not restated"
+    # Long form: "8-mart", the way a date is written, not 08.03.
+    assert "8-mart" in summary
     assert CATALOG["occasions.consent"]["uz"] in summary
 
 
@@ -281,6 +286,7 @@ async def test_nothing_is_written_before_the_explicit_tap(
 ) -> None:
     """Reaching the confirm screen must not create a recipient OR an occasion."""
     await driver.tap(OccasionTypeCB(type="mother").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=3).pack())
     await driver.tap(DayCB(day=8).pack())
     await driver.tap(YearSkipCB(action="skip").pack())
@@ -296,6 +302,7 @@ async def test_nothing_is_written_before_the_explicit_tap(
 @pytest.mark.infra
 async def test_discard_writes_nothing(driver: Driver, db: AsyncConnection) -> None:
     await driver.tap(OccasionTypeCB(type="mother").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=3).pack())
     await driver.tap(DayCB(day=8).pack())
     await driver.tap(YearSkipCB(action="skip").pack())
@@ -309,7 +316,8 @@ async def test_discard_writes_nothing(driver: Driver, db: AsyncConnection) -> No
 async def test_double_tapped_confirm_creates_one_occasion(
     driver: Driver, db: AsyncConnection
 ) -> None:
-    await driver.tap(OccasionTypeCB(type="wife").pack())
+    await driver.tap(OccasionTypeCB(type="spouse").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=9).pack())
     await driver.tap(DayCB(day=1).pack())
     await driver.tap(YearSkipCB(action="skip").pack())
@@ -326,6 +334,7 @@ async def test_double_tapped_confirm_creates_one_occasion(
 async def test_custom_label_is_sanitized(driver: Driver, db: AsyncConnection) -> None:
     await driver.tap(OccasionTypeCB(type="custom").pack())
     await driver.text("  Singlim\nAziza  " + "x" * 100)
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(6, 15)
 
     label = (await _recipients(db))[0]["label"]
@@ -343,7 +352,8 @@ async def test_blank_label_is_refused(driver: Driver) -> None:
 
 @pytest.mark.infra
 async def test_february_29_still_refuses_a_common_year(driver: Driver) -> None:
-    await driver.tap(OccasionTypeCB(type="friend").pack())
+    await driver.tap(OccasionTypeCB(type="older_sister").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=2).pack())
     await driver.tap(DayCB(day=29).pack())
     await driver.text("2023")
@@ -352,7 +362,8 @@ async def test_february_29_still_refuses_a_common_year(driver: Driver) -> None:
 
 @pytest.mark.infra
 async def test_forged_day_callback_is_still_refused(driver: Driver) -> None:
-    await driver.tap(OccasionTypeCB(type="friend").pack())
+    await driver.tap(OccasionTypeCB(type="older_sister").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=2).pack())
     driver.recorder.calls.clear()
     await driver.tap(DayCB(day=30).pack())
@@ -364,7 +375,7 @@ async def test_forged_day_callback_is_still_refused(driver: Driver) -> None:
 
 @pytest.mark.infra
 async def test_rename_with_a_preset(driver: Driver, db: AsyncConnection) -> None:
-    await driver.add_person("friend", 6, 6)
+    await driver.add_person("older_sister", 6, 6)
     await driver.finish_person()
     await driver.finish_all()
 
@@ -381,7 +392,7 @@ async def test_rename_with_a_preset(driver: Driver, db: AsyncConnection) -> None
 
 @pytest.mark.infra
 async def test_rename_with_free_text_is_sanitized(driver: Driver, db: AsyncConnection) -> None:
-    await driver.add_person("friend", 6, 6)
+    await driver.add_person("older_sister", 6, 6)
     await driver.finish_person()
     await driver.finish_all()
 
@@ -426,6 +437,7 @@ async def test_adding_a_date_to_an_existing_recipient(driver: Driver, db: AsyncC
     recipient_id = (await _recipients(db))[0]["id"]
     await driver.open_menu_list()
     await driver.tap(RecipientCB(action="add_date", recipient_id=recipient_id).pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(12, 25)
 
     occasions = await _occasions(db)
@@ -440,6 +452,7 @@ async def test_deactivating_a_recipient_hides_their_dates(
 ) -> None:
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(11, 2)
     await driver.finish_person()
     await driver.finish_all()
@@ -458,6 +471,7 @@ async def test_deactivating_a_single_date_leaves_the_person(
 ) -> None:
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(11, 2)
     await driver.finish_person()
     await driver.finish_all()
@@ -486,6 +500,7 @@ async def test_back_from_the_detail_view_returns_to_the_list(driver: Driver) -> 
 @pytest.mark.infra
 async def test_back_steps_backwards_one_screen_at_a_time(driver: Driver) -> None:
     await driver.tap(OccasionTypeCB(type="mother").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.tap(MonthCB(month=3).pack())
 
     driver.recorder.calls.clear()
@@ -494,7 +509,7 @@ async def test_back_steps_backwards_one_screen_at_a_time(driver: Driver) -> None
 
     driver.recorder.calls.clear()
     await driver.tap(BackCB(action="back").pack())
-    assert driver.sent == [CATALOG["occasions.choose_type"]["uz"]]
+    assert driver.sent == [CATALOG["occasions.choose_kind"]["uz"]]
 
 
 # --- tenancy ---------------------------------------------------------------
@@ -514,7 +529,7 @@ async def test_cannot_open_another_customers_recipient(
         await db.execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Theirs', 'friend') RETURNING id"
+                "VALUES (:s, :c, 'Theirs', 'older_sister') RETURNING id"
             ),
             {"s": shop_id, "c": other_id},
         )
@@ -541,7 +556,7 @@ async def test_cannot_deactivate_another_customers_recipient(
         await db.execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Theirs', 'friend') RETURNING id"
+                "VALUES (:s, :c, 'Theirs', 'older_sister') RETURNING id"
             ),
             {"s": shop_id, "c": other_id},
         )
@@ -566,10 +581,11 @@ async def test_consent_is_written_once_across_the_whole_chain(
 ) -> None:
     await driver.add_person("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
+    await driver.tap(OccasionKindCB(kind="birthday").pack())
     await driver.date(11, 2)
     await driver.finish_person()
     await driver.tap(YesNoCB(scope="people", answer="yes").pack())
-    await driver.add_person("father", 5, 9)
+    await driver.add_person("spouse", 5, 9)
 
     consents = (
         await db.execute(

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from aiogram.filters.callback_data import CallbackData
 
-from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionType
+from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionKind, OccasionType
 from gulbot.models.recipient import FLOWER_PRESETS
 
 
@@ -19,6 +19,16 @@ class OccasionTypeCB(CallbackData, prefix="occtype"):
     @classmethod
     def samples(cls) -> list[str]:
         return [cls(type=t.value).pack() for t in OccasionType]
+
+
+class OccasionKindCB(CallbackData, prefix="occkind"):
+    """WHAT the date is, asked after WHO it is for."""
+
+    kind: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(kind=k.value).pack() for k in OccasionKind]
 
 
 class MonthCB(CallbackData, prefix="occmonth"):

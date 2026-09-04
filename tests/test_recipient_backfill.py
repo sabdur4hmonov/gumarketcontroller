@@ -61,7 +61,7 @@ def seeded_old_schema(settings: Settings):
                 # Alice: same label twice (birthday + anniversary) -> ONE recipient.
                 (alice, "Onam", "mother", 3, 8),
                 (alice, "Onam", "mother", 11, 2),
-                (alice, "Otam", "father", 5, 9),
+                (alice, "Otam", "spouse", 5, 9),
                 # Bob shares a label with Alice -> a SEPARATE recipient.
                 (bob, "Onam", "mother", 3, 8),
                 (bob, "Singlim", "custom", 7, 21),
@@ -126,7 +126,7 @@ def test_backfill_creates_one_recipient_per_customer_label_pair(
     alice, bob = seeded_old_schema["alice"], seeded_old_schema["bob"]
     assert [(r.customer_id, r.label, r.type) for r in rows] == [
         (alice, "Onam", "mother"),
-        (alice, "Otam", "father"),
+        (alice, "Otam", "spouse"),
         (bob, "Onam", "mother"),
         (bob, "Singlim", "custom"),
     ]
@@ -200,7 +200,8 @@ def test_two_recipients_may_share_a_label_after_migrating(
                 conn.execute(
                     text(
                         "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                        "VALUES (:s, :c, 'Do''stim', 'friend'), (:s, :c, 'Do''stim', 'friend') "
+                        "VALUES (:s, :c, 'Do''stim', 'older_sister'), "
+                        "       (:s, :c, 'Do''stim', 'older_sister') "
                         "RETURNING id"
                     ),
                     {"s": shop, "c": alice},
@@ -213,8 +214,8 @@ def test_two_recipients_may_share_a_label_after_migrating(
                 conn.execute(
                     text(
                         "INSERT INTO occasions "
-                        "(shop_id, customer_id, recipient_id, label, type, month, day) "
-                        "VALUES (:s, :c, :r, 'Do''stim', 'friend', 6, 6)"
+                        "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+                        "VALUES (:s, :c, :r, 'Do''stim', 'older_sister', 'birthday', 6, 6)"
                     ),
                     {"s": shop, "c": alice, "r": recipient_id},
                 )

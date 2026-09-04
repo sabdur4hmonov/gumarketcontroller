@@ -111,13 +111,14 @@ async def _insert(db: AsyncConnection, shop: int, customer: int, **kwargs: objec
         "r": recipient,
         "label": "X",
         "type": "custom",
+        "kind": "birthday",
         **kwargs,
     }
     await db.execute(
         text(
             "INSERT INTO occasions "
-            "(shop_id, customer_id, recipient_id, label, type, month, day, year) "
-            "VALUES (:s, :c, :r, :label, :type, :month, :day, :year)"
+            "(shop_id, customer_id, recipient_id, label, type, kind, month, day, year) "
+            "VALUES (:s, :c, :r, :label, :type, :kind, :month, :day, :year)"
         ),
         {"year": None, **payload},
     )

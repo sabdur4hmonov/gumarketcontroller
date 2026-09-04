@@ -20,6 +20,7 @@ from gulbot.bot.callbacks import (
     FlowerCB,
     MonthCB,
     OccasionActionCB,
+    OccasionKindCB,
     OccasionTypeCB,
     RecipientCB,
     RecipientListCB,
@@ -29,7 +30,7 @@ from gulbot.bot.callbacks import (
     YesNoCB,
 )
 from gulbot.i18n import t
-from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionType
+from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionKind, OccasionType
 from gulbot.models.recipient import FLOWER_PRESETS
 
 
@@ -79,6 +80,21 @@ def occasion_type_keyboard(lang: str) -> InlineKeyboardMarkup:
         ]
         for preset in OccasionType
     ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def occasion_kind_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """What kind of date this is. One row per kind, plus Back."""
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=t(f"occkind.{kind.value}", lang),
+                callback_data=OccasionKindCB(kind=kind.value).pack(),
+            )
+        ]
+        for kind in OccasionKind
+    ]
+    rows.append([_back_button(lang)])
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 

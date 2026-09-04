@@ -64,7 +64,7 @@ async def big_shop(db: AsyncConnection) -> int:
     await db.execute(
         text(
             "INSERT INTO recipients (shop_id, customer_id, label, type) "
-            "SELECT :s, c.id, 'R', 'friend' FROM customers c WHERE c.shop_id = :s"
+            "SELECT :s, c.id, 'R', 'older_sister' FROM customers c WHERE c.shop_id = :s"
         ),
         {"s": shop_id},
     )
@@ -73,8 +73,8 @@ async def big_shop(db: AsyncConnection) -> int:
     await db.execute(
         text(
             "INSERT INTO occasions "
-            "(shop_id, customer_id, recipient_id, label, type, month, day) "
-            "SELECT :s, r.customer_id, r.id, 'R', 'friend', "
+            "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+            "SELECT :s, r.customer_id, r.id, 'R', 'older_sister', 'birthday', "
             # mod(), never %: the driver treats % as parameter escaping and a
             # doubled literal reaches Postgres as invalid SQL.
             "       1 + mod(g, 12), 1 + mod(g, 28) "

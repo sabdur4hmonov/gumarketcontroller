@@ -35,6 +35,7 @@ from gulbot.bot.callbacks import (
     DayCB,
     FlowerCB,
     MonthCB,
+    OccasionKindCB,
     OccasionTypeCB,
     YearSkipCB,
     YesNoCB,
@@ -82,7 +83,7 @@ async def test_every_loop_target_state_is_covered_by_the_check() -> None:
     """The loop-back edges land on these states; they must be declared."""
     states = {str(s) for s in declared_states()}
     loop_targets = {
-        "AddOccasion:choosing_month",  # asking_more_dates --yes-->
+        "AddOccasion:choosing_kind",  # asking_more_dates --yes-->
         "AddOccasion:choosing_type",  # asking_more_people --yes-->
     }
     loop_sources = {"AddOccasion:asking_more_dates", "AddOccasion:asking_more_people"}
@@ -128,6 +129,7 @@ class Driver:
 
     async def save_one_date(self, preset: str, month: int, day: int) -> None:
         await self.tap(OccasionTypeCB(type=preset).pack())
+        await self.tap(OccasionKindCB(kind="birthday").pack())
         await self.tap(MonthCB(month=month).pack())
         await self.tap(DayCB(day=day).pack())
         await self.tap(YearSkipCB(action="skip").pack())
@@ -165,11 +167,11 @@ async def _fsm_state(dispatcher: Dispatcher, bot: Bot) -> str | None:
 async def test_cancel_wins_after_looping_back_for_another_date(
     driver: Driver, dispatcher: Dispatcher, bot_and_session: tuple[Bot, RecordingSession]
 ) -> None:
-    """Loop edge: asking_more_dates --yes--> choosing_month."""
+    """Loop edge: asking_more_dates --yes--> choosing_kind."""
     bot, _ = bot_and_session
     await driver.save_one_date("mother", 3, 8)
     await driver.tap(YesNoCB(scope="dates", answer="yes").pack())
-    assert await _fsm_state(dispatcher, bot) == "AddOccasion:choosing_month"
+    assert await _fsm_state(dispatcher, bot) == "AddOccasion:choosing_kind"
 
     driver.recorder.calls.clear()
     await driver.text(CATALOG["btn.nav.cancel"]["uz"])
@@ -232,7 +234,7 @@ async def test_cancel_wins_from_both_chained_questions(
         .AddOccasionCB(action="start")
         .pack()
     )
-    await driver.save_one_date("father", 4, 9)
+    await driver.save_one_date("spouse", 4, 9)
     await driver.finish_person()
     assert await _fsm_state(dispatcher, bot) == "AddOccasion:asking_more_people"
     await driver.text(CATALOG["btn.nav.cancel"]["uz"])

@@ -24,6 +24,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gulbot.db.base import Base, IdMixin, TimestampMixin
+from gulbot.models.occasion import RECIPIENT_TYPES_SQL
 
 LABEL_MAX_LENGTH = 64
 
@@ -61,10 +62,7 @@ class Recipient(IdMixin, TimestampMixin, Base):
         # makes "an occasion pointing at another customer's recipient"
         # unrepresentable rather than merely unlikely.
         UniqueConstraint("id", "customer_id"),
-        CheckConstraint(
-            "type IN ('wife', 'spouse', 'mother', 'father', 'child', 'friend', 'custom')",
-            name="type_known",
-        ),
+        CheckConstraint(f"type IN ({RECIPIENT_TYPES_SQL})", name="type_known"),
         CheckConstraint("length(btrim(label)) > 0", name="label_not_blank"),
         CheckConstraint(
             "preferred_hashtag IS NULL OR preferred_hashtag IN ('atirgul', 'tyulpan', 'lola')",

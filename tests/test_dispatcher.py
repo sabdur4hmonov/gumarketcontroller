@@ -101,8 +101,8 @@ async def add_due_row(
         await db.execute(
             text(
                 "INSERT INTO occasions "
-                "(shop_id, customer_id, recipient_id, label, type, month, day) "
-                "VALUES (:s, :c, :r, 'Onam', 'mother', :m, :d) RETURNING id"
+                "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+                "VALUES (:s, :c, :r, 'Onam', 'mother', 'birthday', :m, :d) RETURNING id"
             ),
             {
                 "s": world["shop_id"],
@@ -232,7 +232,7 @@ async def test_a_merged_message_names_every_occasion(
         await db.execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Otam', 'father') RETURNING id"
+                "VALUES (:s, :c, 'Otam', 'spouse') RETURNING id"
             ),
             {"s": world["shop_id"], "c": world["customer_id"]},
         )
@@ -731,7 +731,7 @@ async def test_blocking_one_customer_does_not_touch_another(
         await db.execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Otam', 'father') RETURNING id"
+                "VALUES (:s, :c, 'Otam', 'spouse') RETURNING id"
             ),
             {"s": world["shop_id"], "c": other_customer},
         )

@@ -138,8 +138,8 @@ async def world(db: AsyncConnection) -> dict:
     await db.execute(
         text(
             "INSERT INTO occasions "
-            "(shop_id, customer_id, recipient_id, label, type, month, day) "
-            "VALUES (:s, :c, :r, 'Onam', 'mother', 3, 8)"
+            "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+            "VALUES (:s, :c, :r, 'Onam', 'mother', 'birthday', 3, 8)"
         ),
         {"s": shop_id, "c": customer_id, "r": recipient_id},
     )

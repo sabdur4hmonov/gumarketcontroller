@@ -69,8 +69,8 @@ async def add_occasion(
             await db.execute(
                 text(
                     "INSERT INTO occasions "
-                    "(shop_id, customer_id, recipient_id, label, type, month, day) "
-                    "VALUES (:s, :c, :r, 'Onam', 'mother', :m, :d) RETURNING id"
+                    "(shop_id, customer_id, recipient_id, label, type, kind, month, day) "
+                    "VALUES (:s, :c, :r, 'Onam', 'mother', 'birthday', :m, :d) RETURNING id"
                 ),
                 {
                     "s": world["shop_id"],

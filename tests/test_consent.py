@@ -23,7 +23,7 @@ from gulbot.services.recipients import create_recipient
 
 # Recomputed from the catalog. Bump BOTH this and STORE_DATES_TEXT_VERSION when
 # the wording changes -- that is the point.
-CONSENT_TEXT_FINGERPRINT = "f8d29d8877c6354c"
+CONSENT_TEXT_FINGERPRINT = "ec81442eceb0cc17"
 
 
 def _fingerprint() -> str:
@@ -41,7 +41,7 @@ def test_consent_text_matches_its_recorded_version() -> None:
 
 
 def test_version_is_a_stable_identifier() -> None:
-    assert STORE_DATES_TEXT_VERSION == "store_dates.v1"
+    assert STORE_DATES_TEXT_VERSION == "store_dates.v2"
 
 
 def test_consent_text_exists_in_both_languages() -> None:
@@ -119,6 +119,7 @@ async def test_consent_row_is_written_alongside_the_first_occasion(
             customer_id=customer,
             recipient_id=recipient.id,
             type_="mother",
+            kind="birthday",
             label="Onam",
             month=3,
             day=8,

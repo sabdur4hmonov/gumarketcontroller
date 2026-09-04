@@ -35,7 +35,7 @@ class ConsentType(StrEnum):
 # was actually on screen when the customer agreed. tests/test_consent.py pins
 # the current text to this version and fails the build if the text is edited
 # without a bump.
-STORE_DATES_TEXT_VERSION = "store_dates.v1"
+STORE_DATES_TEXT_VERSION = "store_dates.v2"
 
 
 class ConsentSource(StrEnum):
