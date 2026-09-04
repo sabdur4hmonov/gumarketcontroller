@@ -9,6 +9,7 @@ from __future__ import annotations
 import itertools
 import random
 from datetime import UTC, datetime, timedelta
+from datetime import time as datetime_time
 
 import pytest
 
@@ -18,6 +19,7 @@ from gulbot.scheduling.occurrences import (
     TASHKENT,
     OccasionSpec,
     PlannedNotification,
+    is_within_send_window,
     plan_notifications,
 )
 
@@ -288,3 +290,55 @@ def test_february_29_occasions_do_not_collide_across_years() -> None:
     keys = [row.unique_key for row in rows]
     assert len(keys) == len(set(keys))
     assert {r.occurrence_date.day for r in rows} <= {28, 29}
+
+
+# --- independence from the send time ---------------------------------------
+
+
+SEND_TIMES = [datetime_time(9, 0), datetime_time(10, 0), datetime_time(13, 0), datetime_time(20, 0)]
+
+
+def _shape(rows: list[PlannedNotification]) -> list[tuple]:
+    """What merging and the cap decided, with the clock time removed."""
+    return sorted(
+        (
+            r.occasion_id,
+            r.occurrence_year,
+            r.offset_days,
+            r.occurrence_date.isoformat(),
+            r.merged_occasion_ids,
+            r.due_at_utc.date().isoformat(),
+        )
+        for r in rows
+    )
+
+
+@pytest.mark.parametrize(
+    "specs",
+    [
+        [OccasionSpec(1, month=3, day=8), OccasionSpec(2, month=3, day=9)],
+        [OccasionSpec(i, month=3, day=1 + 4 * (i - 1)) for i in range(1, 6)],
+        [OccasionSpec(i, month=3, day=i) for i in range(1, 16)],
+    ],
+    ids=["merging", "cap-bites", "cap-bites-hard"],
+)
+def test_merge_and_cap_do_not_depend_on_the_send_time(specs: list[OccasionSpec]) -> None:
+    """Moving the window bound must not silently reshape anyone's reminders.
+
+    Offsets are whole days and the cap is per customer, so every message in one
+    plan shares a time-of-day; a uniform shift leaves every comparison equal.
+    This pins that, so changing WINDOW_START stays a presentation decision
+    rather than a scheduling one.
+    """
+    shapes = {send_time: _shape(plan(specs, send_time=send_time)) for send_time in SEND_TIMES}
+    distinct = {tuple(shape) for shape in shapes.values()}
+    assert len(distinct) == 1, "the send time changed which reminders survive"
+
+
+@pytest.mark.parametrize("send_time", [datetime_time(9, 0), datetime_time(20, 0)])
+def test_the_preset_bounds_survive_planning_intact(send_time: datetime_time) -> None:
+    """09:00 and 20:00 are the outermost presets; neither is clamped or moved."""
+    rows = plan([OccasionSpec(1, month=3, day=8)], send_time=send_time)
+    assert rows
+    assert {r.due_at_utc.astimezone(TASHKENT).hour for r in rows} == {send_time.hour}
+    assert all(is_within_send_window(r.due_at_utc) for r in rows)

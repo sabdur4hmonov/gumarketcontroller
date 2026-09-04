@@ -68,13 +68,17 @@ states instead of six.
 
 ## Open decisions
 
-**"Ertalab (09:00)" currently delivers at 10:00.** CP3.6 offers a 09:00 send
-time; CP4's reminder window opens at 10:00, so the clamp moves it. The window
-wins today because "never message before 10:00" is a hard rule from the domain
-spec, while the button label is a promise chosen later. Resolve by either
-opening the window at 09:00 or relabelling the button 10:00.
-`tests/test_materializer.py::test_an_0900_preference_is_clamped_to_the_send_window`
-pins the current behaviour so it cannot drift while undecided.
+None currently.
+
+### Resolved
+
+**The reminder window opens at 09:00, not 10:00.** CP3.6's "Ertalab (09:00)"
+preset was being clamped to 10:00 by CP4's window. The button label is a promise
+to the customer, so the bound moved rather than the label. Both outermost
+presets now sit exactly ON a bound -- 09:00 and 20:00 -- and both are inclusive.
+Verified that this is a presentation change only: merge and cap decisions are
+identical across 09:00 / 10:00 / 13:00 / 20:00, pinned by
+`test_merge_and_cap_do_not_depend_on_the_send_time`.
 
 ## Decisions that constrain later checkpoints
 
@@ -83,7 +87,8 @@ pins the current behaviour so it cannot drift while undecided.
 - `occurrence_year` is the year of the OCCASION, never the year of the send.
   The uniqueness of `scheduled_notifications` rests on this.
 - Window clamp happens at materialisation. The send-time check is a backstop
-  assertion only.
+  assertion only. The window is 09:00-20:00 local, inclusive at both ends, and
+  governs outbound reminders ONLY -- never delivery slots.
 - Staleness has two independent conditions: 6h past due, OR the occurrence date
   has already passed. Either expires the row.
 - A merged reminder is anchored on the cluster's earliest date, and the weekly

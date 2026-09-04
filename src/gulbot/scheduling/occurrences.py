@@ -47,7 +47,12 @@ DEFAULT_GRACE = timedelta(hours=6)
 # Reminders are only ever sent inside this local window. It governs OUTBOUND
 # REMINDERS ONLY -- it has nothing to do with shop working hours, and must never
 # be used to filter delivery slots.
-WINDOW_START = time(10, 0)
+#
+# Opens at 09:00 so that the "Ertalab (09:00)" preference means what it says.
+# A window opening at 10:00 silently moved every customer who chose morning,
+# which reads as a bug to the person who picked it. Both preset bounds now sit
+# exactly ON the window: 09:00 and 20:00 are inclusive and are not clamped.
+WINDOW_START = time(9, 0)
 WINDOW_END = time(20, 0)
 DEFAULT_SEND_TIME = time(10, 0)
 

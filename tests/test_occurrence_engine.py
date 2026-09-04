@@ -151,12 +151,15 @@ def test_each_offset_produces_exactly_one_row_per_occasion() -> None:
 @pytest.mark.parametrize(
     ("preferred", "expected_hour"),
     [
+        (time(9, 0), 9),  # exactly ON the opening bound: not clamped
         (time(10, 0), 10),
         (time(15, 30), 15),
-        (time(20, 0), 20),
-        (time(3, 0), 10),  # before the window opens
+        (time(20, 0), 20),  # exactly ON the closing bound: not clamped
+        (time(3, 0), 9),  # before the window opens
+        (time(8, 59), 9),  # one minute early
+        (time(20, 1), 20),  # one minute late
         (time(23, 30), 20),  # after it closes
-        (time(0, 0), 10),
+        (time(0, 0), 9),
     ],
 )
 def test_clamp_pulls_the_send_time_inside_the_window(preferred: time, expected_hour: int) -> None:
@@ -179,13 +182,28 @@ def test_every_planned_row_is_already_inside_the_window() -> None:
 
 def test_send_window_check_rejects_out_of_window_moments() -> None:
     assert not is_within_send_window(local(2027, 3, 8, 3, 0).astimezone(UTC))
+    assert not is_within_send_window(local(2027, 3, 8, 8, 59).astimezone(UTC))
+    assert not is_within_send_window(local(2027, 3, 8, 20, 1).astimezone(UTC))
     assert not is_within_send_window(local(2027, 3, 8, 21, 0).astimezone(UTC))
     assert is_within_send_window(local(2027, 3, 8, 10, 0).astimezone(UTC))
-    assert is_within_send_window(local(2027, 3, 8, 20, 0).astimezone(UTC))
 
 
-def test_window_bounds_are_10_to_20_local() -> None:
-    assert (time(10, 0), time(20, 0)) == (WINDOW_START, WINDOW_END)
+def test_both_preset_bounds_are_inside_the_window() -> None:
+    """09:00 and 20:00 are the outermost presets a customer can pick.
+
+    Both sit exactly on a bound, so both must be accepted rather than clamped
+    inwards or pushed out of the day.
+    """
+    for hour in (9, 20):
+        moment = local(2027, 3, 8, hour, 0).astimezone(UTC)
+        assert is_within_send_window(moment), hour
+        clamped = clamp_to_window(date(2027, 3, 8), preferred=time(hour, 0))
+        assert clamped.hour == hour
+        assert clamped.date() == date(2027, 3, 8), "a bound preset changed day"
+
+
+def test_window_bounds_are_9_to_20_local() -> None:
+    assert (time(9, 0), time(20, 0)) == (WINDOW_START, WINDOW_END)
 
 
 # --- timezone --------------------------------------------------------------

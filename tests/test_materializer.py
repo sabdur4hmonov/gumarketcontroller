@@ -510,18 +510,14 @@ async def test_shop_default_send_time_is_used_when_the_customer_has_none(
 
 
 @pytest.mark.infra
-async def test_an_0900_preference_is_clamped_to_the_send_window(
+async def test_an_0900_preference_is_delivered_at_0900(
     db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
-    """OPEN DECISION, pinned here so it cannot drift unnoticed.
+    """ "Ertalab (09:00)" is a promise to the customer, so it is kept exactly.
 
-    CP3.6 offers "Ertalab (09:00)", but CP4's reminder window opens at 10:00,
-    so a customer who picks morning is currently reminded at 10:00. The window
-    wins because "never message before 10:00" is a hard rule from the domain
-    spec, while the button label is a promise we chose later.
-
-    Either the window opens at 09:00, or the morning button says 10:00. Until
-    that is decided, this test documents what actually happens.
+    The reminder window used to open at 10:00, which silently moved everyone
+    who chose morning. The window now opens at 09:00; this asserts no clamping
+    happens at the bound.
     """
     recipient = await add_recipient(db, world)
     await add_occasion(db, world, recipient, 3, 8)
@@ -532,7 +528,32 @@ async def test_an_0900_preference_is_clamped_to_the_send_window(
 
     await run(sessions, world)
     hours = {row["due_at_utc"].astimezone(TASHKENT).hour for row in await rows(db, world)}
-    assert hours == {10}, "the 10:00 window boundary moved"
+    assert hours == {9}, "a 09:00 preference was clamped"
+
+
+@pytest.mark.infra
+async def test_a_2000_preference_is_delivered_at_2000_on_the_right_day(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """ "Kechqurun (20:00)" sits exactly on the CLOSING bound.
+
+    It must be neither clamped inwards nor pushed into the following day.
+    """
+    recipient = await add_recipient(db, world)
+    await add_occasion(db, world, recipient, 3, 8)
+    await db.execute(
+        text("UPDATE customers SET preferred_send_time = :t WHERE id = :c"),
+        {"t": time(20, 0), "c": world["customer_id"]},
+    )
+
+    await run(sessions, world)
+    persisted = await rows(db, world)
+    assert persisted, "the 20:00 preset produced no rows at all"
+    assert {r["due_at_utc"].astimezone(TASHKENT).hour for r in persisted} == {20}
+
+    day_of = next(r for r in persisted if r["offset_days"] == 0)
+    local_day = day_of["due_at_utc"].astimezone(TASHKENT)
+    assert (local_day.month, local_day.day) == (3, 8), "the day-of reminder slid a day"
 
 
 @pytest.mark.infra
@@ -547,7 +568,7 @@ async def test_every_persisted_row_is_inside_the_send_window(
     await run(sessions, world)
     for row in await rows(db, world):
         local = row["due_at_utc"].astimezone(TASHKENT)
-        assert 10 <= local.hour <= 20, local
+        assert 9 <= local.hour <= 20, local
 
 
 @pytest.mark.infra
