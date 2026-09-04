@@ -41,7 +41,12 @@ class NotificationState(StrEnum):
     PENDING = "pending"
     SENT = "sent"
     FAILED = "failed"
+    #: Materialised, then found stale at send time. Never sent.
     EXPIRED = "expired"
+    #: The customer blocked the bot. Not a failure and never retried.
+    CANCELLED = "cancelled"
+    #: Exceeded MAX_SEND_ATTEMPTS. Parked for a human to look at.
+    DEAD_LETTER = "dead_letter"
 
 
 class NotificationChannel(StrEnum):
@@ -91,7 +96,10 @@ class ScheduledNotification(IdMixin, Base):
             ["customers.id", "customers.shop_id"],
             ondelete="CASCADE",
         ),
-        CheckConstraint("state IN ('pending', 'sent', 'failed', 'expired')", name="state_known"),
+        CheckConstraint(
+            "state IN ('pending', 'sent', 'failed', 'expired', 'cancelled', 'dead_letter')",
+            name="state_known",
+        ),
         CheckConstraint("channel IN ('telegram')", name="channel_known"),
         CheckConstraint("attempts >= 0", name="attempts_not_negative"),
         # A row cannot claim to have been sent without saying when.

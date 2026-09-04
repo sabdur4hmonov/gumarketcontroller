@@ -205,6 +205,22 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.time_noon": {"uz": "Tushlikda (13:00)", "ru": "Днём (13:00)"},
     "ibtn.time_evening": {"uz": "Kechqurun (20:00)", "ru": "Вечером (20:00)"},
     "ibtn.skip": {"uz": "O'tkazib yuborish", "ru": "Пропустить"},
+    # --- reminders --------------------------------------------------------
+    "reminder.heading": {
+        "uz": "🌸 Eslatma!",
+        "ru": "🌸 Напоминание!",
+    },
+    "reminder.item": {
+        "uz": "• {label} — {date} ({when})",
+        "ru": "• {label} — {date} ({when})",
+    },
+    "reminder.when.today": {"uz": "bugun", "ru": "сегодня"},
+    "reminder.when.tomorrow": {"uz": "ertaga", "ru": "завтра"},
+    "reminder.when.in_days": {"uz": "{days} kundan keyin", "ru": "через {days} дн."},
+    "reminder.footer": {
+        "uz": "Gul buyurtma qilmoqchimisiz? /start",
+        "ru": "Хотите заказать цветы? /start",
+    },
     # --- occasion type presets ------------------------------------------
     "occtype.wife": {"uz": "Xotinim", "ru": "Жена"},
     "occtype.spouse": {"uz": "Turmush o'rtog'im", "ru": "Супруг(а)"},

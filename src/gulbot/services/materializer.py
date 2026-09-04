@@ -6,7 +6,9 @@ It does three things and no more:
 2. PLAN with the pure engine (CP4) and INSERT with ON CONFLICT DO NOTHING, so
    running it twice is indistinguishable from running it once.
 3. RECONCILE: delete PENDING rows that no longer belong -- offsets the customer
-   has since dropped, and occasions or recipients that have been deactivated.
+   has since dropped, occasions or recipients that have been deactivated, and
+   anything belonging to a customer who is no longer active (CP6 marks a
+   customer blocked when Telegram returns 403).
 
 It sends nothing. No Telegram, no beat tick, no message_log: that is CP6.
 
@@ -25,7 +27,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.models.customer import Customer
+from gulbot.models.customer import Customer, CustomerStatus
 from gulbot.models.notification import (
     RECONCILABLE_STATES,
     NotificationChannel,
@@ -72,10 +74,15 @@ async def _active_occasions_by_customer(
     rows = await session.scalars(
         select(Occasion)
         .join(Recipient, Recipient.id == Occasion.recipient_id)
+        .join(Customer, Customer.id == Occasion.customer_id)
         .where(
             Occasion.shop_id == shop_id,
             Occasion.active.is_(True),
             Recipient.active.is_(True),
+            # A customer who blocked the bot, or opted out, stops generating
+            # rows entirely. Without this the outbox refills every night with
+            # sends that can only ever come back 403.
+            Customer.status == CustomerStatus.ACTIVE.value,
         )
         .order_by(Occasion.customer_id, Occasion.id)
     )
@@ -159,10 +166,12 @@ async def _prune_inactive(session: AsyncSession, *, shop_id: int) -> int:
     still_scheduled = (
         select(Occasion.id)
         .join(Recipient, Recipient.id == Occasion.recipient_id)
+        .join(Customer, Customer.id == Occasion.customer_id)
         .where(
             Occasion.shop_id == shop_id,
             Occasion.active.is_(True),
             Recipient.active.is_(True),
+            Customer.status == CustomerStatus.ACTIVE.value,
         )
     )
     result = await session.execute(

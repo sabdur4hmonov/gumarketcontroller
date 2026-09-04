@@ -18,8 +18,8 @@ product on its own: reminders work with no catalog and no ordering.
 | CP3.5 | Recipients, chained onboarding, minimal edit | done |
 | CP3.6 | Preferences: flower preset, reminder count, send time | done |
 | CP5 | `scheduled_notifications` + nightly materializer | done |
-| CP6 | Beat tick + reminder send — **ship line** | next |
-| CP7 | Catalog schema, hashtag normalisation, price parser | |
+| CP6 | Beat tick + reminder send — **ship line** | done |
+| CP7 | Catalog schema, hashtag normalisation, price parser | next |
 | CP8 | Channel indexer (albums, edits) | |
 | CP9 | Search and presentation (copyMessage, overridden caption) | |
 | CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
@@ -43,19 +43,24 @@ that does not gate the ship line.
 
 ## Briefs already agreed for future checkpoints
 
-**CP6** consumes the outbox. Rows arrive `state='pending'` with `due_at_utc`
-already clamped inside the send window, so the sender's window check is a
-backstop assertion, not logic. Rows sharing a `merge_key` are ONE message
-covering several occasions — group by it rather than sending per row. Only CP6
-may write `state='sent'`, and it must set `sent_at` with it (a CHECK enforces
-that pairing). `tests/test_materializer_scale.py` fails the build if the
-materializer ever grows a Telegram client.
+**CP9** attaches bouquet suggestions to the reminder by widening
+`sending/render.py` and `sending/transport.py`. It should not need to touch
+`sending/dispatcher.py` at all: dispatch depends only on a `Renderer` callable
+and a `Transport` protocol. `tests/test_sending_scope.py` fails the build if the
+send path references products, catalogue, hashtags or `copyMessage` before then.
 
-**CP9** should use `recipients.preferred_hashtag` as a ranking hint when
-suggesting bouquets. CP3.6 only stores a normalised preset value; nothing
-matches it against the real catalog until CP9.
+It should use `recipients.preferred_hashtag` as a ranking hint; CP3.6 stores a
+normalised preset value and nothing matches it against the real catalogue yet.
+
+CP9 must NOT change `transition_key_for`. Those keys are already written into
+`message_log`, and changing their shape would make historical claims
+unmatchable — so a reminder already sent could be sent a second time.
 
 ## Deliberately not built
+
+**A dead-letter review surface.** Rows that exhaust `MAX_SEND_ATTEMPTS` (5) park
+in `state='dead_letter'` and are queryable, but nothing surfaces them to an
+operator yet. Deferred with CP14's monitoring work.
 
 **Shop settings admin flow.** `shops.default_send_time` and
 `shops.reminder_offsets` are settable only via the seed or psql — there is no
@@ -110,3 +115,16 @@ identical across 09:00 / 10:00 / 13:00 / 20:00, pinned by
   it is a decision to surface, not a setting to quietly toggle.
 - Two recipients may share a label. "Do'stim" is not a unique name, so nothing
   in the schema treats it as one.
+- The send tick runs in two phases with a COMMIT between them. Claims must be
+  durable before the Telegram call: claiming inside the send transaction rolls
+  the claim back with everything else when a worker dies, and the retry then
+  sends a second time. SKIP LOCKED and the claim solve different halves —
+  concurrent workers, and a later worker redoing a dead worker's batch.
+- A `claimed` ledger row is re-claimable after 15 minutes. That accepts a rare
+  duplicate for a genuinely dead worker rather than losing a reminder forever.
+- Telegram's `retry_after` is honoured exactly, by deferring `due_at_utc` by
+  precisely that many seconds. Never a guessed backoff, and never "whenever the
+  next tick runs", which could be sooner than Telegram allowed.
+- A 403 marks the customer `blocked`, which stops the materializer generating
+  further rows for them. It is recorded as `cancelled`, not `failed`: a block is
+  the customer's decision, not an error to retry.

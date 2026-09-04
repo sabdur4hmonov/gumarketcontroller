@@ -104,3 +104,17 @@ separate worker processes** still races correctly and the test is meaningful. A
 solo pool inside **one process** does not race at all, and the test would pass
 vacuously while proving nothing. CP5 must document the exact local invocation,
 and CP6's race test must assert it is running against more than one process.
+
+## Running the worker locally
+
+```
+celery -A gulbot.worker.app worker --pool=solo --loglevel=info
+celery -A gulbot.worker.app beat --loglevel=info
+```
+
+`--pool=solo` because prefork does not work on Windows (see above). Beat runs
+the send tick every minute and the materializer nightly at 03:00 Tashkent.
+
+A solo pool in ONE process cannot race with itself, which is why
+`tests/test_concurrency.py` starts two separate worker PROCESSES and asserts
+their PIDs differ.

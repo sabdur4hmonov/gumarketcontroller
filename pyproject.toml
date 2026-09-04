@@ -63,3 +63,15 @@ python_version = "3.11"
 strict = true
 mypy_path = "src"
 packages = ["gulbot"]
+
+[[tool.mypy.overrides]]
+# Celery ships no py.typed marker and no stubs.
+module = ["celery.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Consequence of the above: @app.task is an untyped decorator, so every task
+# it wraps is seen as untyped. Scoped to the worker package so the rest of the
+# codebase keeps strict decorator checking.
+module = ["gulbot.worker.*"]
+disallow_untyped_decorators = false

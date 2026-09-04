@@ -2,6 +2,7 @@
 
 from gulbot.models.consent import ConsentEvent, ConsentSource, ConsentType
 from gulbot.models.customer import Customer, CustomerStatus
+from gulbot.models.message_log import MessageLog, MessageStatus
 from gulbot.models.notification import (
     NotificationChannel,
     NotificationState,
@@ -17,6 +18,8 @@ __all__ = [
     "ConsentType",
     "Customer",
     "CustomerStatus",
+    "MessageLog",
+    "MessageStatus",
     "NotificationChannel",
     "NotificationState",
     "Occasion",
