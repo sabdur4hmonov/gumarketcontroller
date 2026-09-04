@@ -76,6 +76,17 @@ class Product(IdMixin, TimestampMixin, Base):
     #: below is per shop and tolerates NULLs.
     channel_message_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
+    #: WHICH channel the post came from. Added at CP8, and not decoration:
+    #: `copyMessage` needs a `from_chat_id`, so without this CP9 would have to
+    #: read the channel out of config and hope it never changed. Storing it on
+    #: the row makes each product self-describing, and makes a post indexed
+    #: from the wrong channel diagnosable with one query.
+    #:
+    #: The uniqueness above stays `(shop_id, channel_message_id)` because a shop
+    #: has ONE catalogue channel. If that ever stops being true, message ids
+    #: from two channels can collide and the constraint has to grow this column.
+    channel_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
     #: Telegram's album identifier. Five photos posted together arrive as five
     #: updates sharing one of these, with the caption only on the first.
     media_group_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -88,6 +99,20 @@ class Product(IdMixin, TimestampMixin, Base):
     indexed_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+    #: NULL until the post has SETTLED and its caption has been parsed.
+    #:
+    #: An album is not a decidable unit on arrival: five photos arrive as five
+    #: updates and only one carries the caption, so a row created by the second
+    #: photo genuinely does not yet know its own name, price or tags. It is
+    #: inserted anyway -- that is what the partial unique index on
+    #: (shop_id, media_group_id) is for -- and stays PROVISIONAL until the
+    #: debounced finalize runs.
+    #:
+    #: `indexed_at` cannot carry this meaning: it is NOT NULL with a server
+    #: default, so it is already set the instant the row appears. CP9 must
+    #: filter on `finalized_at IS NOT NULL` or it will show half-built albums.
+    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     #: Set by the nightly sweep when a post can no longer be copied, i.e. it
     #: was deleted from the channel. Deletions produce no update, so this is
@@ -121,6 +146,12 @@ class Product(IdMixin, TimestampMixin, Base):
         CheckConstraint(
             "(source = 'channel') OR (channel_message_id IS NULL)",
             name="only_channel_rows_have_a_message_id",
+        ),
+        # Same rule for the chat the message came from. A manual row has no
+        # channel, so it must not claim one.
+        CheckConstraint(
+            "(source = 'channel') OR (channel_chat_id IS NULL)",
+            name="only_channel_rows_have_a_chat_id",
         ),
         Index("ix_products_shop_active", "shop_id", "active"),
         # Partial: many products legitimately have no album at all, and NULLs

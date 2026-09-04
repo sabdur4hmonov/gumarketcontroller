@@ -20,8 +20,8 @@ product on its own: reminders work with no catalog and no ordering.
 | CP5 | `scheduled_notifications` + nightly materializer | done |
 | CP6 | Beat tick + reminder send — **ship line** | done |
 | CP7 | Catalog schema, hashtag normalisation, price parser | done |
-| CP8 | Channel indexer (albums, edits) | next |
-| CP9 | Search and presentation (copyMessage, overridden caption) | |
+| CP8 | Channel indexer (albums, edits) | done |
+| CP9 | Search and presentation (copyMessage, overridden caption) | next |
 | CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
@@ -63,6 +63,45 @@ and knows nothing else about Telegram; widen those, not dispatch. Do not change
 `transition_key_for` — those keys are already in `message_log`, and reshaping
 them would make historical claims unmatchable.
 
+## What CP8 guarantees
+
+**An album becomes exactly one product, whatever order its photos arrive in and
+however many workers handle them.** Every album arrival upserts onto CP7's
+partial unique index `(shop_id, media_group_id)`, merging rather than racing:
+`caption_raw` is filled only if still empty, the anchor is the EARLIEST
+`channel_message_id`, and `telegram_file_id` follows the anchor. The row is
+PROVISIONAL -- `finalized_at IS NULL` -- until a debounced finalize parses it.
+Finalize is idempotent, and that, not the debounce, is the correctness argument:
+running it twice is a verified no-op the second time. The debounce collapses N
+arrivals into ONE task via a Redis deadline plus an NX lock, and a task that
+fires early reschedules ITSELF rather than spawning a sibling.
+
+The gate is "photo AND at least one usable hashtag". For a single post that is
+decided on arrival and nothing is written -- proven by the id sequence, not just
+by the absence of a row. For an album it CANNOT be decided on arrival, so it
+moves to finalize, and a group with no usable hashtag is deleted. That makes a
+very late caption self-healing: it simply re-creates the row.
+
+An edit finds its row by the same unique keys the insert used -- by
+`media_group_id` for an album, since Telegram sends the edit for whichever
+message changed and that need not be the anchor -- so an edit can never make a
+second product. An edit that adds a first hashtag to a previously-ignored post
+indexes it. An edit that strips every hashtag off a LIVE product deactivates it
+rather than deleting it.
+
+What CP9 may rely on, and must not break:
+
+- **Filter on `finalized_at IS NOT NULL`**, or you will show half-built albums.
+  `indexed_at` cannot answer this: it is NOT NULL with a server default, so it
+  is stamped the instant the row appears.
+- `channel_chat_id` is on the row so `copyMessage` has a `from_chat_id` without
+  reading config. `UNIQUE(shop_id, channel_message_id)` assumes ONE catalogue
+  channel per shop; if that changes, the constraint has to grow that column.
+- Tags are stored as `normalize_hashtag` returns them, with NO alias resolution.
+  CP9 resolves the QUERY through `hashtag_aliases`. Resolving at index time
+  would bake one version of the alias table into stored rows.
+- `deleted_at` is still written by nothing. Filter on it defensively anyway.
+
 ## Briefs already agreed for future checkpoints
 
 **CP9** attaches bouquet suggestions to the reminder by widening
@@ -77,27 +116,6 @@ normalised preset value and nothing matches it against the real catalogue yet.
 CP9 must NOT change `transition_key_for`. Those keys are already written into
 `message_log`, and changing their shape would make historical claims
 unmatchable — so a reminder already sent could be sent a second time.
-
-**CP8** indexes channel posts into the tables CP7 built. The constraints it
-needs already exist and are proven:
-
-- `UNIQUE(shop_id, channel_message_id)` doubles as redelivery idempotency —
-  Telegram may deliver the same `channel_post` twice, and the second insert
-  conflicts rather than creating a twin.
-- `uq_products_shop_media_group` is a PARTIAL unique index on
-  `(shop_id, media_group_id) WHERE media_group_id IS NOT NULL`. It is the anchor
-  for the album merge: five photos arriving as five updates conflict onto one
-  product instead of racing to create five. A NULL group is not an album, which
-  is why the index is partial.
-- Only index a post with BOTH a photo AND a recognised hashtag. `normalize_hashtag`
-  returns `""` for anything unusable, and a blank tag is refused by
-  `ck_product_hashtags_hashtag_not_blank`.
-- `caption_raw` stores the caption verbatim so a parser improvement can be
-  re-run over history. The Bot API cannot read channel history, so a caption not
-  saved at index time is gone.
-- `price_uzs` is NULLABLE and `ck_products_price_matches_confidence` ties it to
-  `price_confidence`. NEVER drop an unpriced post: index it, show it, and
-  caption it "narx operator tomonidan tasdiqlanadi".
 
 **CP9** will want pg_trgm for fuzzy hashtag search. It is NOT installed yet:
 `CREATE EXTENSION` needs elevated rights, which is a deployment question worth
@@ -124,6 +142,11 @@ The catalogue is rebuilt from a channel that edits and deletes posts, so a live
 FK to `products` would let a bouquet silently change price, or vanish, out from
 under an order already placed.
 
+
+**Homoglyph detection in `normalize_hashtag`.** Still not built, and CP8 did
+not change that. CP7 deferred it for want of a corpus; CP8 indexes real captions
+but has not yet observed one that mixes scripts INSIDE a single word. Revisit
+with evidence from a real channel, not before.
 
 **A dead-letter review surface.** Rows that exhaust `MAX_SEND_ATTEMPTS` (5) park
 in `state='dead_letter'` and are queryable, but nothing surfaces them to an
@@ -195,3 +218,15 @@ identical across 09:00 / 10:00 / 13:00 / 20:00, pinned by
 - A 403 marks the customer `blocked`, which stops the materializer generating
   further rows for them. It is recorded as `cancelled`, not `failed`: a block is
   the customer's decision, not an error to retry.
+- A product is not visible to anything customer-facing until `finalized_at` is
+  set. An album row exists before it is decidable, and that is deliberate -- the
+  partial unique index is what stops five updates becoming five products.
+- The hashtag gate is applied on ARRIVAL for a single post and at FINALIZE for
+  an album, because an album's caption may not have arrived yet. A group that
+  settles with no usable hashtag is deleted, which is also what makes a very
+  late caption self-healing.
+- An ALBUM arrival re-opens the row by setting `finalized_at` back to NULL. New
+  album information invalidates the previous parse, and this is what lets a
+  photo arriving after finalize still be picked up.
+- Albums need a running Celery worker. Without one the row is created and stays
+  provisional; nothing is lost, but nothing is searchable either.

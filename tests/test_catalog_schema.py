@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 from alembic import command
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
@@ -28,6 +29,10 @@ from gulbot.services.hashtag_aliases import (
 ROUNDTRIP_DB = "gulbot_catalog_roundtrip"
 CATALOG_TABLES = {"products", "product_hashtags", "hashtag_aliases"}
 
+#: CP7 created the catalogue tables; CP8 added these two columns on top.
+CATALOG_REVISION = "acd5c8bdb525"
+INDEXER_COLUMNS = {"channel_chat_id", "finalized_at"}
+
 
 @pytest_asyncio.fixture
 async def sessions(db: AsyncConnection) -> async_sessionmaker[AsyncSession]:
@@ -44,19 +49,21 @@ async def _make_product(
     media_group_id: str | None = None,
     price: int | None = None,
     confidence: str = "none",
+    chat_id: int | None = None,
 ) -> int:
     result = await db.execute(
         text(
             "INSERT INTO products "
             "(shop_id, name, telegram_file_id, source, channel_message_id, "
-            " media_group_id, price_uzs, price_confidence) "
-            "VALUES (:s, :n, 'file123', :src, :mid, :mg, :p, :pc) RETURNING id"
+            " channel_chat_id, media_group_id, price_uzs, price_confidence) "
+            "VALUES (:s, :n, 'file123', :src, :mid, :cid, :mg, :p, :pc) RETURNING id"
         ),
         {
             "s": shop,
             "n": name,
             "src": source,
             "mid": message_id,
+            "cid": chat_id,
             "mg": media_group_id,
             "p": price,
             "pc": confidence,
@@ -254,6 +261,52 @@ async def test_a_manual_row_may_not_claim_a_channel_message(
         async with db.begin_nested():
             await _make_product(db, shop, source="manual", message_id=99)
     assert "ck_products_only_channel_rows_have_a_message_id" in str(excinfo.value)
+
+
+@pytest.mark.infra
+async def test_a_manual_row_may_not_claim_a_channel_chat(db: AsyncConnection) -> None:
+    """CP8 stores WHICH channel a post came from, so CP9 can copy it back out.
+
+    message_id is NULL here on purpose: a manual row carrying one violates
+    only_channel_rows_have_a_message_id, Postgres reports that constraint
+    instead, and this test would then be asserting nothing about the new one.
+    That mistake was made once already, at CP7.
+    """
+    shop = await _make_shop(db, "A")
+    with pytest.raises(IntegrityError) as excinfo:
+        async with db.begin_nested():
+            await _make_product(db, shop, source="manual", message_id=None, chat_id=-100123)
+    assert "ck_products_only_channel_rows_have_a_chat_id" in str(excinfo.value)
+
+
+@pytest.mark.infra
+async def test_a_channel_row_may_carry_its_chat(db: AsyncConnection) -> None:
+    """Guards the guard above: the CHECK must refuse the manual case WITHOUT
+    refusing the case the indexer actually writes."""
+    shop = await _make_shop(db, "A")
+    product = await _make_product(db, shop, source="channel", message_id=7, chat_id=-100123)
+    stored = (
+        await db.execute(text("SELECT channel_chat_id FROM products WHERE id = :p"), {"p": product})
+    ).scalar_one()
+    assert stored == -100123
+
+
+@pytest.mark.infra
+async def test_a_new_product_is_not_finalized_until_something_finalizes_it(
+    db: AsyncConnection,
+) -> None:
+    """`indexed_at` cannot answer this: it is NOT NULL with a server default,
+    so it is stamped the instant the row appears. CP9 must filter on
+    finalized_at or it will show half-built albums."""
+    shop = await _make_shop(db, "A")
+    product = await _make_product(db, shop)
+    row = (
+        await db.execute(
+            text("SELECT indexed_at, finalized_at FROM products WHERE id = :p"), {"p": product}
+        )
+    ).one()
+    assert row.indexed_at is not None
+    assert row.finalized_at is None
 
 
 @pytest.mark.infra
@@ -473,31 +526,53 @@ def test_every_usable_fixture_pair_survives_normalisation() -> None:
 
 @pytest.mark.infra
 def test_the_catalog_migration_round_trips(settings) -> None:
-    """upgrade -> downgrade -> upgrade, on a throwaway database."""
+    """upgrade -> downgrade -> upgrade, on a throwaway database.
+
+    Downgrades to the revision BEFORE the catalog migration by looking that
+    revision up, rather than counting steps back from head. `-1` was correct
+    when CP7 was head and quietly wrong the moment CP8 added a migration on
+    top; a name cannot rot that way.
+    """
     drop_database(settings, ROUNDTRIP_DB)
     create_database(settings, ROUNDTRIP_DB)
     url = settings.database_url(database=ROUNDTRIP_DB, driver="psycopg")
+
+    def tables() -> set[str]:
+        engine = create_engine(url)
+        try:
+            with engine.connect() as conn:
+                return set(inspect(conn).get_table_names())
+        finally:
+            engine.dispose()
+
+    def product_columns() -> set[str]:
+        engine = create_engine(url)
+        try:
+            with engine.connect() as conn:
+                return {c["name"] for c in inspect(conn).get_columns("products")}
+        finally:
+            engine.dispose()
+
     try:
         with alembic_config_for(ROUNDTRIP_DB) as cfg:
             command.upgrade(cfg, "head")
-            engine = create_engine(url)
-            with engine.connect() as conn:
-                tables = set(inspect(conn).get_table_names())
-            engine.dispose()
-            assert tables >= CATALOG_TABLES, tables
+            assert tables() >= CATALOG_TABLES
+            assert product_columns() >= INDEXER_COLUMNS
 
-            command.downgrade(cfg, "-1")
-            engine = create_engine(url)
-            with engine.connect() as conn:
-                tables = set(inspect(conn).get_table_names())
-            engine.dispose()
-            assert not (CATALOG_TABLES & tables), f"downgrade left tables: {tables}"
+            # CP8's own migration: additive, so its downgrade takes the columns
+            # away and leaves CP7's tables standing.
+            command.downgrade(cfg, CATALOG_REVISION)
+            assert tables() >= CATALOG_TABLES
+            assert not (INDEXER_COLUMNS & product_columns())
+
+            before_catalog = (
+                ScriptDirectory.from_config(cfg).get_revision(CATALOG_REVISION).down_revision
+            )
+            command.downgrade(cfg, before_catalog)
+            assert not (CATALOG_TABLES & tables()), f"downgrade left tables: {tables()}"
 
             command.upgrade(cfg, "head")
-            engine = create_engine(url)
-            with engine.connect() as conn:
-                tables = set(inspect(conn).get_table_names())
-            engine.dispose()
-            assert tables >= CATALOG_TABLES, tables
+            assert tables() >= CATALOG_TABLES
+            assert product_columns() >= INDEXER_COLUMNS
     finally:
         drop_database(settings, ROUNDTRIP_DB)

@@ -13,6 +13,7 @@ from gulbot.models.shop import Shop
 from gulbot.sending.dispatcher import run_tick
 from gulbot.sending.rate_limit import RateLimiter
 from gulbot.sending.render import render_reminder
+from gulbot.services.indexer import finalize_product
 from gulbot.services.materializer import materialize_shop
 from gulbot.worker.app import app
 
@@ -71,3 +72,60 @@ def send_due_reminders() -> dict[str, int]:
 @app.task(name="gulbot.materialize_all_shops")
 def materialize_all_shops() -> dict[str, int]:
     return asyncio.run(_materialize_all_shops())
+
+
+async def _finalize_album(shop_id: int, media_group_id: str) -> dict[str, object]:
+    """Settle one album, or hand back how long to wait.
+
+    Two deadline reads, and both matter:
+
+    * BEFORE finalizing -- a photo may have arrived after this task was
+      scheduled, in which case the album has not settled and this run defers
+      instead of parsing a half-built row;
+    * AFTER finalizing -- a photo may have arrived WHILE it was finalizing. It
+      could not schedule a task of its own, because this run still holds the
+      lock, so the responsibility to reschedule is this run's.
+
+    The lock is released only when neither is true.
+    """
+    from gulbot.worker.debounce import MIN_RESCHEDULE_SECONDS, Action, decide, get_debouncer
+
+    debouncer = get_debouncer()
+    started = debouncer.now()
+
+    decision = decide(
+        await debouncer.deadline(shop_id=shop_id, media_group_id=media_group_id), started
+    )
+    if decision.action is Action.WAIT:
+        return {"action": "wait", "reschedule_in": decision.delay}
+
+    factory = build_session_factory()
+    async with factory() as session:
+        result = await finalize_product(session, shop_id=shop_id, media_group_id=media_group_id)
+        await session.commit()
+
+    arrived_while_working = await debouncer.deadline(shop_id=shop_id, media_group_id=media_group_id)
+    if arrived_while_working is not None and arrived_while_working > started:
+        delay = max(arrived_while_working - debouncer.now(), MIN_RESCHEDULE_SECONDS)
+        return {"action": "again", "outcome": result.outcome.value, "reschedule_in": delay}
+
+    await debouncer.release(shop_id=shop_id, media_group_id=media_group_id)
+    log.info(
+        "album %s: outcome=%s tags=%s", media_group_id, result.outcome.value, len(result.hashtags)
+    )
+    return {"action": "done", "outcome": result.outcome.value}
+
+
+@app.task(name="gulbot.finalize_album")
+def finalize_album(shop_id: int, media_group_id: str) -> dict[str, object]:
+    result = asyncio.run(_finalize_album(shop_id, media_group_id))
+    delay = result.pop("reschedule_in", None)
+    if delay is not None:
+        # Re-sends itself rather than spawning a sibling: there is still exactly
+        # one task in flight for this album, which is the point of the lock.
+        app.send_task(
+            "gulbot.finalize_album",
+            args=[shop_id, media_group_id],
+            countdown=float(delay),  # type: ignore[arg-type]
+        )
+    return result

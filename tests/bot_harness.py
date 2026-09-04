@@ -18,7 +18,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import TelegramMethod
 from aiogram.methods.base import TelegramType
-from aiogram.types import CallbackQuery, Chat, Message, Update, User
+from aiogram.types import CallbackQuery, Chat, Message, PhotoSize, Update, User
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
 TEST_TOKEN = "42:TESTTOKENTESTTOKENTESTTOKENTESTTOKEN"
@@ -102,6 +102,51 @@ def callback_update(data: str, *, user_id: int, update_id: int = 1, message_id: 
             ),
         ),
     )
+
+
+#: Stands in for the shop's catalogue channel. Negative, like a real one.
+CHANNEL_ID = -1001234567890
+
+
+def photo_sizes(file_id: str) -> list[PhotoSize]:
+    """Telegram sends several sizes of the same photo, smallest first.
+
+    Two of them here on purpose: the indexer keeps the LAST, and a single-entry
+    list would let a bug that takes photo[0] pass unnoticed.
+    """
+    return [
+        PhotoSize(file_id=f"{file_id}-thumb", file_unique_id=f"{file_id}-tu", width=90, height=90),
+        PhotoSize(file_id=file_id, file_unique_id=f"{file_id}-u", width=1280, height=1280),
+    ]
+
+
+def channel_message(
+    *,
+    message_id: int,
+    caption: str | None = None,
+    media_group_id: str | None = None,
+    file_id: str | None = None,
+    text: str | None = None,
+    chat_id: int = CHANNEL_ID,
+) -> Message:
+    """A channel post. No from_user: channel posts carry a sender CHAT."""
+    return Message(
+        message_id=message_id,
+        date=datetime.now(tz=UTC),
+        chat=Chat(id=chat_id, type="channel"),
+        caption=caption,
+        media_group_id=media_group_id,
+        photo=photo_sizes(file_id) if file_id else None,
+        text=text,
+    )
+
+
+def channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
+    return Update(update_id=update_id, channel_post=channel_message(**kwargs))
+
+
+def edited_channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
+    return Update(update_id=update_id, edited_channel_post=channel_message(**kwargs))
 
 
 async def feed(dispatcher: Dispatcher, bot: Bot, update: Update) -> None:

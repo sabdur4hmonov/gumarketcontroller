@@ -20,12 +20,14 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-PURE_MODULES = ("gulbot.catalog.hashtags", "gulbot.catalog.prices")
+PURE_MODULES = ("gulbot.catalog.hashtags", "gulbot.catalog.prices", "gulbot.catalog.naming")
 
 CATALOG_FILES = (
     REPO_ROOT / "src/gulbot/catalog/hashtags.py",
     REPO_ROOT / "src/gulbot/catalog/prices.py",
     REPO_ROOT / "src/gulbot/catalog/alias_fixture.py",
+    # CP8 added this one. The catalogue layer stays pure as it grows.
+    REPO_ROOT / "src/gulbot/catalog/naming.py",
 )
 
 #: Case-sensitive. Nothing in CP7 may reach for a Telegram client or a session.

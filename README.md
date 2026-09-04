@@ -118,3 +118,11 @@ the send tick every minute and the materializer nightly at 03:00 Tashkent.
 A solo pool in ONE process cannot race with itself, which is why
 `tests/test_concurrency.py` starts two separate worker PROCESSES and asserts
 their PIDs differ.
+
+**The worker is not optional once the channel indexer is live.** Beat's two jobs
+are periodic, but CP8 adds an event-driven one: `gulbot.finalize_album`, sent by
+the bot process a few seconds after an album arrives. With no worker running, an
+album's row is still created and merged correctly -- nothing is lost -- but it
+stays provisional (`finalized_at IS NULL`), so it has no price, no tags, and
+CP9's search will not find it. Single photo posts do not depend on the worker:
+they are finalized inline by the handler.

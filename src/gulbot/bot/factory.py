@@ -18,9 +18,11 @@ from aiogram.fsm.storage.redis import RedisStorage
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot.bot.channel import FinalizeScheduler, build_channel_router
 from gulbot.bot.middlewares import CustomerMiddleware, DbSessionMiddleware
 from gulbot.bot.routers import build_routers
 from gulbot.config import get_settings
+from gulbot.worker.debounce import schedule_album_finalize
 
 ALLOWED_UPDATES: Final = [
     "message",
@@ -52,12 +54,24 @@ def build_dispatcher(
     session_factory: async_sessionmaker[AsyncSession],
     shop_id: int,
     storage: BaseStorage | None = None,
+    schedule_finalize: FinalizeScheduler | None = None,
 ) -> Dispatcher:
     dispatcher = Dispatcher(storage=storage) if storage is not None else Dispatcher()
 
     # Outer: run once per update, before routing.
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))
+
+    # Injected as workflow data so the channel handlers stay plain module-level
+    # functions. Tests hand in a recorder; production hands in the Redis-backed
+    # debouncer, which is only touched when an album actually arrives.
+    dispatcher["schedule_finalize"] = schedule_finalize or schedule_album_finalize
+
+    # The channel indexer goes FIRST, and it is safe to say that without
+    # qualification: it registers only `channel_post` and `edited_channel_post`,
+    # which no customer-facing router observes. It can neither shadow nor be
+    # shadowed, and the sweep's count is unchanged by its presence.
+    dispatcher.include_router(build_channel_router())
 
     for router in build_routers():
         dispatcher.include_router(router)

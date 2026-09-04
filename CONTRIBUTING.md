@@ -59,6 +59,17 @@ Known to be shaky for the same reason, not yet bitten and not yet guarded:
 If you change one of those, write the direct assertion at the same time. Do not
 rely on the diff being empty as evidence that the database agrees with you.
 
+### Related: never address a migration by counting steps
+
+A round-trip test that calls `command.downgrade(cfg, "-1")` is testing whatever
+happens to be head TODAY. CP7's catalogue round-trip did exactly that, and it
+started failing the moment CP8 added a migration on top -- the `-1` reached
+CP8's migration, not CP7's, so the test asserted the wrong thing and only
+LOOKED like a real regression.
+
+Address the revision by name, or look up its `down_revision` through
+`ScriptDirectory`, so the test keeps meaning what it said when it was written.
+
 ## Enumerations are `text` + `CHECK`, not Postgres `ENUM`
 
 Native enums cannot be extended inside a normal transactional migration without

@@ -152,6 +152,13 @@ def test_the_price_coherence_check_exists(db_checks: dict[str, str]) -> None:
 
 
 @pytest.mark.infra
+def test_the_channel_chat_check_exists(db_checks: dict[str, str]) -> None:
+    """CP8's new CHECK gets its direct guard in the same commit, per CONTRIBUTING."""
+    definition = db_checks["ck_products_only_channel_rows_have_a_chat_id"]
+    assert "channel_chat_id" in definition and "'channel'" in definition
+
+
+@pytest.mark.infra
 def test_the_partial_album_index_is_actually_partial(settings: Settings) -> None:
     """A plain unique index here would be wrong AND would not be caught above:
     indexes are the third autogenerate blind spot listed in CONTRIBUTING."""
