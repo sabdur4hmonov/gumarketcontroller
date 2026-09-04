@@ -162,6 +162,7 @@ async def tick(
     *,
     now: datetime = NOW,
     limiter: object | None = None,
+    limit: int = 100,
 ):
     async with sessions() as session:
         result = await run_tick(
@@ -169,6 +170,7 @@ async def tick(
             transport=transport,  # type: ignore[arg-type]
             render=render_reminder,
             now_utc=now,
+            limit=limit,
             limiter=limiter,  # type: ignore[arg-type]
         )
         await session.commit()
@@ -632,3 +634,124 @@ def test_transition_key_shape_is_stable() -> None:
         offset_days = -7
 
     assert transition_key_for(Row()) == "occ:42:2027:-7"  # type: ignore[arg-type]
+
+
+# --- a block survives across ticks, not just within one batch ---------------
+
+
+@pytest.mark.infra
+async def test_a_403_cancels_rows_that_were_not_even_in_this_batch(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The window between the block and the next nightly materialization.
+
+    The materializer stops generating NEW rows for a blocked customer, but it
+    only runs nightly. Rows already materialized for later dates must be
+    cancelled at once, not left to trickle through one tick at a time until
+    they exhaust MAX_SEND_ATTEMPTS.
+    """
+    await add_due_row(db, world, day=8, offset=0, merge_key="today")
+    # Due in three days: not selected by this tick at all.
+    await add_due_row(db, world, day=20, offset=0, merge_key="later", due=NOW + timedelta(days=3))
+    await add_due_row(
+        db, world, day=25, offset=0, merge_key="later-still", due=NOW + timedelta(days=6)
+    )
+
+    result = await tick(sessions, FakeTransport(SendResult.forbidden()))
+
+    assert result.groups == 1, "only the due row should have been selected"
+    states = {r["state"] for r in await rows(db)}
+    assert states == {"cancelled"}, f"future rows survived the block: {states}"
+
+
+@pytest.mark.infra
+async def test_a_blocked_customer_gets_nothing_on_a_later_days_tick(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """Monday's block must still hold on Tuesday, before any materializer run."""
+    await add_due_row(db, world, day=8, offset=0, merge_key="monday")
+    await add_due_row(db, world, day=20, offset=0, merge_key="tuesday", due=NOW + timedelta(days=1))
+
+    await tick(sessions, FakeTransport(SendResult.forbidden()))
+
+    tuesday = FakeTransport()
+    result = await tick(sessions, tuesday, now=NOW + timedelta(days=1, minutes=5))
+
+    assert tuesday.calls == [], "a blocked customer was contacted the next day"
+    assert result.groups == 0, "cancelled rows were re-selected as due"
+
+
+@pytest.mark.infra
+async def test_a_block_does_not_burn_attempts_one_tick_at_a_time(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """Cancelled immediately, rather than retried up to the attempt limit."""
+    await add_due_row(db, world, day=8, offset=0, merge_key="a")
+    await add_due_row(db, world, day=20, offset=0, merge_key="b")
+
+    await tick(sessions, FakeTransport(SendResult.forbidden()))
+
+    for row in await rows(db):
+        assert row["state"] == "cancelled"
+        assert row["attempts"] <= 1, "a blocked customer's rows accrued retries"
+
+
+@pytest.mark.infra
+async def test_a_block_cancels_more_rows_than_one_batch_holds(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The cancel is a single scoped UPDATE, so BATCH_SIZE does not bound it."""
+    for day in range(1, 12):
+        await add_due_row(
+            db, world, day=day, offset=0, merge_key=f"m{day}", due=NOW + timedelta(days=day)
+        )
+    await add_due_row(db, world, day=28, offset=0, merge_key="due-now")
+
+    await tick(sessions, FakeTransport(SendResult.forbidden()), limit=2)
+
+    remaining = [r["state"] for r in await rows(db)]
+    assert set(remaining) == {"cancelled"}, remaining
+    assert len(remaining) == 12
+
+
+@pytest.mark.infra
+async def test_blocking_one_customer_does_not_touch_another(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The cancel is scoped by customer_id, not global."""
+    other_customer = (
+        await db.execute(
+            text(
+                "INSERT INTO customers (shop_id, telegram_user_id) VALUES (:s, 6099) RETURNING id"
+            ),
+            {"s": world["shop_id"]},
+        )
+    ).scalar_one()
+    other_recipient = (
+        await db.execute(
+            text(
+                "INSERT INTO recipients (shop_id, customer_id, label, type) "
+                "VALUES (:s, :c, 'Otam', 'father') RETURNING id"
+            ),
+            {"s": world["shop_id"], "c": other_customer},
+        )
+    ).scalar_one()
+    other_world = {
+        "shop_id": world["shop_id"],
+        "customer_id": other_customer,
+        "recipient_id": other_recipient,
+    }
+
+    await add_due_row(db, world, day=8, offset=0, merge_key="blocked-one")
+    await add_due_row(db, other_world, day=9, offset=0, merge_key="innocent")
+
+    transport = FakeTransport(SendResult.forbidden())  # first group only
+    await tick(sessions, transport)
+
+    by_customer = {r["occasion_id"]: r["state"] for r in await rows(db)}
+    assert "cancelled" in by_customer.values()
+    assert "sent" in by_customer.values(), "an unrelated customer was cancelled too"
+
+    statuses = dict((await db.execute(text("SELECT id, status FROM customers ORDER BY id"))).all())
+    assert statuses[world["customer_id"]] == "blocked"
+    assert statuses[other_customer] == "active"

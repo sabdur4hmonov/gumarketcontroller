@@ -41,6 +41,28 @@ that does not gate the ship line.
 | CP14 | Nightly deletion sweep, admin self-probe, monitoring alerts | Only matters once the catalog is live |
 | CP15 | Full ru locale, ops hardening, backup/restore runbook | Polish; uz ships first |
 
+## What CP6 guarantees
+
+The sending contract, so later checkpoints do not have to re-derive it. **A
+reminder is claimed durably before it is sent, and delivered exactly once per
+`merge_key` group.** The claim is written to `message_log` and COMMITTED before
+any Telegram call, so a worker that dies mid-send cannot cause a duplicate; a
+claim left unresolved becomes re-claimable after 15 minutes, which trades a rare
+duplicate for a genuinely dead worker against never losing a reminder. Every row
+in a group is marked in a single UPDATE, so a partially-sent group is not a
+state the database can hold. A 403 marks the customer `blocked`, cancels **all**
+their pending rows immediately — not just the current batch — and stops the
+materializer generating any more. A 429 defers the rows by exactly the
+`retry_after` Telegram gave, never a guessed backoff. A row that fails five
+times parks in `dead_letter` instead of retrying forever. Rows arrive already
+clamped inside the 09:00–20:00 window, so the send-time staleness check is a
+defensive backstop, not where the rules live.
+
+What CP9 and CP10 may rely on: `run_tick` takes a `Renderer` and a `Transport`
+and knows nothing else about Telegram; widen those, not dispatch. Do not change
+`transition_key_for` — those keys are already in `message_log`, and reshaping
+them would make historical claims unmatchable.
+
 ## Briefs already agreed for future checkpoints
 
 **CP9** attaches bouquet suggestions to the reminder by widening
