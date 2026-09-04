@@ -8,7 +8,13 @@ from gulbot.models.notification import (
     NotificationState,
     ScheduledNotification,
 )
-from gulbot.models.occasion import Occasion, OccasionType
+from gulbot.models.occasion import Occasion, OccasionKind, OccasionType
+from gulbot.models.product import (
+    HashtagAlias,
+    Product,
+    ProductHashtag,
+    ProductSource,
+)
 from gulbot.models.recipient import Recipient
 from gulbot.models.shop import Shop
 
@@ -22,8 +28,13 @@ __all__ = [
     "MessageStatus",
     "NotificationChannel",
     "NotificationState",
+    "HashtagAlias",
     "Occasion",
+    "OccasionKind",
     "OccasionType",
+    "Product",
+    "ProductHashtag",
+    "ProductSource",
     "Recipient",
     "ScheduledNotification",
     "Shop",

@@ -127,3 +127,46 @@ def test_the_message_log_status_check_lists_every_status(db_checks: dict[str, st
     definition = db_checks["ck_message_log_status_known"]
     for status in ("claimed", "sent", "failed", "cancelled"):
         assert f"'{status}'" in definition
+
+
+@pytest.mark.infra
+def test_the_product_source_check_lists_every_source(db_checks: dict[str, str]) -> None:
+    """CP7's new enums get their direct guard in the same commit, per CONTRIBUTING."""
+    definition = db_checks["ck_products_source_known"]
+    for source in ("manual", "channel"):
+        assert f"'{source}'" in definition
+
+
+@pytest.mark.infra
+def test_the_price_confidence_check_lists_every_level(db_checks: dict[str, str]) -> None:
+    definition = db_checks["ck_products_price_confidence_known"]
+    for level in ("high", "medium", "none"):
+        assert f"'{level}'" in definition
+
+
+@pytest.mark.infra
+def test_the_price_coherence_check_exists(db_checks: dict[str, str]) -> None:
+    """Structural, not an enum, so the literal comparison above cannot see it."""
+    definition = db_checks["ck_products_price_matches_confidence"]
+    assert "price_uzs" in definition and "price_confidence" in definition
+
+
+@pytest.mark.infra
+def test_the_partial_album_index_is_actually_partial(settings: Settings) -> None:
+    """A plain unique index here would be wrong AND would not be caught above:
+    indexes are the third autogenerate blind spot listed in CONTRIBUTING."""
+    engine = create_engine(
+        settings.database_url(database=settings.postgres_test_db, driver="psycopg")
+    )
+    try:
+        with engine.connect() as conn:
+            definition = conn.execute(
+                text(
+                    "SELECT indexdef FROM pg_indexes "
+                    "WHERE indexname = 'uq_products_shop_media_group'"
+                )
+            ).scalar_one()
+    finally:
+        engine.dispose()
+    assert "UNIQUE" in definition
+    assert "media_group_id IS NOT NULL" in definition

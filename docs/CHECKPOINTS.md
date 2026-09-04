@@ -19,8 +19,8 @@ product on its own: reminders work with no catalog and no ordering.
 | CP3.6 | Preferences: flower preset, reminder count, send time | done |
 | CP5 | `scheduled_notifications` + nightly materializer | done |
 | CP6 | Beat tick + reminder send — **ship line** | done |
-| CP7 | Catalog schema, hashtag normalisation, price parser | next |
-| CP8 | Channel indexer (albums, edits) | |
+| CP7 | Catalog schema, hashtag normalisation, price parser | done |
+| CP8 | Channel indexer (albums, edits) | next |
 | CP9 | Search and presentation (copyMessage, overridden caption) | |
 | CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
 
@@ -78,7 +78,52 @@ CP9 must NOT change `transition_key_for`. Those keys are already written into
 `message_log`, and changing their shape would make historical claims
 unmatchable — so a reminder already sent could be sent a second time.
 
+**CP8** indexes channel posts into the tables CP7 built. The constraints it
+needs already exist and are proven:
+
+- `UNIQUE(shop_id, channel_message_id)` doubles as redelivery idempotency —
+  Telegram may deliver the same `channel_post` twice, and the second insert
+  conflicts rather than creating a twin.
+- `uq_products_shop_media_group` is a PARTIAL unique index on
+  `(shop_id, media_group_id) WHERE media_group_id IS NOT NULL`. It is the anchor
+  for the album merge: five photos arriving as five updates conflict onto one
+  product instead of racing to create five. A NULL group is not an album, which
+  is why the index is partial.
+- Only index a post with BOTH a photo AND a recognised hashtag. `normalize_hashtag`
+  returns `""` for anything unusable, and a blank tag is refused by
+  `ck_product_hashtags_hashtag_not_blank`.
+- `caption_raw` stores the caption verbatim so a parser improvement can be
+  re-run over history. The Bot API cannot read channel history, so a caption not
+  saved at index time is gone.
+- `price_uzs` is NULLABLE and `ck_products_price_matches_confidence` ties it to
+  `price_confidence`. NEVER drop an unpriced post: index it, show it, and
+  caption it "narx operator tomonidan tasdiqlanadi".
+
+**CP9** will want pg_trgm for fuzzy hashtag search. It is NOT installed yet:
+`CREATE EXTENSION` needs elevated rights, which is a deployment question worth
+settling before the code depends on it. CP9 also owes a stated similarity
+threshold rather than a magic number in a query.
+
 ## Deliberately not built
+
+**The `orders` table, pre-created empty at CP7.** Considered and skipped. The
+claimed benefit was that CP10 would migrate into an existing table rather than
+create one — but `op.create_table` on an empty table is the cheapest migration
+there is, since there is no data to preserve. Against that, every column would
+be a guess, and the guess had already moved once: the original design listed
+`occasion_id`, `recipient_name`, `recipient_phone`, `note`, `source`, `total`
+and `delivery_slot`, while the CP7 brief listed `product_name_snapshot`,
+`price_uzs_snapshot`, `telegram_file_id_snapshot`, `delivery_time` and
+`delivery_location_*`. Changing a guessed column later costs
+add/backfill/drop, and changing a guessed `status` CHECK costs the
+drop/recreate dance; creating it right once costs nothing.
+
+Worth keeping from that brief when CP10 arrives: the SNAPSHOT columns. An order
+must record the product name, price and file_id AS THEY WERE when it was placed.
+The catalogue is rebuilt from a channel that edits and deletes posts, so a live
+FK to `products` would let a bouquet silently change price, or vanish, out from
+under an order already placed.
+
 
 **A dead-letter review surface.** Rows that exhaust `MAX_SEND_ATTEMPTS` (5) park
 in `state='dead_letter'` and are queryable, but nothing surfaces them to an

@@ -62,17 +62,37 @@ def test_the_send_path_does_not_touch_the_catalogue(path: Path) -> None:
         assert token.lower() not in source, f"{path.name} reaches into CP9: {token}"
 
 
-def test_the_send_path_imports_no_catalogue_module() -> None:
-    """Fresh interpreter, so transitive imports count too."""
+def test_the_send_path_imports_no_catalogue_service() -> None:
+    """Fresh interpreter, so transitive imports count too.
+
+    NARROWED AT CP7, deliberately, and worth explaining rather than quietly
+    editing. This used to watch `gulbot.catalog` and `gulbot.models.product`
+    wholesale. Two facts make that the wrong measurement now:
+
+      * `gulbot/models/__init__.py` is an Alembic registry that imports EVERY
+        model, so importing any one model loads all of them. The send path gets
+        `models.product` whether it wants it or not.
+      * `models/product.py` reuses `PriceConfidence` from the pure price
+        parser. That dependency direction -- a model importing a pure value
+        type -- is the correct one. Inverting it would make the pure layer
+        import the ORM and break its own purity guard.
+
+    So module LOADING can no longer distinguish "uses the catalogue" from
+    "shares an enum with it". What still can, and what this now asserts, is
+    that no catalogue SERVICE or query layer is reachable from the send path --
+    that is what CP9 would have to add, and what must not appear before it.
+
+    The precise instrument is `test_the_send_path_does_not_touch_the_catalogue`
+    above: it scans the send path's own code with comments and strings
+    stripped, and still passes at zero mentions.
+    """
     program = (
         "import sys\n"
         "import gulbot.sending.dispatcher, gulbot.sending.render\n"
-        # Scoped to gulbot's own future catalogue modules. "catalog" is an
-        # overloaded word here: gulbot.i18n.catalog is the STRING catalogue and
-        # is entirely legitimate, as is sqlalchemy's pg_catalog. Matching the
-        # bare word would fail on things unrelated to products.
-        "watched = ('gulbot.catalog', 'gulbot.products', 'gulbot.services.products',"
-        " 'gulbot.services.catalog', 'gulbot.models.product')\n"
+        "watched = ('gulbot.services.products', 'gulbot.services.catalog',\n"
+        "           'gulbot.services.hashtag_aliases', 'gulbot.services.search',\n"
+        "           'gulbot.catalog.search', 'gulbot.catalog.indexer',\n"
+        "           'gulbot.bot.routers.catalog')\n"
         "bad = sorted(m for m in sys.modules if m.startswith(watched))\n"
         "print(','.join(bad))\n"
     )
@@ -84,6 +104,32 @@ def test_the_send_path_imports_no_catalogue_module() -> None:
         check=True,
     )
     assert result.stdout.strip() == ""
+
+
+def test_the_send_path_reaches_the_catalogue_only_through_the_model_registry() -> None:
+    """Pins WHY the fence above was narrowed, so it cannot rot into nothing.
+
+    If the send path ever imports the catalogue for a reason other than the
+    model registry and the shared enum, this fails and the narrowing has to be
+    revisited rather than assumed still valid.
+    """
+    allowed = {"gulbot.catalog", "gulbot.catalog.prices", "gulbot.models.product"}
+    program = (
+        "import sys\n"
+        "import gulbot.sending.dispatcher, gulbot.sending.render\n"
+        "seen = sorted(m for m in sys.modules if m.startswith('gulbot.catalog'))\n"
+        "print(','.join(seen))\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", program],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+        check=True,
+    )
+    loaded = {m for m in result.stdout.strip().split(",") if m}
+    unexpected = loaded - allowed
+    assert not unexpected, f"the send path pulled in more catalogue than the enum: {unexpected}"
 
 
 def test_the_renderer_is_the_seam_cp9_will_widen() -> None:
