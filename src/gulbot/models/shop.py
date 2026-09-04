@@ -64,6 +64,17 @@ class Shop(IdMixin, TimestampMixin, Base):
     # null means uncapped. Counted against delivery_date, never created_at.
     daily_order_cap: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Shop-level fallback for customers who never answered the send-time
+    # question. Same representation as customers.preferred_send_time -- a real
+    # time column -- so there is exactly one way to express this concept.
+    #
+    # NULLABLE despite having a default: it keeps the resolution chain TOTAL.
+    # A shop row that somehow lacks a default still resolves, via the constant.
+    # There is no admin UI to change this yet; set it in the seed or in psql.
+    default_send_time: Mapped[time | None] = mapped_column(
+        Time, nullable=True, server_default=text("'20:00'")
+    )
+
     reminder_offsets: Mapped[list[int]] = mapped_column(
         ARRAY(SmallInteger), nullable=False, server_default=text("'{-7,-1,0}'::smallint[]")
     )

@@ -116,6 +116,9 @@ class Occasion(IdMixin, TimestampMixin, Base):
         # "Do'stim" -- and the old label-based key wrongly rejected the second
         # one's date as a duplicate.
         UniqueConstraint("recipient_id", "month", "day"),
+        # CP1's tenancy pattern, added at CP5: it is what lets
+        # scheduled_notifications declare FOREIGN KEY (occasion_id, shop_id).
+        UniqueConstraint("id", "shop_id"),
         Index("ix_occasions_customer_active", "customer_id", "active"),
         Index("ix_occasions_recipient", "recipient_id"),
     )

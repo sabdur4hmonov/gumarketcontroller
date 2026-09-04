@@ -17,8 +17,8 @@ product on its own: reminders work with no catalog and no ordering.
 | CP4 | Occurrence engine — pure functions, no I/O | done |
 | CP3.5 | Recipients, chained onboarding, minimal edit | done |
 | CP3.6 | Preferences: flower preset, reminder count, send time | done |
-| CP5 | `scheduled_notifications` + nightly materializer | next |
-| CP6 | Beat tick + reminder send — **ship line** | |
+| CP5 | `scheduled_notifications` + nightly materializer | done |
+| CP6 | Beat tick + reminder send — **ship line** | next |
 | CP7 | Catalog schema, hashtag normalisation, price parser | |
 | CP8 | Channel indexer (albums, edits) | |
 | CP9 | Search and presentation (copyMessage, overridden caption) | |
@@ -43,22 +43,13 @@ that does not gate the ship line.
 
 ## Briefs already agreed for future checkpoints
 
-**CP5** must source `(offsets, send_time)` from the per-customer fields added in
-CP3.6 — `customers.reminder_count` and `customers.preferred_send_time` — with
-fallbacks for customers who skipped. Do not build CP5 against a shop-wide
-constant. Full brief to come. What CP3.6 left ready:
-
-- `REMINDER_COUNT_OFFSETS` in `models/customer.py`: `1 -> (0,)`,
-  `2 -> (-1, 0)`, `3 -> (-7, -1, 0)`.
-- `SEND_TIME_CHOICES`: `morning -> 09:00`, `noon -> 13:00`, `evening -> 20:00`.
-- `DEFAULT_REMINDER_COUNT = 3` and `DEFAULT_SEND_TIME = 20:00`, to apply when
-  the column is NULL. Both columns are NULLABLE with no server default on
-  purpose: NULL means "never answered", which a server default would erase.
-- **Open question for the CP5 brief:** `shops` has `reminder_offsets` but no
-  shop-level send time, so "shop default" currently has no column to read for
-  the time. Either use `DEFAULT_SEND_TIME`, or add a shop column in CP5.
-- `tests/test_preferences.py::test_cp36_does_not_reach_into_cp5` fails the build
-  if the scheduling package starts reading these columns before CP5.
+**CP6** consumes the outbox. Rows arrive `state='pending'` with `due_at_utc`
+already clamped inside the send window, so the sender's window check is a
+backstop assertion, not logic. Rows sharing a `merge_key` are ONE message
+covering several occasions — group by it rather than sending per row. Only CP6
+may write `state='sent'`, and it must set `sent_at` with it (a CHECK enforces
+that pairing). `tests/test_materializer_scale.py` fails the build if the
+materializer ever grows a Telegram client.
 
 **CP9** should use `recipients.preferred_hashtag` as a ranking hint when
 suggesting bouquets. CP3.6 only stores a normalised preset value; nothing
@@ -66,9 +57,24 @@ matches it against the real catalog until CP9.
 
 ## Deliberately not built
 
-Nothing currently. The occasion edit flow, deferred at CP3, is reinstated in
-CP3.5: once recipient chaining exists the sub-flow is reused rather than
-duplicated, so it costs two states instead of six.
+**Shop settings admin flow.** `shops.default_send_time` and
+`shops.reminder_offsets` are settable only via the seed or psql — there is no
+owner-facing UI. A small deferred follow-up, not a blocker: the values have
+sensible defaults and no shop has asked to change them yet.
+
+The occasion edit flow, deferred at CP3, was reinstated in CP3.5: once recipient
+chaining exists the sub-flow is reused rather than duplicated, so it costs two
+states instead of six.
+
+## Open decisions
+
+**"Ertalab (09:00)" currently delivers at 10:00.** CP3.6 offers a 09:00 send
+time; CP4's reminder window opens at 10:00, so the clamp moves it. The window
+wins today because "never message before 10:00" is a hard rule from the domain
+spec, while the button label is a promise chosen later. Resolve by either
+opening the window at 09:00 or relabelling the button 10:00.
+`tests/test_materializer.py::test_an_0900_preference_is_clamped_to_the_send_window`
+pins the current behaviour so it cannot drift while undecided.
 
 ## Decisions that constrain later checkpoints
 
