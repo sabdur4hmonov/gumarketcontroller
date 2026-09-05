@@ -61,11 +61,12 @@ Current status, all mutation-proven:
 |---|---|---|
 | `redis.asyncio` (album debounce) | `album_debouncer()` | context manager closes it per call -- this is the one that broke |
 | `aiohttp` (Bot API) | `_send_due_reminders` | `build_bot()` is uncached AND the session is closed in a `finally`; either alone suffices |
-| asyncpg pool | `build_session_factory()` | a new engine per call |
+| asyncpg pool | `task_session_factory()` | a new engine per call, disposed in a `finally` |
 
-The engine is never explicitly disposed, so each task leaks one pool until the
-loop is collected. Not a correctness bug and not fixed here; noted so the next
-person does not assume it was considered and rejected.
+`build_session_factory()` still does NOT dispose, and must not: `bot.run` holds
+one engine for the life of the process, and disposing between updates would
+throw the pool away every message. The distinction is the whole point --
+`tests/test_task_engine_lifetime.py` pins both halves.
 
 ## What Alembic autogenerate does NOT catch
 

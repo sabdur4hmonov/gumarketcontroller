@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from sqlalchemy import select
 
-from gulbot.db.session import build_session_factory
+from gulbot.db.session import task_session_factory
 from gulbot.models.shop import Shop
 from gulbot.sending.dispatcher import run_tick
 from gulbot.sending.rate_limit import RateLimiter
@@ -25,11 +25,10 @@ async def _send_due_reminders() -> dict[str, int]:
     from gulbot.bot.factory import build_bot
     from gulbot.sending.telegram import TelegramTransport
 
-    factory = build_session_factory()
     bot = build_bot()
     limiter = RateLimiter(clock=lambda: asyncio.get_event_loop().time())
     try:
-        async with factory() as session:
+        async with task_session_factory() as factory, factory() as session:
             result = await run_tick(
                 session,
                 transport=TelegramTransport(bot),
@@ -52,9 +51,8 @@ async def _send_due_reminders() -> dict[str, int]:
 
 
 async def _materialize_all_shops() -> dict[str, int]:
-    factory = build_session_factory()
     totals = {"inserted": 0, "pruned": 0}
-    async with factory() as session:
+    async with task_session_factory() as factory, factory() as session:
         shop_ids = list(await session.scalars(select(Shop.id)))
         for shop_id in shop_ids:
             result = await materialize_shop(session, shop_id=shop_id, now_utc=datetime.now(UTC))
@@ -111,8 +109,7 @@ async def _settle_album(
     if decision.action is Action.WAIT:
         return {"action": "wait", "reschedule_in": decision.delay}
 
-    factory = build_session_factory()
-    async with factory() as session:
+    async with task_session_factory() as factory, factory() as session:
         result = await finalize_product(session, shop_id=shop_id, media_group_id=media_group_id)
         await session.commit()
 

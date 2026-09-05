@@ -39,18 +39,19 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Iterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 
 import psycopg
 import pytest
 from aiogram.client.telegram import TelegramAPIServer
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from tests.bot_harness import TEST_TOKEN
 from tests.telegram_stub import FakeTelegram
 
 import gulbot.bot.factory as factory_module
 import gulbot.worker.tasks as tasks_module
 from gulbot.config import Settings
+from gulbot.db.session import task_session_factory
 from gulbot.sending.telegram import TelegramTransport
 
 SHOP_NAME = "loop-lifetime-probe"
@@ -260,18 +261,20 @@ def test_two_ticks_in_one_process_both_really_send(
     """
     api = production_bot_at_the_stub
 
-    def test_session_factory(*_args: object, **_kwargs: object) -> async_sessionmaker:
-        # A NEW engine per call, exactly as build_session_factory does. Sharing
-        # one engine across the two loops would reintroduce the same defect on
-        # the database side, which is the point of the next test.
-        return async_sessionmaker(
-            create_async_engine(
-                settings.database_url(database=settings.postgres_test_db), future=True
-            ),
-            expire_on_commit=False,
-        )
+    # The REAL production context manager, pointed at the test database. Using
+    # it rather than a hand-rolled factory keeps engine DISPOSAL under test too:
+    # if the task ever went back to a non-disposing factory, this patch would
+    # never be called and `engines` below would be empty.
+    engines: list[tuple[object, object]] = []
 
-    monkeypatch.setattr(tasks_module, "build_session_factory", test_session_factory)
+    @asynccontextmanager
+    async def test_session_factory(*_a: object, **_k: object):  # type: ignore[no-untyped-def]
+        async with task_session_factory(settings.postgres_test_db) as factory:
+            engine = factory.kw["bind"]
+            engines.append((engine, engine.pool))
+            yield factory
+
+    monkeypatch.setattr(tasks_module, "task_session_factory", test_session_factory)
 
     add_due_row(committed_world, day=8)
     first = asyncio.run(tasks_module._send_due_reminders())
@@ -283,6 +286,10 @@ def test_two_ticks_in_one_process_both_really_send(
     assert first == {"groups": 1, "sent": 1}
     assert second == {"groups": 1, "sent": 1}, "the second tick must really send, not skip"
     assert api.calls == ["sendMessage", "sendMessage"]
+
+    assert len(engines) == 2, "each tick must build its own engine"
+    for engine, pool_before in engines:
+        assert engine.pool is not pool_before, "the tick leaked its connection pool"
 
     states = (
         committed_world["conn"]
