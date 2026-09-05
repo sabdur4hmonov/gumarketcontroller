@@ -27,6 +27,46 @@ op.execute("ALTER TABLE orders VALIDATE CONSTRAINT ck_orders_total_positive")
 Dropping a column follows the same shape in reverse: stop writing it, ship,
 *then* drop it — never in the release that stops using it.
 
+## Any I/O client cached beyond one Celery task is a bug
+
+Bitten once, at CP8, and audited across the whole codebase afterwards. Worth
+stating as a rule because the broken version looks obviously correct.
+
+`asyncio` clients bind to the event loop that opened them -- `redis.asyncio`
+connections, `aiohttp.ClientSession`, asyncpg pools. Every Celery task here runs
+`asyncio.run()`, which creates a loop and then CLOSES it. So a client that
+outlives one task hands the NEXT task a dead socket:
+
+```
+RuntimeError: Event loop is closed
+```
+
+It fails on the SECOND task, never the first. **No test in this repo can catch
+it by default**, because pytest-asyncio runs everything inside one event loop --
+which is exactly why the 757-test suite was green while the debouncer was broken.
+
+The rule: **a Celery task owns its clients for its own lifetime.** Either build
+them inside the task (`build_bot()`, `build_session_factory()`) or take them from
+an async context manager that closes them (`album_debouncer()`). Never a
+module-level cache, never an `@lru_cache` on a factory that returns a client.
+`get_settings()` is `@lru_cache`d and that is fine -- it holds no sockets.
+
+To test it, write a SYNCHRONOUS test that calls `asyncio.run` twice and does real
+I/O in both. See `tests/test_album_debounce.py` (Redis) and
+`tests/test_send_loop_lifetime.py` (the Bot API, against a localhost stub).
+
+Current status, all mutation-proven:
+
+| Client | Owned by | Protected because |
+|---|---|---|
+| `redis.asyncio` (album debounce) | `album_debouncer()` | context manager closes it per call -- this is the one that broke |
+| `aiohttp` (Bot API) | `_send_due_reminders` | `build_bot()` is uncached AND the session is closed in a `finally`; either alone suffices |
+| asyncpg pool | `build_session_factory()` | a new engine per call |
+
+The engine is never explicitly disposed, so each task leaks one pool until the
+loop is collected. Not a correctness bug and not fixed here; noted so the next
+person does not assume it was considered and rejected.
+
 ## What Alembic autogenerate does NOT catch
 
 `test_models_match_migrations` runs autogenerate's comparison and asserts an
