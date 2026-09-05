@@ -292,7 +292,9 @@ async def test_flower_question_is_asked_after_the_last_date(driver: Driver) -> N
     driver.recorder.calls.clear()
     await driver.tap(YesNoCB(scope="dates", answer="no").pack())
 
-    expected = CATALOG["prefs.ask_flower"]["uz"].format(label=CATALOG["occtype.mother"]["uz"])
+    expected = CATALOG["prefs.ask_flower"]["uz"].format(
+        label=CATALOG["recipient.addr.mother"]["uz"]
+    )
     assert expected in driver.sent
 
 

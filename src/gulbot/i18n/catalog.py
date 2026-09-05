@@ -203,6 +203,16 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.time_noon": {"uz": "Tushlikda (13:00)", "ru": "Днём (13:00)"},
     "ibtn.time_evening": {"uz": "Kechqurun (20:00)", "ru": "Вечером (20:00)"},
     "ibtn.skip": {"uz": "O'tkazib yuborish", "ru": "Пропустить"},
+    # Presets are STORED first person ("Onam" = my mother) because that is how
+    # the customer picks them. The bot must not speak that way about them, so
+    # every sentence addressed to the customer uses these second-person forms
+    # instead. Custom labels are never converted -- see utils.render.
+    "recipient.addr.mother": {"uz": "Onangiz", "ru": "Ваша мама"},
+    "recipient.addr.spouse": {"uz": "Turmush o‘rtog‘ingiz", "ru": "Ваш(а) супруг(а)"},
+    "recipient.addr.older_sister": {"uz": "Opangiz", "ru": "Ваша старшая сестра"},
+    "recipient.addr.younger_sister": {"uz": "Singlingiz", "ru": "Ваша младшая сестра"},
+    "recipient.addr.paternal_aunt": {"uz": "Ammangiz", "ru": "Ваша тётя"},
+    "recipient.addr.maternal_aunt": {"uz": "Xolangiz", "ru": "Ваша тётя"},
     # --- reminders --------------------------------------------------------
     "reminder.heading": {
         "uz": "🌸 Eslatma!",
@@ -210,6 +220,14 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     },
     "reminder.single": {
         "uz": "{when} {label}ning {kind} — {date}.",
+        "ru": "{when}: {label} — {kind}, {date}.",
+    },
+    # A CUSTOM label cannot take the -ning genitive above without the bot
+    # appearing to claim the relation, so the sentence is reshaped into the same
+    # appositive form the merged list already uses. No possessive suffix, and it
+    # is grammatical for any free text.
+    "reminder.single_custom": {
+        "uz": "{when} — {label}, {kind}, {date}.",
         "ru": "{when}: {label} — {kind}, {date}.",
     },
     "reminder.merged_intro": {

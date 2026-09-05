@@ -179,7 +179,7 @@ async def test_saving_a_date_asks_for_more_dates_for_the_same_person(
 ) -> None:
     await driver.add_person("mother", 3, 8)
     expected = CATALOG["recipients.ask_more_dates"]["uz"].format(
-        label=CATALOG["occtype.mother"]["uz"]
+        label=CATALOG["recipient.addr.mother"]["uz"]
     )
     assert expected in driver.sent
 

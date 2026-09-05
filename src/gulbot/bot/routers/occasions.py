@@ -92,7 +92,7 @@ from gulbot.services.recipients import (
     list_recipients,
     rename_recipient,
 )
-from gulbot.utils.render import escape, format_date_long
+from gulbot.utils.render import addressed_label, escape, format_date_long
 from gulbot.utils.text import sanitize_label
 
 OCCASIONS_LABELS = set(CATALOG["btn.menu.occasions"].values())
@@ -421,8 +421,12 @@ async def skip_year(callback: CallbackQuery, state: FSMContext, lang: str) -> No
 
 async def _ask_more_dates(target: Message, state: FSMContext, lang: str, label: str) -> None:
     await state.set_state(AddOccasion.asking_more_dates)
+    # Addressed to the CUSTOMER, so the preset speaks in the second person:
+    # "Onangiz uchun", not "Onam uchun". A custom label passes through.
+    data = await state.get_data()
+    spoken = addressed_label(label, str(data.get("pending_type", OccasionType.CUSTOM.value)), lang)
     await target.answer(
-        t("recipients.ask_more_dates", lang, label=escape(label)),
+        t("recipients.ask_more_dates", lang, label=escape(spoken)),
         reply_markup=yes_no_keyboard(lang, "dates"),
     )
 
@@ -559,7 +563,11 @@ async def more_dates_no(
 
     await state.set_state(AddOccasion.asking_flower)
     await target.answer(
-        t("prefs.ask_flower", lang, label=escape(recipient.label)),
+        t(
+            "prefs.ask_flower",
+            lang,
+            label=escape(addressed_label(recipient.label, recipient.type, lang)),
+        ),
         reply_markup=flower_keyboard(lang),
     )
 

@@ -82,14 +82,16 @@ async def world(db: AsyncConnection) -> dict:
     return {"db": db, "shop": shop, "customer": customer, "sessions": bound_session_factory(db)}
 
 
-async def add_recipient(world: dict, *, label: str, preferred: str | None = None) -> int:
+async def add_recipient(
+    world: dict, *, label: str, preferred: str | None = None, rtype: str = "mother"
+) -> int:
     return (
         await world["db"].execute(
             text(
                 "INSERT INTO recipients (shop_id, customer_id, label, type, preferred_hashtag) "
-                "VALUES (:s, :c, :l, 'mother', :p) RETURNING id"
+                "VALUES (:s, :c, :l, :t, :p) RETURNING id"
             ),
-            {"s": world["shop"], "c": world["customer"], "l": label, "p": preferred},
+            {"s": world["shop"], "c": world["customer"], "l": label, "p": preferred, "t": rtype},
         )
     ).scalar_one()
 
@@ -420,7 +422,7 @@ async def test_a_reminder_with_a_bouquet_is_one_photo_call(world: dict) -> None:
     file_id, caption = transport.photos[0]
     assert file_id == "file-Qizil atirgul"
     assert "450 000" in caption
-    assert "Onam" in caption, "the reminder itself must still be in the caption"
+    assert "Onangiz" in caption, "the reminder itself must still be in the caption"
 
 
 async def test_an_empty_catalogue_still_sends_the_reminder(world: dict) -> None:
@@ -462,7 +464,7 @@ async def test_an_unpriced_bouquet_is_shown_with_the_operator_line(world: dict) 
 
 async def test_a_merged_group_gets_one_reminder_and_one_bouquet(world: dict) -> None:
     onam = await add_recipient(world, label="Onam", preferred="atirgul")
-    opa = await add_recipient(world, label="Opa", preferred="lola")
+    opa = await add_recipient(world, label="Opa", preferred="lola", rtype="older_sister")
     await add_product(world, name="rose", tags=("atirgul",), message_id=1)
     await add_product(world, name="lily", tags=("lola",), indexed_offset=60, message_id=2)
     await add_due_row(world, recipient=onam, day=8, offset=-1, merge_key="cluster")
@@ -473,7 +475,7 @@ async def test_a_merged_group_gets_one_reminder_and_one_bouquet(world: dict) -> 
     assert result.sent == 1
     assert transport.calls == 1, "a merged group is still one message"
     file_id, caption = transport.photos[0]
-    assert "Onam" in caption and "Opa" in caption
+    assert "Onangiz" in caption and "Opangiz" in caption
     assert file_id == "file-rose", "the bouquet must follow the SOONEST occasion's recipient"
 
 
@@ -533,7 +535,7 @@ async def test_the_leading_recipient_is_the_soonest_not_the_first_row(world: dic
     offset. Getting that backwards would show the bouquet for the person the
     message mentions last."""
     onam = await add_recipient(world, label="Onam", preferred="atirgul")
-    opa = await add_recipient(world, label="Opa", preferred="lola")
+    opa = await add_recipient(world, label="Opa", preferred="lola", rtype="older_sister")
     await add_due_row(world, recipient=opa, day=10, offset=-3, merge_key="cluster")
     await add_due_row(world, recipient=onam, day=8, offset=-1, merge_key="cluster")
 

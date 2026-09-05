@@ -22,9 +22,14 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 
 from gulbot.i18n import t
+from gulbot.models.occasion import RecipientType
 from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.dispatcher import DueGroup
-from gulbot.utils.render import escape, format_date_long
+from gulbot.utils.render import (
+    addressed_label,
+    escape,
+    format_date_long,
+)
 
 
 @dataclass(frozen=True)
@@ -32,7 +37,10 @@ class _Entry:
     """One occasion as the reminder text needs it."""
 
     label: str
-    #: Inside a sentence: "Onamning tug'ilgan KUNI".
+    #: A custom label cannot take a possessive suffix, so the single-reminder
+    #: sentence is reshaped around it. See utils.render.addressed_label.
+    is_custom: bool
+    #: Inside a sentence: "Onangizning tug'ilgan KUNI".
     kind_possessive: str
     #: Standing alone in a list item: "tug'ilgan kun".
     kind_plain: str
@@ -56,7 +64,7 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
     send_day = today or min(r.due_at_utc for r in group.rows).astimezone(TASHKENT).date()
 
     by_occasion = {occasion.id: occasion for occasion in group.occasions}
-    labels = {recipient.id: recipient.label for recipient in group.recipients}
+    recipients = {recipient.id: recipient for recipient in group.recipients}
 
     entries: list[_Entry] = []
     for row in sorted(group.rows, key=lambda r: (r.occurrence_year, r.offset_days)):
@@ -64,9 +72,15 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
         if occasion is None:  # pragma: no cover - context is loaded together
             continue
         occurrence = send_day - timedelta(days=row.offset_days)
+        # The recipient is the source of truth for both; an occasion carries a
+        # copy of each, used only if the recipient row is somehow absent.
+        recipient = recipients.get(occasion.recipient_id)
+        raw_label = recipient.label if recipient else occasion.label
+        recipient_type = recipient.type if recipient else occasion.type
         entries.append(
             _Entry(
-                label=escape(labels.get(occasion.recipient_id, occasion.label)),
+                label=escape(addressed_label(raw_label, recipient_type, lang)),
+                is_custom=recipient_type == RecipientType.CUSTOM.value,
                 kind_possessive=t(f"occkind.poss.{occasion.kind}", lang),
                 kind_plain=t(f"occkind.{occasion.kind}", lang).lower(),
                 date=format_date_long(occurrence.day, occurrence.month, None, lang),
@@ -88,12 +102,14 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
 
     if len(unique) == 1:
         only = unique[0]
+        # A preset takes the possessive sentence; a custom label takes the
+        # appositive one, which needs no suffix and so is safe for any text.
         body = t(
-            "reminder.single",
+            "reminder.single_custom" if only.is_custom else "reminder.single",
             lang,
             when=describe_when(only.days, lang, capitalised=True),
             label=only.label,
-            kind=only.kind_possessive,
+            kind=only.kind_plain if only.is_custom else only.kind_possessive,
             date=only.date,
         )
     else:

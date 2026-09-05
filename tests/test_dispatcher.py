@@ -231,8 +231,12 @@ async def test_a_merged_message_names_every_occasion(
     second = (
         await db.execute(
             text(
+                # 'Otam' is nobody's preset -- it is a typed label, so the
+                # type is custom. It was 'spouse' here, a pair the flow cannot
+                # produce, and it only went unnoticed while the label was
+                # rendered verbatim.
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Otam', 'spouse') RETURNING id"
+                "VALUES (:s, :c, 'Otam', 'custom') RETURNING id"
             ),
             {"s": world["shop_id"], "c": world["customer_id"]},
         )
@@ -244,7 +248,8 @@ async def test_a_merged_message_names_every_occasion(
     await tick(sessions, transport)
 
     body = transport.calls[0]["text"]
-    assert "Onam" in body and "Otam" in body
+    # The preset is spoken in the second person; the custom label is quoted.
+    assert "Onangiz" in body and "Otam" in body
 
 
 # --- idempotency -----------------------------------------------------------
@@ -730,8 +735,12 @@ async def test_blocking_one_customer_does_not_touch_another(
     other_recipient = (
         await db.execute(
             text(
+                # 'Otam' is nobody's preset -- it is a typed label, so the
+                # type is custom. It was 'spouse' here, a pair the flow cannot
+                # produce, and it only went unnoticed while the label was
+                # rendered verbatim.
                 "INSERT INTO recipients (shop_id, customer_id, label, type) "
-                "VALUES (:s, :c, 'Otam', 'spouse') RETURNING id"
+                "VALUES (:s, :c, 'Otam', 'custom') RETURNING id"
             ),
             {"s": world["shop_id"], "c": other_customer},
         )
