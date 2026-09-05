@@ -89,6 +89,12 @@ second product. An edit that adds a first hashtag to a previously-ignored post
 indexes it. An edit that strips every hashtag off a LIVE product deactivates it
 rather than deleting it.
 
+Proven against a REAL Celery worker, not only the test recorder: an album fed
+through the real dispatcher with the real Redis debounce is picked up, deferred
+once while photos are still arriving (`{'action': 'wait'}`), rescheduled, and
+finalized (`{'action': 'done', 'outcome': 'finalized'}`). That run found a bug
+the whole green suite could not: see below.
+
 What CP9 may rely on, and must not break:
 
 - **Filter on `finalized_at IS NOT NULL`**, or you will show half-built albums.
@@ -147,6 +153,22 @@ under an order already placed.
 not change that. CP7 deferred it for want of a corpus; CP8 indexes real captions
 but has not yet observed one that mixes scripts INSIDE a single word. Revisit
 with evidence from a real channel, not before.
+
+**A stale-provisional sweep.** Found by running a real worker, and left
+unbuilt on purpose. If a `finalize_album` task RAISES, Celery acks it anyway
+(`task_acks_late` only redelivers on worker death, not on an exception), so:
+
+* the album's NX lock stays held for its full 300s TTL, during which further
+  photos of that album schedule nothing -- self-healing, bounded, acceptable;
+* the row stays PROVISIONAL, and after the TTL nothing re-schedules it. Only a
+  later arrival or an edit to that album will settle it.
+
+Nothing is lost or wrong -- the row is correct, merged and invisible to CP9's
+search, which filters on `finalized_at`. But it will not fix itself. The real
+remedy is a periodic sweep for `finalized_at IS NULL AND indexed_at < now() -
+interval`, which belongs with CP14's monitoring rather than inside the indexer;
+CP8's scope fence exists precisely to stop it being added here as "two harmless
+lines". Raised now so CP14 has the specific query to write.
 
 **A dead-letter review surface.** Rows that exhaust `MAX_SEND_ATTEMPTS` (5) park
 in `state='dead_letter'` and are queryable, but nothing surfaces them to an

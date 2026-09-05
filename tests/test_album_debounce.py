@@ -12,6 +12,7 @@ Two halves, tested separately on purpose:
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 
 import pytest
@@ -24,6 +25,7 @@ from gulbot.worker.debounce import (
     MIN_RESCHEDULE_SECONDS,
     Action,
     AlbumDebouncer,
+    album_debouncer,
     album_keys,
     decide,
 )
@@ -162,3 +164,70 @@ def test_the_keys_are_namespaced_per_shop() -> None:
     assert album_keys(1, ALBUM) != album_keys(2, ALBUM)
     for key in album_keys(1, ALBUM):
         assert key.startswith("gulbot:album:1:")
+
+
+# --- the loop-lifetime regression ------------------------------------------
+
+
+@pytest.mark.infra
+def test_the_debounce_survives_a_fresh_event_loop_per_call() -> None:
+    """Celery gives every task its own event loop and then CLOSES it.
+
+    NOT an async test, deliberately, and that is the entire point. A
+    `redis.asyncio` connection is bound to the loop that opened it, so a client
+    cached at module level hands the SECOND task in a worker process a socket
+    whose loop is dead: `RuntimeError: Event loop is closed`. Every other test
+    in this repo runs inside one pytest event loop and cannot see it. This one
+    calls `asyncio.run` twice, which is exactly the worker's shape.
+
+    Found by running a real Celery worker against a real album, after the whole
+    suite was green.
+    """
+    group = "loop-lifetime-album"
+
+    async def one_task() -> bool:
+        async with album_debouncer() as debouncer:
+            return await debouncer.touch(shop_id=SHOP, media_group_id=group)
+
+    async def cleanup() -> None:
+        async with album_debouncer() as debouncer:
+            await debouncer.release(shop_id=SHOP, media_group_id=group)
+
+    try:
+        first = asyncio.run(one_task())
+        # The call that used to die. If it raises, the fix has regressed.
+        second = asyncio.run(one_task())
+    finally:
+        asyncio.run(cleanup())
+
+    assert first is True
+    assert second is False, "the lock should still be held across the two loops"
+
+
+@pytest.mark.infra
+def test_a_second_loop_can_still_read_what_the_first_one_wrote() -> None:
+    """The bot process writes the deadline; a worker process reads it. Proving
+    the value crosses a loop boundary is the other half of the same claim."""
+    group = "loop-lifetime-album-2"
+
+    async def write() -> float | None:
+        async with album_debouncer() as debouncer:
+            await debouncer.touch(shop_id=SHOP, media_group_id=group)
+            return await debouncer.deadline(shop_id=SHOP, media_group_id=group)
+
+    async def read() -> float | None:
+        async with album_debouncer() as debouncer:
+            return await debouncer.deadline(shop_id=SHOP, media_group_id=group)
+
+    async def cleanup() -> None:
+        async with album_debouncer() as debouncer:
+            await debouncer.release(shop_id=SHOP, media_group_id=group)
+
+    try:
+        written = asyncio.run(write())
+        read_back = asyncio.run(read())
+    finally:
+        asyncio.run(cleanup())
+
+    assert written is not None
+    assert read_back == written

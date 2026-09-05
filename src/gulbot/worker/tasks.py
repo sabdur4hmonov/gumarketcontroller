@@ -16,6 +16,7 @@ from gulbot.sending.render import render_reminder
 from gulbot.services.indexer import finalize_product
 from gulbot.services.materializer import materialize_shop
 from gulbot.worker.app import app
+from gulbot.worker.debounce import AlbumDebouncer
 
 log = logging.getLogger("gulbot.worker")
 
@@ -88,9 +89,20 @@ async def _finalize_album(shop_id: int, media_group_id: str) -> dict[str, object
 
     The lock is released only when neither is true.
     """
-    from gulbot.worker.debounce import MIN_RESCHEDULE_SECONDS, Action, decide, get_debouncer
+    from gulbot.worker.debounce import album_debouncer
 
-    debouncer = get_debouncer()
+    # The client is created and closed inside this call. Celery gives every task
+    # a fresh event loop and then closes it, so a client that outlives the call
+    # hands the NEXT task a dead socket. See album_debouncer's docstring.
+    async with album_debouncer() as debouncer:
+        return await _settle_album(debouncer, shop_id, media_group_id)
+
+
+async def _settle_album(
+    debouncer: AlbumDebouncer, shop_id: int, media_group_id: str
+) -> dict[str, object]:
+    from gulbot.worker.debounce import MIN_RESCHEDULE_SECONDS, Action, decide
+
     started = debouncer.now()
 
     decision = decide(

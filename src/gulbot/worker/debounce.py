@@ -31,7 +31,8 @@ here, the indexer would do more work and still reach the same answer.
 from __future__ import annotations
 
 import time
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -46,10 +47,6 @@ KEY_TTL_SECONDS = 300
 
 #: Guards against a busy reschedule loop if clocks disagree by a hair.
 MIN_RESCHEDULE_SECONDS = 0.5
-
-#: WALL clock, not monotonic. The deadline is written by the BOT process and
-#: read by a CELERY worker process; time.monotonic has a different origin in
-#: every process, so a monotonic deadline would be meaningless across the two.
 
 
 class Action(StrEnum):
@@ -104,6 +101,10 @@ class AlbumDebouncer:
         *,
         delay: float = DEBOUNCE_SECONDS,
         ttl: int = KEY_TTL_SECONDS,
+        # WALL clock, not monotonic. The deadline is written by the BOT process
+        # and read by a CELERY worker process, and time.monotonic has a
+        # different origin in every process -- a monotonic deadline would be
+        # meaningless across the two.
         clock: Callable[[], float] = time.time,
     ) -> None:
         self.redis = redis
@@ -147,32 +148,49 @@ class AlbumDebouncer:
 # drag CP6 into CP8 and trip the scope fence. This module imports the Celery app
 # and nothing else.
 
-_debouncer: AlbumDebouncer | None = None
 
+@asynccontextmanager
+async def album_debouncer() -> AsyncIterator[AlbumDebouncer]:
+    """A debouncer that owns its Redis client for the life of ONE call.
 
-def get_debouncer() -> AlbumDebouncer:
-    """Built lazily: constructing a dispatcher must not require Redis, or the
-    shadow sweep could not run the build gate without the stack up."""
-    global _debouncer
-    if _debouncer is None:
-        from redis.asyncio import Redis
+    NOT a cached module-level client, and the reason is worth stating because
+    the cached version looked obviously correct and was fatal:
 
-        from gulbot.config import get_settings
+    A `redis.asyncio` connection is bound to the event loop that opened it.
+    The Celery task wraps each run in `asyncio.run()`, which creates a loop and
+    then CLOSES it. A cached client therefore hands the second task in a worker
+    process a socket whose loop is dead, and it fails with
+    `RuntimeError: Event loop is closed` -- not on the first album, on the
+    second, which is exactly the shape of bug a green test suite misses. Every
+    test in this repo runs inside one pytest event loop.
 
-        settings = get_settings()
-        client = Redis.from_url(settings.redis_url(settings.redis_db_broker))
-        _debouncer = AlbumDebouncer(client)
-    return _debouncer
+    Found by running a real Celery worker, not by reading the code. Guarded by
+    `test_the_debounce_survives_a_fresh_event_loop_per_call`.
+
+    One client per call rather than one per process is also what keeps the
+    shadow sweep able to build a dispatcher with no Redis running: nothing here
+    connects until an album actually arrives.
+    """
+    from redis.asyncio import Redis
+
+    from gulbot.config import get_settings
+
+    settings = get_settings()
+    client = Redis.from_url(settings.redis_url(settings.redis_db_broker))
+    try:
+        yield AlbumDebouncer(client)
+    finally:
+        await client.aclose()
 
 
 async def schedule_album_finalize(*, shop_id: int, media_group_id: str) -> None:
     """One task per album, however many photos it has."""
     from gulbot.worker.app import app
 
-    debouncer = get_debouncer()
-    if await debouncer.touch(shop_id=shop_id, media_group_id=media_group_id):
-        app.send_task(
-            "gulbot.finalize_album",
-            args=[shop_id, media_group_id],
-            countdown=debouncer.delay,
-        )
+    async with album_debouncer() as debouncer:
+        if await debouncer.touch(shop_id=shop_id, media_group_id=media_group_id):
+            app.send_task(
+                "gulbot.finalize_album",
+                args=[shop_id, media_group_id],
+                countdown=debouncer.delay,
+            )

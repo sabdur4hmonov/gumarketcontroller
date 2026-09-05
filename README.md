@@ -126,3 +126,7 @@ album's row is still created and merged correctly -- nothing is lost -- but it
 stays provisional (`finalized_at IS NULL`), so it has no price, no tags, and
 CP9's search will not find it. Single photo posts do not depend on the worker:
 they are finalized inline by the handler.
+
+If a finalize task CRASHES, the album's Redis lock is held for 300s and the row
+stays provisional; a later photo or an edit settles it, nothing else will. See
+"A stale-provisional sweep" in docs/CHECKPOINTS.md.
