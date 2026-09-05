@@ -18,7 +18,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import TelegramMethod
 from aiogram.methods.base import TelegramType
-from aiogram.types import CallbackQuery, Chat, Message, PhotoSize, Update, User
+from aiogram.types import CallbackQuery, Chat, Location, Message, PhotoSize, Update, User
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
 TEST_TOKEN = "42:TESTTOKENTESTTOKENTESTTOKENTESTTOKEN"
@@ -147,6 +147,23 @@ def channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
 
 def edited_channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
     return Update(update_id=update_id, edited_channel_post=channel_message(**kwargs))
+
+
+def location_update(
+    *, user_id: int, latitude: float, longitude: float, update_id: int = 1
+) -> Update:
+    """A shared location pin. Not text, so it must not be caught by a
+    text-waiting handler."""
+    return Update(
+        update_id=update_id,
+        message=Message(
+            message_id=update_id,
+            date=datetime.now(tz=UTC),
+            chat=Chat(id=user_id, type="private"),
+            from_user=User(id=user_id, is_bot=False, first_name="Aziz"),
+            location=Location(latitude=latitude, longitude=longitude),
+        ),
+    )
 
 
 async def feed(dispatcher: Dispatcher, bot: Bot, update: Update) -> None:

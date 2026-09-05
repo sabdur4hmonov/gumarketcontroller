@@ -171,6 +171,62 @@ class SendTimeCB(CallbackData, prefix="sendtime"):
         return [cls(value=v).pack() for v in ("morning", "noon", "evening", "skip")]
 
 
+class OrderStartCB(CallbackData, prefix="ordstart"):
+    """The button under a bouquet. Carries only a product id, so a future
+    browse screen is a new caller rather than a rewrite."""
+
+    product_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(product_id=1).pack()]
+
+
+class OrderDateCB(CallbackData, prefix="orddate"):
+    """Days from today, not an ISO date: an offset cannot disagree with the
+    shop's timezone about which day "today" is."""
+
+    offset: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(offset=o).pack() for o in (0, 1, 13)]
+
+
+class OrderHourCB(CallbackData, prefix="ordhour"):
+    hour: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(hour=h).pack() for h in (9, 12, 19)]
+
+
+class OrderLocationCB(CallbackData, prefix="ordloc"):
+    mode: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(mode=m).pack() for m in ("text", "pin")]
+
+
+class OrderConfirmCB(CallbackData, prefix="ordconf"):
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("submit", "discard")]
+
+
+class OrderBackCB(CallbackData, prefix="ordback"):
+    """Back inside the order flow. Per state, never global."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action="back").pack()]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OccasionTypeCB,
     MonthCB,
@@ -187,6 +243,12 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     FlowerCB,
     ReminderCountCB,
     SendTimeCB,
+    OrderStartCB,
+    OrderDateCB,
+    OrderHourCB,
+    OrderLocationCB,
+    OrderConfirmCB,
+    OrderBackCB,
 )
 
 

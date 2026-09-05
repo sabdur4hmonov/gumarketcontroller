@@ -23,7 +23,8 @@ product on its own: reminders work with no catalog and no ordering.
 | CP8 | Channel indexer (albums, edits) | done |
 | CP9 | Search and presentation: a bouquet on every reminder | done |
 | CP9.5 | Ranking fix: resolve the STORED tag, not the preset | done |
-| CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
+| CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
+| CP10b | Group notification + admin ping tick | **blocked**: needs a real Telegram group |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -195,6 +196,46 @@ did at CP6, down to calling `send_text`. Every CP6 dispatcher test passes
 unmodified, which is the evidence that claiming, retrying, 403, 429 and
 dead-lettering were untouched. `dispatcher.py` and `render.py` still know
 nothing about the catalogue; `sending/attach.py` is the single module that does.
+
+## What CP10a guarantees
+
+**An order is written exactly once, and it is frozen.** The confirmation screen
+mints a `submit_token`; both halves of a double-tap carry it and collide on
+`UNIQUE(shop_id, submit_token)`. Answering the callback and clearing the
+keyboard are done too, and are NOT the guarantee -- a customer can win that
+race. Proven by two concurrent submits on separate connections.
+
+**Nothing reaches `orders` before the customer taps Ha.** The flow accumulates
+a draft in FSM state; abandoning it at any step leaves the database untouched,
+which is asserted at every step rather than at one.
+
+**The snapshot is the record.** Name, price and file id are frozen at submit,
+because the catalogue is rebuilt from a channel where posts are edited and
+deleted. `product_id` is a convenience that may become NULL.
+
+DELIVERY SLOTS come from THREE separate rules, and the tests keep them separate:
+per-day `working_hours` decide which hours exist, `same_day_cutoff` removes
+TODAY at the DATE step, and `min_lead_time_minutes` removes individual hours.
+A date with no pickable hour is never offered -- offering it and then showing an
+empty hour list is a dead end. `daily_order_cap` is applied at date selection,
+so a full date is simply absent.
+
+TWO SCHEMA DECISIONS worth not relitigating:
+
+- `ON DELETE SET NULL (product_id)`, column-scoped. On a COMPOSITE foreign key a
+  bare SET NULL nulls EVERY referencing column, which here includes `shop_id`
+  (NOT NULL), so deleting a product failed outright and would have taken the
+  indexer down with it. Postgres 15+ lets the action name its column. Found by
+  the test that deletes a product out from under an order, not by reading.
+- `order_reminders` IS ITS OWN LEDGER. CP6 needed `message_log` because a GROUP
+  of rows shares one message; one ping is one row, so it is claimed in place
+  with a state compare-and-swap. That also avoids loosening message_log's
+  `customer_id NOT NULL` for something that has no customer.
+
+WHAT CP10a DOES NOT DO: transition a status. It writes 'placed' and stops. The
+other four statuses are in the CHECK from the start so the migration that starts
+using them is additive. `tests/test_order_scope.py` fails the build if any code
+in the order path issues an UPDATE against `orders` at all.
 
 ## Briefs already agreed for future checkpoints
 

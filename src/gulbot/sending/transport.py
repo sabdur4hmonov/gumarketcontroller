@@ -17,6 +17,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+from aiogram.types import InlineKeyboardMarkup
+
 
 @dataclass(frozen=True)
 class SendResult:
@@ -61,6 +63,10 @@ class Attachment:
 
     file_id: str
     caption: str
+    #: CP10's "Buyurtma berish" button. Optional so the transport stays usable
+    #: for a bouquet shown without an order path -- and so dispatch still knows
+    #: nothing about what the button does.
+    reply_markup: InlineKeyboardMarkup | None = None
 
 
 class Transport(Protocol):
@@ -68,4 +74,11 @@ class Transport(Protocol):
 
     async def send_text(self, *, chat_id: int, text: str) -> SendResult: ...
 
-    async def send_photo(self, *, chat_id: int, file_id: str, caption: str) -> SendResult: ...
+    async def send_photo(
+        self,
+        *,
+        chat_id: int,
+        file_id: str,
+        caption: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> SendResult: ...

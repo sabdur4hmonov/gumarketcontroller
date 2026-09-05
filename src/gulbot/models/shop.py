@@ -61,6 +61,13 @@ class Shop(IdMixin, TimestampMixin, Base):
     min_lead_time_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("180")
     )
+    # Hours before delivery to ping the shop. An ARRAY, not two columns:
+    # `reminder_offsets` already established that convention and a second one
+    # would be drift. It also stops the ping count being frozen at two.
+    order_ping_offset_hours: Mapped[list[int]] = mapped_column(
+        ARRAY(Integer), nullable=False, server_default=text("'{3,1}'::integer[]")
+    )
+
     # null means uncapped. Counted against delivery_date, never created_at.
     daily_order_cap: Mapped[int | None] = mapped_column(Integer, nullable=True)
 

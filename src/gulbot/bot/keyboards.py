@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from datetime import date, time
 
 from aiogram.types import (
     InlineKeyboardButton,
@@ -22,6 +23,12 @@ from gulbot.bot.callbacks import (
     OccasionActionCB,
     OccasionKindCB,
     OccasionTypeCB,
+    OrderBackCB,
+    OrderConfirmCB,
+    OrderDateCB,
+    OrderHourCB,
+    OrderLocationCB,
+    OrderStartCB,
     RecipientCB,
     RecipientListCB,
     ReminderCountCB,
@@ -32,6 +39,7 @@ from gulbot.bot.callbacks import (
 from gulbot.i18n import t
 from gulbot.models.occasion import MAX_DAY_IN_MONTH, OccasionKind, OccasionType
 from gulbot.models.recipient import FLOWER_PRESETS
+from gulbot.utils.render import format_date_long
 
 
 def _kb(rows: list[list[str]]) -> ReplyKeyboardMarkup:
@@ -367,3 +375,117 @@ def send_time_keyboard(lang: str) -> InlineKeyboardMarkup:
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# --- CP10: ordering --------------------------------------------------------
+
+
+def order_button(lang: str, product_id: int) -> InlineKeyboardMarkup:
+    """The one button under a bouquet.
+
+    Carries only the product id. A future browse screen attaches the same
+    button to the same flow without either side changing.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.order_now", lang),
+                    callback_data=OrderStartCB(product_id=product_id).pack(),
+                )
+            ]
+        ]
+    )
+
+
+def _order_back_row(lang: str) -> list[InlineKeyboardButton]:
+    return [
+        InlineKeyboardButton(
+            text=t("btn.nav.back", lang), callback_data=OrderBackCB(action="back").pack()
+        )
+    ]
+
+
+def order_date_keyboard(lang: str, dates: Sequence[date], today: date) -> InlineKeyboardMarkup:
+    """Only the dates the shop can actually deliver on.
+
+    A date the shop is closed on, already at `daily_order_cap`, or past the
+    same-day cutoff never appears -- rather than being offered and refused.
+    """
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=format_date_long(day.day, day.month, None, lang),
+                callback_data=OrderDateCB(offset=(day - today).days).pack(),
+            )
+        ]
+        for day in dates
+    ]
+    rows.append(_order_back_row(lang))
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def order_hour_keyboard(lang: str, hours: Sequence[time]) -> InlineKeyboardMarkup:
+    """Whole hours, three to a row. Already filtered by working hours and lead
+    time, so every button shown is one the shop can honour."""
+    buttons = [
+        InlineKeyboardButton(
+            text=f"{hour.hour:02d}:00", callback_data=OrderHourCB(hour=hour.hour).pack()
+        )
+        for hour in hours
+    ]
+    rows = [buttons[i : i + 3] for i in range(0, len(buttons), 3)]
+    rows.append(_order_back_row(lang))
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def order_location_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """Write an address, or drop a pin. The customer's choice -- the CHECK on
+    `orders` is what guarantees exactly one of them is stored."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.location_text", lang),
+                    callback_data=OrderLocationCB(mode="text").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.location_pin", lang),
+                    callback_data=OrderLocationCB(mode="pin").pack(),
+                )
+            ],
+            _order_back_row(lang),
+        ]
+    )
+
+
+def share_location_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    """Telegram's native location button. It only exists on a REPLY keyboard,
+    which is why this one step leaves the inline flow."""
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=t("btn.share_location", lang), request_location=True)],
+            [KeyboardButton(text=t("btn.nav.cancel", lang))],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=True,
+    )
+
+
+def order_confirm_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """Nothing is written to `orders` until one of these is tapped."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.yes", lang), callback_data=OrderConfirmCB(action="submit").pack()
+                ),
+                InlineKeyboardButton(
+                    text=t("ibtn.no", lang), callback_data=OrderConfirmCB(action="discard").pack()
+                ),
+            ],
+            _order_back_row(lang),
+        ]
+    )

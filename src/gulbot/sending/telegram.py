@@ -18,7 +18,7 @@ from aiogram.exceptions import (
     TelegramForbiddenError,
     TelegramRetryAfter,
 )
-from aiogram.types import Message
+from aiogram.types import InlineKeyboardMarkup, Message
 
 from gulbot.sending.transport import SendResult
 
@@ -34,7 +34,14 @@ class TelegramTransport:
     async def send_text(self, *, chat_id: int, text: str) -> SendResult:
         return await self._attempt(self._bot.send_message(chat_id=chat_id, text=text), chat_id)
 
-    async def send_photo(self, *, chat_id: int, file_id: str, caption: str) -> SendResult:
+    async def send_photo(
+        self,
+        *,
+        chat_id: int,
+        file_id: str,
+        caption: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> SendResult:
         """CP9. One call, so a reminder with a bouquet is still atomic.
 
         `file_id` is Telegram's own identifier for the photo already in the
@@ -43,7 +50,10 @@ class TelegramTransport:
         post with its phone numbers and stale prices in it.
         """
         return await self._attempt(
-            self._bot.send_photo(chat_id=chat_id, photo=file_id, caption=caption), chat_id
+            self._bot.send_photo(
+                chat_id=chat_id, photo=file_id, caption=caption, reply_markup=reply_markup
+            ),
+            chat_id,
         )
 
     async def _attempt(self, call: Awaitable[Message], chat_id: int) -> SendResult:

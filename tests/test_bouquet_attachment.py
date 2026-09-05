@@ -46,12 +46,18 @@ class RecordingTransport:
     def __init__(self) -> None:
         self.texts: list[str] = []
         self.photos: list[tuple[str, str]] = []
+        self.markups: list[object] = []
 
     async def send_text(self, *, chat_id: int, text: str) -> SendResult:
         self.texts.append(text)
         return SendResult.sent(len(self.texts) + len(self.photos))
 
-    async def send_photo(self, *, chat_id: int, file_id: str, caption: str) -> SendResult:
+    async def send_photo(
+        self, *, chat_id: int, file_id: str, caption: str, reply_markup: object = None
+    ) -> SendResult:
+        # CP10 added the order button; recorded so the flow tests can assert
+        # a bouquet is actually orderable.
+        self.markups.append(reply_markup)
         self.photos.append((file_id, caption))
         return SendResult.sent(len(self.texts) + len(self.photos))
 

@@ -53,6 +53,9 @@ class Recipient(IdMixin, TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
+        # CP1's tenancy pattern: children reference (id, shop_id). Added at
+        # CP10, when `orders` became the first child of a recipient.
+        UniqueConstraint("id", "shop_id"),
         ForeignKeyConstraint(
             ["customer_id", "shop_id"],
             ["customers.id", "customers.shop_id"],

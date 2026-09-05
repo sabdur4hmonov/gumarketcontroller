@@ -56,3 +56,25 @@ class EditRecipient(StatesGroup):
 
     choosing_label = State()
     entering_label = State()
+
+
+class PlaceOrder(StatesGroup):
+    """Ordering a bouquet. Picker-driven, same discipline as AddOccasion.
+
+    TWO text-waiting states and no more: the address and the landmark. Dates and
+    hours are buttons because a free-text delivery time in uz/ru produces
+    garbage no parser fixes -- and because every text-waiting state is somewhere
+    Cancel and /start have to be proven to still win.
+
+    `waiting_location` waits for a Telegram location message, not text, so it is
+    NOT a catch-all: it filters on F.location and lets everything else fall
+    through to nav.
+    """
+
+    choosing_date = State()
+    choosing_hour = State()
+    choosing_location = State()
+    entering_address = State()
+    waiting_location = State()
+    entering_landmark = State()
+    confirming = State()

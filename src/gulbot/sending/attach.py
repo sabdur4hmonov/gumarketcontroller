@@ -25,6 +25,7 @@ from collections.abc import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.bot.keyboards import order_button
 from gulbot.i18n import t
 from gulbot.models.recipient import Recipient
 from gulbot.sending.dispatcher import DueGroup
@@ -85,4 +86,11 @@ async def attach_bouquet(
         # Rather than truncate the reminder or split it into two sends. The
         # reminder is the product; the bouquet is a suggestion.
         return None
-    return Attachment(file_id=bouquet.telegram_file_id, caption=caption)
+    # CP10. The whole point of showing a bouquet is that it can be ordered;
+    # the button carries only the product id, so the order flow is reachable
+    # the same way from a future browse screen.
+    return Attachment(
+        file_id=bouquet.telegram_file_id,
+        caption=caption,
+        reply_markup=order_button(group.lang, bouquet.product_id),
+    )

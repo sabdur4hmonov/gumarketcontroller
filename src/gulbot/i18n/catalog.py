@@ -251,6 +251,63 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "reminder.when.today": {"uz": "bugun", "ru": "сегодня"},
     "reminder.when.tomorrow": {"uz": "ertaga", "ru": "завтра"},
     "reminder.when.in_days": {"uz": "{days} kundan keyin", "ru": "через {days} дн."},
+    # --- CP10: ordering ---------------------------------------------------
+    "ibtn.order_now": {"uz": "💐 Buyurtma berish", "ru": "💐 Заказать"},
+    "order.choose_date": {
+        "uz": "📅 Qachon yetkazib beraylik?",
+        "ru": "📅 Когда доставить?",
+    },
+    "order.no_slots": {
+        "uz": "Kechirasiz, hozircha bo‘sh vaqt yo‘q. Keyinroq urinib ko‘ring.",
+        "ru": "Извините, свободного времени пока нет. Попробуйте позже.",
+    },
+    "order.choose_hour": {"uz": "🕐 Soat nechchida?", "ru": "🕐 В котором часу?"},
+    "order.choose_location": {
+        "uz": "📍 Manzilni qanday yuborasiz?",
+        "ru": "📍 Как отправите адрес?",
+    },
+    "ibtn.location_text": {"uz": "✍️ Manzil yozish", "ru": "✍️ Написать адрес"},
+    "ibtn.location_pin": {"uz": "📍 Joylashuvni yuborish", "ru": "📍 Отправить локацию"},
+    "order.enter_address": {"uz": "Manzilni yozing:", "ru": "Напишите адрес:"},
+    "order.address_empty": {
+        "uz": "Manzil bo‘sh bo‘lmasligi kerak. Qaytadan yozing.",
+        "ru": "Адрес не может быть пустым. Напишите ещё раз.",
+    },
+    "order.share_location": {
+        "uz": "Pastdagi tugma orqali joylashuvingizni yuboring.",
+        "ru": "Отправьте локацию кнопкой ниже.",
+    },
+    "btn.share_location": {
+        "uz": "📍 Joylashuvni yuborish",
+        "ru": "📍 Отправить локацию",
+    },
+    "order.enter_landmark": {
+        "uz": "🧭 Mo‘ljalni yozing (masalan: ko‘k eshik, dorixona yonida):",
+        "ru": "🧭 Напишите ориентир (например: синяя дверь, рядом с аптекой):",
+    },
+    "order.landmark_empty": {
+        "uz": "Mo‘ljal bo‘sh bo‘lmasligi kerak. Qaytadan yozing.",
+        "ru": "Ориентир не может быть пустым. Напишите ещё раз.",
+    },
+    # {bouquet} is REUSED from the reminder keys below, so the
+    # "narx operator tomonidan tasdiqlanadi" wording lives in exactly one place.
+    "order.summary": {
+        "uz": "{bouquet}\n\n📅 {date}, soat {hour}\n📍 {location}\n🧭 {landmark}",
+        "ru": "{bouquet}\n\n📅 {date}, {hour}\n📍 {location}\n🧭 {landmark}",
+    },
+    "order.confirm": {
+        "uz": "Buyurtmani tasdiqlaymizmi?\n\n{summary}",
+        "ru": "Подтверждаем заказ?\n\n{summary}",
+    },
+    "order.location_pin": {"uz": "Joylashuv yuborilgan", "ru": "Локация отправлена"},
+    "order.placed": {
+        "uz": "✅ Buyurtmangiz qabul qilindi!\n\n{summary}\n\nTez orada bog‘lanamiz.",
+        "ru": "✅ Заказ принят!\n\n{summary}\n\nСкоро свяжемся с вами.",
+    },
+    "order.gone": {
+        "uz": "Bu buyurtmani davom ettirib bo‘lmadi. Qaytadan boshlang.",
+        "ru": "Не удалось продолжить заказ. Начните заново.",
+    },
     # CP9. The bouquet line, appended under the reminder as the photo caption.
     "reminder.bouquet": {
         "uz": "💐 <b>{name}</b> — {price} so‘m",

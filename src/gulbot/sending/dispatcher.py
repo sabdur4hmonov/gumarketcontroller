@@ -434,6 +434,7 @@ async def run_tick(
                 chat_id=group.telegram_user_id,
                 file_id=attachment.file_id,
                 caption=attachment.caption,
+                reply_markup=attachment.reply_markup,
             )
         await _apply_outcome(session, group, outcome, now_utc=now_utc, result=result)
         if outcome.blocked:
