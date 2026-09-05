@@ -142,6 +142,17 @@ tulips never share a post.
 confidence; a number next to a phone number is ignored entirely. A post with no
 price is still shown, captioned "narx operator tomonidan tasdiqlanadi".
 
+**If your word for a flower is not the customer's word, add an alias row.**
+Customers choose a favourite from a fixed list -- `atirgul`, `tyulpan`, `lola` --
+and that list does not change. If you tag your roses `#gulkinder` or `#roza`, a
+row in `hashtag_aliases` mapping your word to `atirgul` is what makes those
+customers see your roses first. Without it nothing breaks: they still get a
+reminder and still get a bouquet, just the newest one rather than their
+favourite.
+
+There is no admin screen for this yet -- it is a `psql` insert, or ask whoever
+runs the deployment. Deliberately deferred rather than forgotten.
+
 **Editing a post works.** Change the caption and the price, name and hashtags
 are re-read. Removing every hashtag from a live post hides it from customers
 rather than deleting it.

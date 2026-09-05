@@ -22,6 +22,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP7 | Catalog schema, hashtag normalisation, price parser | done |
 | CP8 | Channel indexer (albums, edits) | done |
 | CP9 | Search and presentation: a bouquet on every reminder | done |
+| CP9.5 | Ranking fix: resolve the STORED tag, not the preset | done |
 | CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
@@ -152,9 +153,31 @@ then entirely ours, rather than the shop's own post with its phone numbers,
 stale prices and unrelated hashtags in it. `channel_chat_id` is still stored as
 the fallback if a file id ever stops resolving.
 
-THE RANKING RULE, in full: a product tagged with the recipient's
-`preferred_hashtag` resolved through `hashtag_aliases`, else the most recently
-indexed. Ties on `indexed_at DESC`. In a merged reminder the preference belongs
+THE RANKING RULE, in full: a product one of whose stored tags RESOLVES to the
+recipient's `preferred_hashtag` through `hashtag_aliases`, else the most
+recently indexed. Ties on `indexed_at DESC`.
+
+**CP9.5 fixed the direction of that resolution, and it was a silent
+correctness bug rather than a refinement.** CP9 compared the preset to the RAW
+stored tag. CP8 stores tags exactly as the shop wrote them, and
+`preferred_hashtag` is CHECK-constrained to `atirgul` / `tyulpan` / `lola`, so
+the tier could only ever fire for a shop whose vocabulary already happened to be
+ours. A shop tagging `#roza` -- an ordinary spelling, already in the shipped
+alias fixture -- was as invisible as one tagging `#gulkinder`. In the live
+catalogue the tier never fired at all.
+
+The fix resolves the STORED side forward and compares canonical to canonical:
+
+    stored '#gulkinder' --alias--> 'atirgul'  ==  preset 'atirgul'   MATCH
+
+Same table, same direction it was built for, applied to the other operand. The
+preset CHECK and the preference buttons are untouched -- widening the enum would
+mean editing a constraint and a keyboard every time a shop's vocabulary differs,
+which is the treadmill `hashtag_aliases` exists to avoid. A shop with its own
+words adds alias rows.
+
+Matching is `EXISTS` over the product's tags, not a join: a post carries several
+hashtags and a join would return the product once per tag. In a merged reminder the preference belongs
 to the recipient whose date is SOONEST -- the one the message leads with.
 Excluded always: provisional albums (`finalized_at IS NULL`), inactive rows, and
 `deleted_at` rows, which nothing writes yet.

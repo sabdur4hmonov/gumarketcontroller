@@ -6,13 +6,27 @@ send path composes the message around the answer.
 
 THE RANKING RULE, stated rather than implied:
 
-    1. a product tagged with the recipient's `preferred_hashtag`, resolved
-       through `hashtag_aliases`;
+    1. a product one of whose tags RESOLVES to the recipient's
+       `preferred_hashtag`, through `hashtag_aliases`;
     2. failing that, the most recently indexed product.
 
 Ties break on `indexed_at DESC`. That is the whole rule. It is expressed as one
 `ORDER BY` rather than two queries so that "preference beats recency" is a
 property of the SQL and not of the order two calls happen to run in.
+
+WHICH WAY THE ALIAS LOOKUP RUNS, because CP9 got this backwards and the tier
+silently never fired. `hashtag_aliases` maps synonym -> canonical, and
+`resolve_alias` walks it that way for customer TEXT. But the preference is
+already canonical (`preferred_hashtag` is CHECK-constrained to the presets), and
+the STORED tag is whatever the shop typed -- CP8 never rewrites it. So the
+resolution has to be applied to the STORED side:
+
+    stored '#gulkinder' --alias--> 'atirgul'  ==  preset 'atirgul'   MATCH
+
+Comparing the preset to the raw stored tag, as CP9 did, can only ever match a
+shop whose own vocabulary already happens to be ours. Proven before the fix:
+with `gulkinder -> atirgul` seeded, a rose tagged `#gulkinder` still lost to an
+unrelated newer product.
 
 NO FUZZY MATCHING, and this is a decision rather than an omission. pg_trgm needs
 `CREATE EXTENSION`, which needs elevated database rights that a future host may
@@ -37,11 +51,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from sqlalchemy import Boolean, ColumnElement, case, literal, select
+from sqlalchemy import Boolean, ColumnElement, func, literal, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.catalog.prices import PriceConfidence
-from gulbot.models.product import Product, ProductHashtag
+from gulbot.models.product import HashtagAlias, Product, ProductHashtag
 from gulbot.services.hashtag_aliases import resolve_alias
 
 
@@ -70,30 +84,53 @@ async def choose_bouquet(
     anything yet still gets its reminders -- the send path falls back to bare
     text, exactly as CP6 sends it.
     """
-    tag = None
+    target = None
     if preferred_hashtag:
-        # Query-side alias resolution. Stored tags are never rewritten, so the
-        # alias table stays editable without a re-index -- see CP8.
+        # Resolve the PRESET too, so both sides of the comparison are canonical.
+        # Presets are canonicals already, so this is identity today -- it is here
+        # so the rule is "canonical == canonical" rather than "canonical ==
+        # whatever the preset happened to be".
         resolved = await resolve_alias(session, shop_id=shop_id, tag=preferred_hashtag)
-        tag = resolved or None
+        target = resolved or None
 
     matched: ColumnElement[bool]
-    if tag is None:
+    if target is None:
         matched = literal(False, Boolean)
-        query = select(Product)
     else:
-        # LEFT JOIN, not a filter: an unmatched product is still a candidate,
-        # it just sorts below a matched one. product_hashtags is unique on
-        # (product_id, hashtag_normalized), so this cannot duplicate rows.
-        joined = select(Product).outerjoin(
-            ProductHashtag,
-            (ProductHashtag.product_id == Product.id) & (ProductHashtag.hashtag_normalized == tag),
+        # CP9.5. The stored tag is resolved FORWARD and compared to the
+        # canonical preset -- not the other way round, which is what CP9 did and
+        # why its preference tier never fired in practice.
+        #
+        # CP8 stores tags exactly as the shop wrote them. So a shop tagging its
+        # roses `#gulkinder`, or `#roza`, or `#rose`, stores that word; the
+        # customer's preset is `atirgul`. Comparing those two strings can only
+        # match a shop whose vocabulary already happens to be ours. Resolving
+        # the STORED side through `hashtag_aliases` is what makes an alias row
+        # (`gulkinder -> atirgul`) close the gap, and it needs no change to the
+        # preset CHECK, the preference buttons, or the alias table's direction.
+        #
+        # EXISTS rather than a join: a product has several tags, and a join
+        # would return it once per tag. Only "does ANY tag resolve to the
+        # preset" matters.
+        matched = (
+            select(literal(1))
+            .select_from(ProductHashtag)
+            .outerjoin(
+                HashtagAlias,
+                (HashtagAlias.shop_id == shop_id)
+                & (HashtagAlias.alias_normalized == ProductHashtag.hashtag_normalized),
+            )
+            .where(
+                ProductHashtag.product_id == Product.id,
+                func.coalesce(HashtagAlias.canonical_hashtag, ProductHashtag.hashtag_normalized)
+                == target,
+            )
+            .exists()
         )
-        matched = case((ProductHashtag.product_id.is_not(None), True), else_=False)
-        query = joined
 
     product = await session.scalar(
-        query.where(
+        select(Product)
+        .where(
             Product.shop_id == shop_id,
             Product.active.is_(True),
             Product.deleted_at.is_(None),

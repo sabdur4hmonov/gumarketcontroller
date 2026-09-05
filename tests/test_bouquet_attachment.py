@@ -16,6 +16,7 @@ match, a caption too long -- falls back to the bare text CP6 sent.
 from __future__ import annotations
 
 import json
+import pathlib
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionm
 from tests.bot_harness import bound_session_factory
 
 from gulbot.models.notification import NotificationState
+from gulbot.models.recipient import FLOWER_PRESETS
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
 from gulbot.sending.attach import attach_bouquet, leading_recipient
 from gulbot.sending.dispatcher import run_tick
@@ -229,23 +231,123 @@ async def test_an_unmatched_preference_still_returns_something(world: dict) -> N
     assert chosen is not None and chosen.name == "rose"
 
 
-async def test_a_preference_matches_through_the_alias_table(world: dict) -> None:
-    """Query-side resolution. Stored tags are never rewritten -- CP8's rule --
-    so the alias table has to be consulted on the way IN."""
-    await add_product(world, name="rose", tags=("atirgul",), indexed_offset=0, message_id=1)
-    await add_product(world, name="newer-tulip", tags=("tyulpan",), indexed_offset=60, message_id=2)
+async def add_alias(world: dict, alias: str, canonical: str) -> None:
     await world["db"].execute(
         text(
             "INSERT INTO hashtag_aliases (shop_id, alias_normalized, canonical_hashtag) "
-            "VALUES (:s, 'roza', 'atirgul')"
+            "VALUES (:s, :a, :c)"
         ),
-        {"s": world["shop"]},
+        {"s": world["shop"], "a": alias, "c": canonical},
     )
 
-    async with world["sessions"]() as session:
-        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="roza")
 
-    assert chosen is not None and chosen.name == "rose", "the alias was not resolved"
+async def test_a_shop_using_its_own_word_for_roses_still_matches_the_preset(
+    world: dict,
+) -> None:
+    """CP9.5, and the case CP9 got backwards.
+
+    A real shop tags its roses with its own word. The customer's preset is
+    `atirgul`, because `preferred_hashtag` is CHECK-constrained to the three
+    presets. CP9 compared those two strings directly, so the preference tier
+    could only fire for a shop whose vocabulary already happened to be ours --
+    and in the live catalogue it never fired at all.
+
+    The fix resolves the STORED tag forward instead. One alias row closes the
+    gap, with no change to the CHECK or to the preference buttons.
+    """
+    await add_product(world, name="shop-roses", tags=("gulkinder",), indexed_offset=0, message_id=1)
+    await add_product(
+        world, name="unrelated-newer", tags=("boshqa",), indexed_offset=60, message_id=2
+    )
+    await add_alias(world, "gulkinder", "atirgul")
+
+    async with world["sessions"]() as session:
+        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="atirgul")
+
+    assert chosen is not None
+    assert chosen.name == "shop-roses", "the stored tag was not resolved through the alias table"
+
+
+async def test_a_seeded_synonym_matches_the_preset_too(world: dict) -> None:
+    """The same bug, without any custom vocabulary at all.
+
+    `roza -> atirgul` is in the shipped fixture. A shop tagging `#roza` -- an
+    ordinary spelling, nothing exotic -- was equally invisible to a customer
+    who prefers `atirgul`. This is why CP9.5 is a correctness fix and not a
+    convenience for unusual shops.
+    """
+    await add_product(world, name="roza-roses", tags=("roza",), indexed_offset=0, message_id=1)
+    await add_product(world, name="newer-other", tags=("boshqa",), indexed_offset=60, message_id=2)
+    await add_alias(world, "roza", "atirgul")
+
+    async with world["sessions"]() as session:
+        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="atirgul")
+
+    assert chosen is not None and chosen.name == "roza-roses"
+
+
+async def test_a_product_tagged_with_the_preset_itself_still_matches(world: dict) -> None:
+    """Regression guard. Resolving the stored side must not break the plain
+    case where the shop already uses our word and there is no alias row."""
+    await add_product(world, name="plain", tags=("atirgul",), indexed_offset=0, message_id=1)
+    await add_product(world, name="newer-other", tags=("boshqa",), indexed_offset=60, message_id=2)
+
+    async with world["sessions"]() as session:
+        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="atirgul")
+
+    assert chosen is not None and chosen.name == "plain"
+
+
+async def test_an_unaliased_shop_word_does_not_match(world: dict) -> None:
+    """Guards the guard. Without an alias row `gulkinder` means nothing to us,
+    and inventing a match would be exactly the false positive that ruled out
+    fuzzy search in the first place."""
+    await add_product(world, name="shop-roses", tags=("gulkinder",), indexed_offset=0, message_id=1)
+    await add_product(world, name="newer-other", tags=("boshqa",), indexed_offset=60, message_id=2)
+
+    async with world["sessions"]() as session:
+        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="atirgul")
+
+    assert chosen is not None and chosen.name == "newer-other", "an unaliased word matched"
+
+
+async def test_one_of_several_tags_resolving_is_enough(world: dict) -> None:
+    """A post carries several hashtags. The match is EXISTS over them, which is
+    also why a join would be wrong -- it would return the product once per tag."""
+    await add_product(
+        world, name="multi", tags=("katta", "gulkinder", "sovga"), indexed_offset=0, message_id=1
+    )
+    await add_product(world, name="newer-other", tags=("boshqa",), indexed_offset=60, message_id=2)
+    await add_alias(world, "gulkinder", "atirgul")
+
+    async with world["sessions"]() as session:
+        chosen = await choose_bouquet(session, shop_id=world["shop"], preferred_hashtag="atirgul")
+
+    assert chosen is not None and chosen.name == "multi"
+
+
+def test_the_preference_tests_only_use_storable_presets() -> None:
+    """Pins the mistake CP9's alias test made.
+
+    That test passed an ALIAS (roza) as the preference straight to
+    `choose_bouquet`, bypassing the CHECK -- so it asserted a scenario
+    production can never produce, and went on passing while the real direction
+    was broken. Every preference used in this file must be a value the database
+    would actually accept.
+
+    The offending literal is deliberately not spelled out above: this test scans
+    its own source, and quoting the mistake verbatim would make it flag itself.
+    """
+    import re
+
+    source = pathlib.Path(__file__).read_text(encoding="utf-8")
+    used = set(re.findall(r'preferred_hashtag="([a-z]+)"', source))
+    used |= set(re.findall(r'preferred="([a-z]+)"', source))
+    assert used, "guards the guard: no preferences found to check"
+    assert used <= set(FLOWER_PRESETS), (
+        f"these are not storable in recipients.preferred_hashtag: "
+        f"{sorted(used - set(FLOWER_PRESETS))}"
+    )
 
 
 # --- the exclusions --------------------------------------------------------
