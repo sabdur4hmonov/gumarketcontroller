@@ -79,12 +79,29 @@ async def on_channel_post(
     result = await ingest_post(session, post)
 
     if result.outcome is Ingest.IGNORED:
-        # No row, no tracked skip. A text announcement or an untagged photo is
-        # simply not a catalogue entry.
+        # No row and no tracked skip -- a text announcement or an untagged photo
+        # is simply not a catalogue entry. But it is LOGGED, because silence
+        # here is indistinguishable from "the update never arrived", and that
+        # ambiguity cost two rounds of diagnosis during CP8's live test. The
+        # real cause turned out to be upstream: posts made before the bot was
+        # promoted to channel admin generate no update at all.
+        log.info(
+            "ignored message=%s reason=%s",
+            post.message_id,
+            "no_photo" if not post.has_photo else "no_hashtag",
+        )
         return
 
     if result.needs_debounce and post.media_group_id is not None:
         await schedule_finalize(shop_id=shop_id, media_group_id=post.media_group_id)
+        # Same reasoning: without this, an album's arrival is invisible until
+        # the worker speaks several seconds later, if it speaks at all.
+        log.info(
+            "album member message=%s group=%s outcome=%s",
+            post.message_id,
+            post.media_group_id,
+            result.outcome.value,
+        )
         return
 
     outcome = await finalize_product(session, shop_id=shop_id, channel_message_id=post.message_id)

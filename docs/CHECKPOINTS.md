@@ -95,6 +95,33 @@ once while photos are still arriving (`{'action': 'wait'}`), rescheduled, and
 finalized (`{'action': 'done', 'outcome': 'finalized'}`). That run found a bug
 the whole green suite could not: see below.
 
+LIVE EVIDENCE, against a real channel (`-1003987514504`), 5 Sep 2026:
+
+| | single post | album |
+|---|---|---|
+| `channel_message_id` | 6 | 7 (the earliest of the group -- the anchor) |
+| `media_group_id` | NULL | `14308998368401066` |
+| rows created | 1 | 1, from 4 arrivals |
+| `finalized_at - indexed_at` | 12 ms, inline | 4.1 s, via the debounce and a real Celery worker |
+| price | NULL / `none` | NULL / `none` |
+
+The 4.1 s is the mechanism working, not latency: a 3 s debounce plus worker
+pickup. The four arrivals collapsing to one row is visible in `products_id_seq`,
+which advanced by four while only one row appeared -- a conflicting
+`ON CONFLICT` insert still burns an id.
+
+Both captions were hashtag-only, so both rows exercised the `product_name()`
+fallback to the first tag, and both are unpriced -- the "never drop an unpriced
+post" rule got its live proof by accident rather than by design.
+
+OPERATIONAL GOTCHA, learned the hard way. **A channel post made before the bot
+is promoted to admin generates no update at all, and is unrecoverable.**
+Telegram does not backfill, and the Bot API cannot read channel history -- which
+is the same limitation `caption_raw` exists for. The first live attempt indexed
+nothing for exactly this reason and looked like an indexer bug. It was not:
+`products_id_seq` had not moved, and a rolled-back INSERT still burns a
+sequence value, so the handler provably never ran.
+
 What CP9 may rely on, and must not break:
 
 - **Filter on `finalized_at IS NOT NULL`**, or you will show half-built albums.

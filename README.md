@@ -130,3 +130,9 @@ they are finalized inline by the handler.
 If a finalize task CRASHES, the album's Redis lock is held for 300s and the row
 stays provisional; a later photo or an edit settles it, nothing else will. See
 "A stale-provisional sweep" in docs/CHECKPOINTS.md.
+
+**Promote the bot to channel admin BEFORE posting anything you expect indexed.**
+A post made earlier generates no update, Telegram never backfills, and the Bot
+API cannot read channel history, so it is gone. To check what Telegram is
+actually delivering, stop `bot.run` and long-poll `getUpdates` yourself -- two
+concurrent pollers get a 409.
