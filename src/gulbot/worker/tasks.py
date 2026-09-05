@@ -22,7 +22,10 @@ log = logging.getLogger("gulbot.worker")
 
 
 async def _send_due_reminders() -> dict[str, int]:
+    from functools import partial
+
     from gulbot.bot.factory import build_bot
+    from gulbot.sending.attach import attach_bouquet
     from gulbot.sending.telegram import TelegramTransport
 
     bot = build_bot()
@@ -35,6 +38,9 @@ async def _send_due_reminders() -> dict[str, int]:
                 render=render_reminder,
                 now_utc=datetime.now(UTC),
                 limiter=limiter,
+                # CP9. Returns None for an empty catalogue or no match, and the
+                # tick then sends bare text exactly as CP6 did.
+                attach=partial(attach_bouquet, session, render=render_reminder),
             )
             await session.commit()
     finally:

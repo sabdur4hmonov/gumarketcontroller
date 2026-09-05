@@ -21,7 +21,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP6 | Beat tick + reminder send — **ship line** | done |
 | CP7 | Catalog schema, hashtag normalisation, price parser | done |
 | CP8 | Channel indexer (albums, edits) | done |
-| CP9 | Search and presentation (copyMessage, overridden caption) | next |
+| CP9 | Search and presentation: a bouquet on every reminder | done |
 | CP10 | Ordering end-to-end: order FSM, submit, shop group card | |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
@@ -134,6 +134,44 @@ What CP9 may rely on, and must not break:
   CP9 resolves the QUERY through `hashtag_aliases`. Resolving at index time
   would bake one version of the alias table into stored rows.
 - `deleted_at` is still written by nothing. Filter on it defensively anyway.
+
+## What CP9 guarantees
+
+**A reminder carries a bouquet, and never loses a reminder to do it.** The
+catalogue may ADD to a reminder; it may never COST one. An empty catalogue, a
+customer whose preference matches nothing, a reminder too long to be a caption --
+each falls back to the bare text CP6 sent, and the row is still marked sent.
+
+**A reminder with a bouquet is still ONE API call.** `sendPhoto` carries the
+reminder as its caption, so CP6's contract holds unchanged: every row of a group
+marked in a single UPDATE, no partially-sent state. Text and photo as two
+messages would have broken that, which is why one bouquet rather than three.
+
+`sendPhoto` with the stored `telegram_file_id`, NOT `copyMessage`. The caption is
+then entirely ours, rather than the shop's own post with its phone numbers,
+stale prices and unrelated hashtags in it. `channel_chat_id` is still stored as
+the fallback if a file id ever stops resolving.
+
+THE RANKING RULE, in full: a product tagged with the recipient's
+`preferred_hashtag` resolved through `hashtag_aliases`, else the most recently
+indexed. Ties on `indexed_at DESC`. In a merged reminder the preference belongs
+to the recipient whose date is SOONEST -- the one the message leads with.
+Excluded always: provisional albums (`finalized_at IS NULL`), inactive rows, and
+`deleted_at` rows, which nothing writes yet.
+
+NO FUZZY MATCHING, decided rather than omitted. pg_trgm needs `CREATE EXTENSION`
+and elevated rights a future host may not grant, and its threshold would be a
+guess made before there is usage data. Showing the WRONG flower is worse than
+showing none. `hashtag_aliases` scales to as many flower types as the shop adds;
+it is a different tool, not a weaker one. Revisit with real "no match" query
+logs, not preemptively.
+
+THE SEAM. `run_tick` GREW a parameter rather than changing one: `attach` is
+optional and defaults to None, so a tick built without it behaves exactly as it
+did at CP6, down to calling `send_text`. Every CP6 dispatcher test passes
+unmodified, which is the evidence that claiming, retrying, 403, 429 and
+dead-lettering were untouched. `dispatcher.py` and `render.py` still know
+nothing about the catalogue; `sending/attach.py` is the single module that does.
 
 ## Briefs already agreed for future checkpoints
 

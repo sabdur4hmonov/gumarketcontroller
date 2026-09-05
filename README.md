@@ -105,6 +105,47 @@ solo pool inside **one process** does not race at all, and the test would pass
 vacuously while proving nothing. CP5 must document the exact local invocation,
 and CP6's race test must assert it is running against more than one process.
 
+## For the shop: how to post to the catalogue channel
+
+Written for whoever runs the shop, not for a developer. It belongs in a
+shop-facing help doc once one exists; it is here because that is the only place
+it currently can be.
+
+**Promote the bot to channel admin BEFORE posting anything you expect indexed.**
+A post made earlier generates no update at all. Telegram never backfills and the
+Bot API cannot read channel history, so an earlier post is gone for good --
+repost it.
+
+**Every post needs a photo and at least one hashtag.** A post with no photo, or
+a photo with no hashtag, is ignored on purpose: an announcement is not a
+catalogue entry. `#150000` does not count as a hashtag -- a tag of digits alone
+is read as a price or a phone number, never a flower.
+
+**ONE POST PER BOUQUET. Never mix flower types in a single album.**
+
+This is the rule that matters most, because breaking it fails silently.
+
+  - Several photos of the SAME bouquet -- different angles, different light --
+    posted together as one album with one caption: correct. They become ONE
+    product, which is exactly right.
+  - DIFFERENT bouquets posted together as one album under one caption: wrong.
+    They also become one product, because an album is one caption and one
+    price, and the catalogue has no way to tell that the third photo was a
+    different flower. The other bouquets simply never enter the catalogue, with
+    no error anywhere.
+
+So: one album per distinct bouquet, its own caption, its own hashtags. Roses and
+tulips never share a post.
+
+**Write the price with a currency or price word** -- `450 000 so'm`, or
+`Narxi: 450 000`. A bare number is taken as a probable price and shown with less
+confidence; a number next to a phone number is ignored entirely. A post with no
+price is still shown, captioned "narx operator tomonidan tasdiqlanadi".
+
+**Editing a post works.** Change the caption and the price, name and hashtags
+are re-read. Removing every hashtag from a live post hides it from customers
+rather than deleting it.
+
 ## Running the worker locally
 
 ```

@@ -35,3 +35,9 @@ def format_date_long(day: int, month: int, year: int | None, lang: str) -> str:
     name = t(f"month.{month}", lang).lower()
     base = f"{day}-{name}"
     return f"{base} {year}" if year else base
+
+
+def format_price(amount: int) -> str:
+    """1200000 -> "1 200 000". A narrow no-break space would be typographically
+    nicer and is a copy-paste hazard in a chat; a plain space is not."""
+    return f"{amount:,}".replace(",", " ")

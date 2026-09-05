@@ -233,6 +233,17 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "reminder.when.today": {"uz": "bugun", "ru": "сегодня"},
     "reminder.when.tomorrow": {"uz": "ertaga", "ru": "завтра"},
     "reminder.when.in_days": {"uz": "{days} kundan keyin", "ru": "через {days} дн."},
+    # CP9. The bouquet line, appended under the reminder as the photo caption.
+    "reminder.bouquet": {
+        "uz": "💐 <b>{name}</b> — {price} so‘m",
+        "ru": "💐 <b>{name}</b> — {price} сум",
+    },
+    # An unpriced post is SHOWN, never hidden. A named requirement since the
+    # original design brief.
+    "reminder.bouquet.no_price": {
+        "uz": "💐 <b>{name}</b> — narx operator tomonidan tasdiqlanadi",
+        "ru": "💐 <b>{name}</b> — цену подтвердит оператор",
+    },
     "reminder.footer": {
         "uz": "Gul bilan xursand qilamizmi? /start",
         "ru": "Хотите заказать цветы? /start",

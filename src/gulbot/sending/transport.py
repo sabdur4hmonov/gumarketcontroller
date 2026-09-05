@@ -1,9 +1,15 @@
 """The narrow interface the tick sends through.
 
-Everything the dispatcher knows about Telegram is `send_text`. Tests inject a
-fake; production injects the aiogram-backed one. That is also the seam CP9 will
-use to attach bouquet suggestions -- a richer transport, not a change to the
-dispatch logic.
+Everything the dispatcher knows about Telegram is `send_text` and, since CP9,
+`send_photo`. Tests inject a fake; production injects the aiogram-backed one.
+
+CP9 widened this rather than dispatch: a reminder that carries a bouquet is
+still ONE API call, so CP6's contract -- every row of a group marked in a single
+UPDATE, no partially-sent state -- holds unchanged. That is why the reminder text
+becomes the photo's CAPTION instead of a separate message.
+
+`Attachment` is deliberately just a file id and a caption. The dispatcher must
+not learn what a product is; composing one is `sending/attach.py`'s job.
 """
 
 from __future__ import annotations
@@ -43,7 +49,23 @@ class SendResult:
         return cls(ok=False, error_code=error_code)
 
 
+#: Telegram's limit for a photo caption. A reminder longer than this cannot be
+#: sent as one photo message, and CP9 falls back to bare text rather than
+#: truncating a reminder or splitting it into two sends.
+CAPTION_LIMIT = 1024
+
+
+@dataclass(frozen=True)
+class Attachment:
+    """A photo message, already composed. No catalogue types leak past here."""
+
+    file_id: str
+    caption: str
+
+
 class Transport(Protocol):
-    """The only capability the dispatcher has."""
+    """The only capabilities the dispatcher has."""
 
     async def send_text(self, *, chat_id: int, text: str) -> SendResult: ...
+
+    async def send_photo(self, *, chat_id: int, file_id: str, caption: str) -> SendResult: ...

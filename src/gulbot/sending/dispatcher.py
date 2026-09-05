@@ -36,7 +36,7 @@ See models/message_log.py for the claim/timeout contract.
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
@@ -56,14 +56,27 @@ from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
 from gulbot.sending.rate_limit import RateLimiter
-from gulbot.sending.transport import SendResult, Transport
+from gulbot.sending.transport import Attachment, SendResult, Transport
 
 log = logging.getLogger("gulbot.sending")
 
 #: Turns a due group into message text. Injected so the dispatcher never
-#: needs to know how a reminder is worded -- and so CP9 can widen what a
-#: reminder contains without touching dispatch at all.
+#: needs to know how a reminder is worded.
 Renderer = Callable[["DueGroup"], str]
+
+#: CP9. Optionally turns a due group into a ready-made photo message. Returning
+#: None means "send bare text", which is CP6 unchanged and is what happens for
+#: an empty catalogue, a customer with no match, or a reminder too long to be a
+#: caption.
+#:
+#: It hands back an `Attachment` -- a file id and a caption -- rather than a
+#: product, so dispatch still does not know the catalogue exists. Composing one
+#: is `sending/attach.py`'s job.
+#:
+#: DELIBERATELY OPTIONAL. Every CP6 dispatcher test constructs `run_tick`
+#: without it and passes unmodified, which is the evidence that claiming,
+#: retrying, 403, 429 and dead-lettering were not disturbed by CP9.
+Attacher = Callable[["DueGroup"], Awaitable["Attachment | None"]]
 
 #: Rows examined per tick. One minute is plenty for this many sends at ~28/s,
 #: and it bounds how long a tick holds its locks.
@@ -348,6 +361,7 @@ async def run_tick(
     limit: int = BATCH_SIZE,
     channel: str = "telegram",
     limiter: RateLimiter | None = None,
+    attach: Attacher | None = None,
 ) -> TickResult:
     """One beat. Returns what it did, for logging and for tests."""
     result = TickResult()
@@ -410,7 +424,17 @@ async def run_tick(
         if limiter is not None:
             result.waited_seconds += await limiter.acquire(group.telegram_user_id)
 
-        outcome = await transport.send_text(chat_id=group.telegram_user_id, text=render(group))
+        # ONE call either way. A bouquet rides along as the photo's caption
+        # rather than as a second message, so the group is still atomic.
+        attachment = await attach(group) if attach is not None else None
+        if attachment is None:
+            outcome = await transport.send_text(chat_id=group.telegram_user_id, text=render(group))
+        else:
+            outcome = await transport.send_photo(
+                chat_id=group.telegram_user_id,
+                file_id=attachment.file_id,
+                caption=attachment.caption,
+            )
         await _apply_outcome(session, group, outcome, now_utc=now_utc, result=result)
         if outcome.blocked:
             blocked.add(group.customer_id)

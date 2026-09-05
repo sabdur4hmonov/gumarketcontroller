@@ -1,10 +1,23 @@
-"""CP6 sends bare reminder text, and the materializer respects a blocked customer.
+"""Where the catalogue may and may not appear in the send path.
 
-Two fences and one wiring test:
+REPLACED AT CP9, deliberately, and worth explaining rather than quietly
+deleting. Until CP9 this file failed the build if the send path so much as
+mentioned a product, a catalogue, a hashtag or a bouquet. CP9 is the checkpoint
+that makes some of that legal -- so the fence moves rather than disappears.
 
-* the send path must not reach into the catalogue -- that is CP9;
-* a customer who blocked the bot must stop generating rows at all, otherwise
-  the outbox refills nightly with sends that can only ever come back 403.
+The rule now:
+
+  * `dispatcher.py` and `render.py` still know NOTHING about the catalogue.
+    Dispatch owns claiming, retrying, 403/429 and marking, and none of that
+    changes because a message carries a photo. The renderer produces words.
+  * `attach.py` is the ONE module allowed to know. It reads the catalogue and
+    hands dispatch an `Attachment` -- a file id and a caption -- so no catalogue
+    type crosses into dispatch.
+  * Nothing in the send path may reach the INDEXER, or write to the catalogue.
+    CP9 is a reader. CP8 owns the writes.
+
+Also here: a customer who blocked the bot must stop generating rows at all,
+otherwise the outbox refills nightly with sends that can only ever come back 403.
 """
 
 from __future__ import annotations
@@ -16,6 +29,7 @@ import sys
 import tokenize
 from datetime import UTC, datetime
 from pathlib import Path
+from textwrap import dedent
 
 import pytest
 import pytest_asyncio
@@ -28,23 +42,30 @@ from gulbot.services.materializer import materialize_shop
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-SEND_PATH = (
+#: These must stay catalogue-free for as long as the project exists.
+CATALOGUE_FREE = (
     REPO_ROOT / "src/gulbot/sending/dispatcher.py",
     REPO_ROOT / "src/gulbot/sending/render.py",
-    REPO_ROOT / "src/gulbot/sending/transport.py",
-    REPO_ROOT / "src/gulbot/sending/telegram.py",
 )
 
-#: CP9 attaches bouquet suggestions by widening the transport and the renderer.
-#: Until then, none of these may appear in the send path.
-FORBIDDEN = ("product", "catalog", "catalogue", "hashtag", "bouquet", "copyMessage")
+#: The one module that may read the catalogue, plus the query service it uses.
+CATALOGUE_AWARE = (
+    REPO_ROOT / "src/gulbot/sending/attach.py",
+    REPO_ROOT / "src/gulbot/services/bouquets.py",
+)
+
+FORBIDDEN = ("product", "catalog", "catalogue", "hashtag", "bouquet")
+
+#: CP9 reads. Writing to the catalogue from the send path would mean a reminder
+#: could mutate the shop's inventory, which is CP8's job and CP10's decision.
+WRITE_TOKENS = ("insert", "update(", "delete(", "commit", "flush")
 
 
 def code_only(path: Path) -> str:
     """Source with comments and string literals stripped.
 
-    The modules explain in prose that they do NOT touch the catalogue, which a
-    naive substring scan would read as evidence that they do.
+    These modules explain in prose exactly what they do NOT do, which a naive
+    substring scan would read as evidence that they do it.
     """
     kept: list[str] = []
     with path.open("rb") as handle:
@@ -55,94 +76,82 @@ def code_only(path: Path) -> str:
     return " ".join(kept)
 
 
-@pytest.mark.parametrize("path", SEND_PATH, ids=lambda p: p.name)
-def test_the_send_path_does_not_touch_the_catalogue(path: Path) -> None:
+@pytest.mark.parametrize("path", CATALOGUE_FREE, ids=lambda p: p.name)
+def test_dispatch_and_wording_never_learn_what_a_product_is(path: Path) -> None:
     source = code_only(path).lower()
     for token in FORBIDDEN:
-        assert token.lower() not in source, f"{path.name} reaches into CP9: {token}"
+        assert token not in source, f"{path.name} should not know about {token}"
 
 
-def test_the_send_path_imports_no_catalogue_service() -> None:
-    """Fresh interpreter, so transitive imports count too.
+@pytest.mark.parametrize("path", CATALOGUE_AWARE, ids=lambda p: p.name)
+def test_the_catalogue_aware_modules_only_read(path: Path) -> None:
+    source = code_only(path).lower()
+    for token in WRITE_TOKENS:
+        assert token not in source, f"{path.name} writes to the catalogue: {token}"
 
-    NARROWED AT CP7, deliberately, and worth explaining rather than quietly
-    editing. This used to watch `gulbot.catalog` and `gulbot.models.product`
-    wholesale. Two facts make that the wrong measurement now:
 
-      * `gulbot/models/__init__.py` is an Alembic registry that imports EVERY
-        model, so importing any one model loads all of them. The send path gets
-        `models.product` whether it wants it or not.
-      * `models/product.py` reuses `PriceConfidence` from the pure price
-        parser. That dependency direction -- a model importing a pure value
-        type -- is the correct one. Inverting it would make the pure layer
-        import the ORM and break its own purity guard.
+def test_the_send_path_does_not_reach_the_indexer() -> None:
+    """CP8 writes the catalogue; CP9 reads it. They must not meet.
 
-    So module LOADING can no longer distinguish "uses the catalogue" from
-    "shares an enum with it". What still can, and what this now asserts, is
-    that no catalogue SERVICE or query layer is reachable from the send path --
-    that is what CP9 would have to add, and what must not appear before it.
-
-    The precise instrument is `test_the_send_path_does_not_touch_the_catalogue`
-    above: it scans the send path's own code with comments and strings
-    stripped, and still passes at zero mentions.
+    Fresh interpreter, so a transitive import counts. In-process this would
+    pass trivially -- pytest has imported the whole package by the time any
+    test runs.
     """
-    program = (
-        "import sys\n"
-        "import gulbot.sending.dispatcher, gulbot.sending.render\n"
-        "watched = ('gulbot.services.products', 'gulbot.services.catalog',\n"
-        "           'gulbot.services.hashtag_aliases', 'gulbot.services.search',\n"
-        "           'gulbot.catalog.search', 'gulbot.catalog.indexer',\n"
-        "           'gulbot.bot.routers.catalog')\n"
-        "bad = sorted(m for m in sys.modules if m.startswith(watched))\n"
-        "print(','.join(bad))\n"
+    program = dedent(
+        """
+        import sys
+        import gulbot.sending.attach, gulbot.sending.dispatcher
+        watched = ('gulbot.services.indexer', 'gulbot.catalog.indexer',
+                   'gulbot.bot.channel', 'gulbot.bot.routers')
+        bad = sorted(m for m in sys.modules if m.startswith(watched))
+        print(','.join(bad))
+        """
     )
     result = subprocess.run(
-        [sys.executable, "-c", program],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        check=True,
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=REPO_ROOT, check=True
     )
-    assert result.stdout.strip() == ""
+    assert result.stdout.strip() == "", f"the send path reached the indexer: {result.stdout}"
 
 
-def test_the_send_path_reaches_the_catalogue_only_through_the_model_registry() -> None:
-    """Pins WHY the fence above was narrowed, so it cannot rot into nothing.
+def test_dispatch_alone_still_pulls_in_no_catalogue_service() -> None:
+    """The narrower claim, unchanged in spirit from CP7.
 
-    If the send path ever imports the catalogue for a reason other than the
-    model registry and the shared enum, this fails and the narrowing has to be
-    revisited rather than assumed still valid.
+    `attach.py` may import the query service. Dispatch, imported on its own,
+    must still not -- which is what makes the seam real rather than nominal.
     """
-    allowed = {"gulbot.catalog", "gulbot.catalog.prices", "gulbot.models.product"}
-    program = (
-        "import sys\n"
-        "import gulbot.sending.dispatcher, gulbot.sending.render\n"
-        "seen = sorted(m for m in sys.modules if m.startswith('gulbot.catalog'))\n"
-        "print(','.join(seen))\n"
+    program = dedent(
+        """
+        import sys
+        import gulbot.sending.dispatcher, gulbot.sending.render
+        watched = ('gulbot.services.products', 'gulbot.services.bouquets',
+                   'gulbot.services.catalog', 'gulbot.services.hashtag_aliases',
+                   'gulbot.services.indexer', 'gulbot.sending.attach')
+        bad = sorted(m for m in sys.modules if m.startswith(watched))
+        print(','.join(bad))
+        """
     )
     result = subprocess.run(
-        [sys.executable, "-c", program],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        check=True,
+        [sys.executable, "-c", program], capture_output=True, text=True, cwd=REPO_ROOT, check=True
     )
-    loaded = {m for m in result.stdout.strip().split(",") if m}
-    unexpected = loaded - allowed
-    assert not unexpected, f"the send path pulled in more catalogue than the enum: {unexpected}"
+    assert result.stdout.strip() == "", f"dispatch pulled in: {result.stdout}"
 
 
-def test_the_renderer_is_the_seam_cp9_will_widen() -> None:
-    """Dispatch depends on a Renderer alias, not on message wording.
+def test_the_attacher_is_optional_so_cp6_dispatch_is_unchanged() -> None:
+    """The reason every CP6 dispatcher test passes unmodified.
 
-    CP9 changes what a reminder contains by changing the renderer and the
-    transport; it should not need to touch dispatch at all.
+    `run_tick` grew a parameter rather than changing one. A tick built without
+    an attacher behaves exactly as it did at CP6, down to calling `send_text`.
     """
+    import inspect
+
     from gulbot.sending import dispatcher
 
-    assert hasattr(dispatcher, "Renderer")
+    parameters = inspect.signature(dispatcher.run_tick).parameters
+    assert parameters["attach"].default is None
+    assert hasattr(dispatcher, "Attacher")
     source = code_only(REPO_ROOT / "src/gulbot/sending/dispatcher.py")
-    assert "render (" in source or "render(" in source
+    assert "send_text" in source, "the text path must survive; it is the fallback"
+    assert "send_photo" in source
 
 
 # --- a blocked customer stops being materialized ---------------------------
