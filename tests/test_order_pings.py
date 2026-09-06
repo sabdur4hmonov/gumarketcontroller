@@ -250,7 +250,15 @@ async def _ping(
                     "s": shop,
                     "o": order,
                     "n": number,
-                    "d": due or datetime.now(UTC),
+                    # A SECOND IN THE PAST, not `now`. A test that captures
+                    # `now` and then inserts gets a due time strictly later than
+                    # it, so `due_at_utc <= now_utc` is false and the row is not
+                    # due at all -- the claim logic under test never runs. On
+                    # Windows the ~15.6ms clock granularity usually makes the
+                    # two reads equal, which hid this until a loaded machine
+                    # stretched one full-suite run to 1818s and they straddled a
+                    # tick. Reproduced deterministically with a 50ms sleep.
+                    "d": due if due is not None else datetime.now(UTC) - timedelta(seconds=1),
                     "st": state,
                     "a": attempts,
                     "c": claimed_at,
@@ -577,7 +585,10 @@ async def test_a_worker_that_dies_after_claiming_causes_no_second_send(world: di
     state change from `claim_due_pings` fails this and leaves those green.
     """
     now = datetime.now(UTC)
-    ping = await _ping(world["db"], world["shop"], world["order"])
+    # Explicitly due. These claim tests pass `now_utc=now` captured BEFORE the
+    # insert, so the row must be due relative to THAT instant, not to the
+    # insert's own clock read.
+    ping = await _ping(world["db"], world["shop"], world["order"], due=now - timedelta(seconds=1))
     factory = bound_session_factory(world["db"])
 
     async with factory() as session:
@@ -649,7 +660,14 @@ async def test_a_row_already_sending_is_not_reclaimed_immediately(world: dict) -
     """A worker that is merely SLOW must keep its claim. Retaking it early is
     exactly how a duplicate gets sent."""
     now = datetime.now(UTC)
-    await _ping(world["db"], world["shop"], world["order"], state="sending", claimed_at=now)
+    await _ping(
+        world["db"],
+        world["shop"],
+        world["order"],
+        state="sending",
+        claimed_at=now,
+        due=now - timedelta(seconds=1),
+    )
     async with bound_session_factory(world["db"])() as session:
         assert await claim_due_pings(session, now_utc=now) == []
 
@@ -664,6 +682,7 @@ async def test_an_abandoned_claim_is_retaken_after_the_timeout(world: dict) -> N
         world["order"],
         state="sending",
         claimed_at=now - CLAIM_TIMEOUT - timedelta(seconds=1),
+        due=now - timedelta(seconds=1),
     )
     async with bound_session_factory(world["db"])() as session:
         claimed = await claim_due_pings(session, now_utc=now)
@@ -681,6 +700,7 @@ async def test_the_timeout_boundary_is_not_off_by_one(world: dict) -> None:
         world["order"],
         state="sending",
         claimed_at=now - CLAIM_TIMEOUT,
+        due=now - timedelta(seconds=1),
     )
     async with bound_session_factory(world["db"])() as session:
         assert await claim_due_pings(session, now_utc=now) == []

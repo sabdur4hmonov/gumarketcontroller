@@ -222,6 +222,70 @@ which is what `UNIQUE(customers.id, customers.shop_id)` exists to support. This
 makes a cross-tenant row *unrepresentable* rather than merely discouraged. See
 `tests/test_tenancy.py` for the proof.
 
+## The one unexplained failure: test_concurrency, 2026-09-06
+
+Recorded rather than closed, because it has not reproduced and pretending
+otherwise would be worse than saying so.
+
+`test_two_processes_racing_a_merged_group_send_it_once_and_whole` failed once,
+in a full-suite run, on `assert len(rows) == 3` with two rows present and both
+`sent`. Since then:
+
+| Attempt | Result |
+|---|---|
+| the file alone, 100 consecutive runs | 100 passes, 34-50s each |
+| full suite, 6 runs (201s-1818s each) | the merged-group test passed every time |
+| leftover due rows planted deliberately, to test the leading hypothesis | passed |
+
+The leading hypothesis was pollution: `tests/worker_race.py` runs the real tick,
+which is GLOBAL by design and picks up every due row in the database, so a row
+left committed by another test is part of this test's world whether it wants to
+be or not. Planting exactly such a row did not reproduce it.
+
+Nor does anything in the send path explain a MISSING row: `run_tick` marks and
+updates, and the only `DELETE FROM scheduled_notifications` in the codebase is
+the materializer's prune, which the race worker never calls.
+
+What exists now, so the next occurrence is not another dead end: an assertion
+BEFORE the workers start, which separates "the fixture never planted three rows"
+from "a row vanished while the tick ran" -- the bare count could not -- and a
+`snapshot()` helper dumping this shop's rows, its `message_log`, and rows
+belonging to other shops.
+
+Note that the SAME full-suite loop turned up a real, reproducible flake in
+`test_order_pings` (see the section above), which the isolated 100-run loop
+never would have. Load-sensitive failures need the loaded workload.
+
+## Time-dependent tests: never capture `now` before you insert the row
+
+Found 2026-09-07, after a full-suite run on a loaded machine took 1818s instead
+of the usual ~210s and one claim test failed:
+
+```python
+now = datetime.now(UTC)          # read 1
+ping = await _ping(...)          # inserts due_at_utc = datetime.now(UTC), read 2
+claimed = await claim_due_pings(session, now_utc=now)
+```
+
+`due_at_utc` is strictly LATER than `now`, so `due_at_utc <= now_utc` is false
+and the row is not due at all. The claim logic under test never runs.
+
+It passes almost always because Windows' default clock granularity is about
+15.6ms, so the two reads usually return the same value. It fails when the
+machine is loaded enough for them to straddle a tick. Reproduced deterministically
+by putting `await asyncio.sleep(0.05)` between them.
+
+**The asymmetry is what makes it nasty.** In the straddle window a test that
+asserts something WAS claimed fails loudly, and a test that asserts nothing was
+claimed passes -- for the wrong reason, because the row was not due rather than
+because the claim was fresh. Only the first kind ever reported anything, so the
+second kind was quietly untested in exactly the runs that mattered.
+
+**The rule:** a row a test expects to be due must be given a due time explicitly
+in the past relative to the `now` the test passes in. Do not rely on two clock
+reads being equal. `tests/test_order_pings.py::_ping` now defaults to one second
+ago for that reason, so a caller cannot fall into it by omission.
+
 ## Tests
 
 Real Postgres, never sqlite. Anything that must never regress goes in the
