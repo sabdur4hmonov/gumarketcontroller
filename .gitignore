@@ -11,3 +11,6 @@ dist/
 build/
 .coverage
 htmlcov/
+
+# Celery beat writes its schedule next to wherever it was started.
+celerybeat-schedule*
