@@ -226,7 +226,7 @@ async def _resolve(
 
 
 async def _deliver(
-    transport: Transport, *, targets: list[int], card: OrderCard, text: str
+    transport: Transport, *, targets: list[int], card: OrderCard, text: str, ping_number: int
 ) -> tuple[bool, list[str]]:
     """Send to every target. True if at least one accepted."""
     delivered = False
@@ -242,6 +242,17 @@ async def _deliver(
             outcome = await transport.send_text(chat_id=chat_id, text=text)
         if outcome.ok:
             delivered = True
+            # The message id is the only handle anyone has on what the shop
+            # actually received. Without it "state = sent" is a claim with
+            # nothing behind it, and a support question about a missing order
+            # has no thread to pull.
+            log.info(
+                "order ping order=%s ping=%s -> chat %s as message %s",
+                card.order_id,
+                ping_number,
+                chat_id,
+                outcome.message_id,
+            )
         else:
             errors.append(_error_of(outcome))
     return delivered, errors
@@ -331,7 +342,9 @@ async def run_order_ping_tick(
             else hours_ahead(card, ping.due_at_utc),
             lang=lang,
         )
-        delivered, errors = await _deliver(transport, targets=targets, card=card, text=text)
+        delivered, errors = await _deliver(
+            transport, targets=targets, card=card, text=text, ping_number=ping.ping_number
+        )
 
         if delivered:
             await _resolve(session, ping, state=PingState.SENT, now_utc=now_utc, sent=True)

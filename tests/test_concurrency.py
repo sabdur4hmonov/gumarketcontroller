@@ -117,6 +117,44 @@ def add_row(world: dict, *, day: int, offset: int, merge_key: str | None) -> int
     return occasion
 
 
+def snapshot(world: dict) -> str:
+    """Everything a failure here needs, and nothing it does not.
+
+    Added at CP10b, after `assert len(rows) == 3` failed once in a full-suite
+    run and left no way to tell a row that was never inserted from one that was
+    deleted afterwards. Those have completely different causes, and the bare
+    count distinguishes neither.
+
+    Deliberately GLOBAL, not scoped to this shop: `worker_race.py` runs the real
+    tick, which is global by design and picks up every due row in the database.
+    A row belonging to some other test is therefore part of this test's world
+    whether it wants to be or not.
+    """
+    conn = world["conn"]
+    mine = conn.execute(
+        "SELECT id, occasion_id, offset_days, merge_key, state, attempts, due_at_utc, sent_at "
+        "FROM scheduled_notifications WHERE shop_id = %s ORDER BY id",
+        (world["shop"],),
+    ).fetchall()
+    others = conn.execute(
+        "SELECT s.name, n.shop_id, n.state, count(*) FROM scheduled_notifications n "
+        "JOIN shops s ON s.id = n.shop_id WHERE n.shop_id <> %s GROUP BY 1, 2, 3",
+        (world["shop"],),
+    ).fetchall()
+    log = conn.execute(
+        "SELECT transition_key, status, attempts, error_code FROM message_log "
+        "WHERE shop_id = %s ORDER BY id",
+        (world["shop"],),
+    ).fetchall()
+    lines = [f"\n  shop {world['shop']} rows ({len(mine)}):"]
+    lines += [f"    {row}" for row in mine]
+    lines.append(f"  message_log ({len(log)}):")
+    lines += [f"    {row}" for row in log]
+    lines.append(f"  rows belonging to OTHER shops ({len(others)}):")
+    lines += [f"    {row}" for row in others]
+    return "\n".join(lines)
+
+
 async def run_two_workers(shop: int) -> list[dict]:
     """Start two separate OS processes at the same moment."""
 
@@ -173,6 +211,19 @@ async def test_two_processes_racing_a_merged_group_send_it_once_and_whole(
     for day, offset in ((8, 0), (9, -1), (10, -2)):
         add_row(committed_world, day=day, offset=offset, merge_key="race-cluster")
 
+    # BEFORE the workers run. This is the line that separates "a row was never
+    # inserted" from "a row was deleted while the tick ran" -- the two causes
+    # the post-hoc count below cannot tell apart.
+    planted = (
+        committed_world["conn"]
+        .execute(
+            "SELECT count(*) FROM scheduled_notifications WHERE shop_id = %s",
+            (committed_world["shop"],),
+        )
+        .fetchone()[0]
+    )
+    assert planted == 3, f"the fixture did not plant 3 rows{snapshot(committed_world)}"
+
     results = await run_two_workers(committed_world["shop"])
 
     assert len({r["pid"] for r in results}) == 2
@@ -186,9 +237,13 @@ async def test_two_processes_racing_a_merged_group_send_it_once_and_whole(
         )
         .fetchall()
     )
-    assert len(rows) == 3
-    assert {r[0] for r in rows} == {"sent"}
-    assert len({r[1] for r in rows}) == 1, "the group was marked by two different sends"
+    assert len(rows) == 3, f"a row vanished AFTER being planted{snapshot(committed_world)}"
+    assert {r[0] for r in rows} == {"sent"}, (
+        f"the group was not marked whole{snapshot(committed_world)}"
+    )
+    assert len({r[1] for r in rows}) == 1, (
+        f"the group was marked by two different sends{snapshot(committed_world)}"
+    )
 
 
 @pytest.mark.infra
