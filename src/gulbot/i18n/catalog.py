@@ -366,6 +366,45 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.add_person": {"uz": "➕ Odam qo'shish", "ru": "➕ Добавить человека"},
     "ibtn.custom_label": {"uz": "✍️ O'zim yozaman", "ru": "✍️ Напишу сам"},
     "ibtn.deactivate": {"uz": "🗑 O'chirish", "ru": "🗑 Удалить"},
+    # --- CP10b. What the SHOP sees in its own group ----------------------
+    # Not customer copy. The shop's operating language is Uzbek; `ru` exists
+    # because the parity test requires every key in both, not because a
+    # Russian-speaking shop exists yet. When one does, this is where it lives.
+    "group.new_order": {
+        "uz": "🆕 <b>Yangi buyurtma #{id}</b>",
+        "ru": "🆕 <b>Новый заказ #{id}</b>",
+    },
+    # {hours} is read from the ping's own offset, never recomputed from the
+    # clock: the shop is told the interval that was SCHEDULED, so a tick that
+    # runs late does not silently rewrite the number.
+    "group.ping": {
+        "uz": "⏰ <b>#{id} — yetkazishgacha {hours} soat</b>",
+        "ru": "⏰ <b>#{id} — до доставки {hours} ч</b>",
+    },
+    "group.card": {
+        "uz": "{heading}\n\n{bouquet}\n\n📅 {date}, soat {hour}\n"
+        "📍 {location}\n🧭 {landmark}\n👤 {customer}",
+        "ru": "{heading}\n\n{bouquet}\n\n📅 {date}, {hour}\n"
+        "📍 {location}\n🧭 {landmark}\n👤 {customer}",
+    },
+    "group.pin": {
+        "uz": '{lat}, {lon} — <a href="{url}">xaritada ochish</a>',
+        "ru": '{lat}, {lon} — <a href="{url}">открыть на карте</a>',
+    },
+    # An unverified number is SHOWN and marked, never withheld: the courier
+    # still needs something to dial. See customers.phone_verified.
+    "group.phone_unverified": {
+        "uz": "{phone} (tasdiqlanmagan)",
+        "ru": "{phone} (не подтверждён)",
+    },
+    "group.no_phone": {
+        "uz": "telefon raqami yo‘q",
+        "ru": "номер не указан",
+    },
+    "group.customer": {
+        "uz": '{phone} · <a href="tg://user?id={tg}">mijoz</a>',
+        "ru": '{phone} · <a href="tg://user?id={tg}">клиент</a>',
+    },
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
     "btn.language.ru": {"uz": "🇷🇺 Русский", "ru": "🇷🇺 Русский"},

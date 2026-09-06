@@ -56,7 +56,12 @@ from gulbot.sending.telegram import TelegramTransport
 
 SHOP_NAME = "loop-lifetime-probe"
 
+#: Children first. `orders.customer_id` is ON DELETE RESTRICT, so an order left
+#: behind blocks the whole teardown -- which is how CP10b's test found that this
+#: list predated the orders table.
 _PURGE_ORDER = (
+    "order_reminders",
+    "orders",
     "message_log",
     "scheduled_notifications",
     "consent_events",
@@ -333,3 +338,86 @@ def test_the_session_factory_is_not_cached_either() -> None:
     assert first.kw["bind"] is not second.kw["bind"], (
         "the engine is shared between calls; its pool is bound to the first loop"
     )
+
+
+# --- 4. CP10b's task, the same audit -----------------------------------------
+
+
+def add_due_ping(world: dict, *, token: str, number: int = 0) -> int:
+    """A committed order with one due ping, ready for the shop-facing tick."""
+    conn = world["conn"]
+    order = conn.execute(
+        "INSERT INTO orders (shop_id, customer_id, product_name_snapshot, "
+        " price_uzs_snapshot, telegram_file_id_snapshot, delivery_date, delivery_hour, "
+        " delivery_location_text, landmark, status, submit_token) "
+        "VALUES (%s, %s, 'Buket', 100000, 'file-x', '2027-03-08', '14:00', 'Chilonzor', "
+        " 'eshik', 'placed', %s) RETURNING id",
+        (world["shop"], world["customer"], token),
+    ).fetchone()[0]
+    conn.execute(
+        "INSERT INTO order_reminders (shop_id, order_id, ping_number, due_at_utc) "
+        "VALUES (%s, %s, %s, now())",
+        (world["shop"], order, number),
+    )
+    return int(order)
+
+
+@pytest.mark.infra
+def test_two_order_ping_ticks_in_one_process_both_really_send(
+    production_bot_at_the_stub: FakeTelegram,
+    committed_world: dict,
+    settings,  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CP10b's task, audited for the defect CP8's debouncer actually had.
+
+    A new Celery task is a new chance to cache a client at module level, and the
+    failure would appear only on the SECOND tick of a worker -- never in a test
+    that runs everything inside one pytest event loop. So this runs the real
+    task twice through `asyncio.run`, exactly as Celery does, with a real
+    aiohttp round trip to a localhost stub on each.
+
+    A second due ping is added BETWEEN the ticks so the second tick has genuine
+    work: two ticks where the second sends nothing would demonstrate idempotency
+    and say nothing at all about client lifetime.
+    """
+    api = production_bot_at_the_stub
+    committed_world["conn"].execute(
+        "UPDATE shops SET group_chat_id = -1007777 WHERE id = %s", (committed_world["shop"],)
+    )
+
+    engines: list[tuple[object, object]] = []
+
+    @asynccontextmanager
+    async def test_session_factory(*_a: object, **_k: object):  # type: ignore[no-untyped-def]
+        async with task_session_factory(settings.postgres_test_db) as factory:
+            engine = factory.kw["bind"]
+            engines.append((engine, engine.pool))
+            yield factory
+
+    monkeypatch.setattr(tasks_module, "task_session_factory", test_session_factory)
+
+    add_due_ping(committed_world, token="lifetime-1", number=0)
+    first = asyncio.run(tasks_module._send_order_pings())
+
+    add_due_ping(committed_world, token="lifetime-2", number=0)
+    # The tick that would raise RuntimeError: Event loop is closed.
+    second = asyncio.run(tasks_module._send_order_pings())
+
+    assert first == {"claimed": 1, "sent": 1}
+    assert second == {"claimed": 1, "sent": 1}, "the second tick must really send, not skip"
+    assert api.calls == ["sendPhoto", "sendPhoto"]
+
+    assert len(engines) == 2, "each tick must build its own engine"
+    for engine, pool_before in engines:
+        assert engine.pool is not pool_before, "the tick leaked its connection pool"
+
+    states = (
+        committed_world["conn"]
+        .execute(
+            "SELECT state, count(*) FROM order_reminders WHERE shop_id = %s GROUP BY state",
+            (committed_world["shop"],),
+        )
+        .fetchall()
+    )
+    assert states == [("sent", 2)]

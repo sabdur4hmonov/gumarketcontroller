@@ -333,9 +333,42 @@ async def test_submitting_schedules_the_admin_pings(driver: Driver) -> None:
             {"o": order.id},
         )
     ).all()
-    assert [p.ping_number for p in pings] == [1, 2]
-    assert {p.state for p in pings} == {"pending"}
+    # CP10b added ping 0: the "new order" announcement to the shop, due now.
+    # 1 and 2 are the delivery reminders and index shops.order_ping_offset_hours.
+    assert [p.ping_number for p in pings] == [0, 1, 2]
+    assert {p.state for p in pings[1:]} == {"pending"}, "the delivery pings wait their turn"
 
     delivery = datetime.combine(order.delivery_date, order.delivery_hour, tzinfo=TASHKENT)
-    assert pings[0].due_at_utc == delivery - timedelta(hours=3)
-    assert pings[1].due_at_utc == delivery - timedelta(hours=1)
+    assert pings[1].due_at_utc == delivery - timedelta(hours=3)
+    assert pings[2].due_at_utc == delivery - timedelta(hours=1)
+
+
+async def test_the_shop_is_told_at_once_and_the_order_survives_if_it_cannot_be(
+    driver: Driver,
+) -> None:
+    """The announcement is queued, then flushed by the handler immediately.
+
+    This fixture's shop has neither `group_chat_id` nor `owner_telegram_ids`, so
+    the flush finds nowhere to send, logs loudly and leaves the row FAILED for
+    the beat to retry. That is the case worth pinning: the customer was told
+    their order was accepted, and it is -- the order is written and committed
+    whatever happens to the notification. The reverse, losing the order because
+    nobody could be told about it, would be far worse.
+    """
+    await driver.through_to_landmark()
+    await driver.say("Ko'k eshik")
+    await driver.tap(OrderConfirmCB(action="submit").pack())
+
+    order = (await driver.orders())[0]
+    announcement = (
+        await driver.db.execute(
+            text(
+                "SELECT state, attempts FROM order_reminders "
+                "WHERE order_id = :o AND ping_number = 0"
+            ),
+            {"o": order.id},
+        )
+    ).one()
+    assert announcement.state == "failed", "the handler tried, and there was nowhere to send"
+    assert announcement.attempts == 1, "it tried exactly once, and the beat has the rest"
+    assert order.status == "placed", "the order is unaffected by the notification failing"

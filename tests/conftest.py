@@ -11,6 +11,7 @@ between runs.
 
 from __future__ import annotations
 
+import hashlib
 import os
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
@@ -74,6 +75,54 @@ def alembic_config_for(database: str) -> Iterator[Config]:
             os.environ["GULBOT_MIGRATION_DATABASE"] = previous
 
 
+VERSIONS = REPO_ROOT / "migrations" / "versions"
+
+#: The fingerprint is stored as the database's own COMMENT, not in a table.
+#:
+#: It has to travel with the DATABASE -- the database is the thing that can be
+#: stale, so a file on disk would be wrong. But a table would be part of the
+#: schema, and `test_models_match_migrations` would then report it as drift
+#: forever: autogenerate compares the whole public schema against the models,
+#: and it does not know this one is ours. A comment lives in `pg_shdescription`,
+#: which is not schema at all, so nothing has to be taught to ignore it.
+FINGERPRINT_PREFIX = "gulbot-migrations:"
+
+
+def migration_fingerprint() -> str:
+    """A digest of every migration file's CONTENTS, not just their names.
+
+    Alembic identifies a migration by revision id, so editing an already applied
+    one is a silent no-op on `upgrade head` -- the database keeps the old
+    definition while `alembic current` still reports head, and every test then
+    runs against a schema that no longer exists in the files. That cost an hour
+    at CP10. Hashing the bytes turns it into a rebuild.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(VERSIONS.glob("*.py")):
+        digest.update(path.name.encode())
+        digest.update(path.read_bytes())
+    return f"{FINGERPRINT_PREFIX}{digest.hexdigest()}"
+
+
+def read_fingerprint(settings: Settings, name: str) -> str | None:
+    """The fingerprint the given database was last built from, if any."""
+    with psycopg.connect(_admin_dsn(settings), autocommit=True) as conn:
+        row = conn.execute(
+            "SELECT shobj_description(oid, 'pg_database') FROM pg_database WHERE datname = %s",
+            (name,),
+        ).fetchone()
+    if row is None or row[0] is None or not str(row[0]).startswith(FINGERPRINT_PREFIX):
+        return None
+    return str(row[0])
+
+
+def write_fingerprint(settings: Settings, name: str, digest: str) -> None:
+    with psycopg.connect(_admin_dsn(settings), autocommit=True) as conn:
+        # Neither identifier nor comment can be parameterised in COMMENT ON; the
+        # database name is our own config and the digest is 64 hex characters.
+        conn.execute(f"COMMENT ON DATABASE \"{name}\" IS '{digest}'")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def migrated_test_database(settings: Settings) -> Iterator[None]:
     """Create the test database and bring it to head.
@@ -81,9 +130,21 @@ def migrated_test_database(settings: Settings) -> Iterator[None]:
     Deliberately synchronous: it runs once, before any event loop exists, so it
     cannot get tangled in pytest-asyncio fixture loop scoping.
     """
-    create_database(settings, settings.postgres_test_db)
-    with alembic_config_for(settings.postgres_test_db) as cfg:
+    name = settings.postgres_test_db
+    digest = migration_fingerprint()
+
+    create_database(settings, name)
+    if read_fingerprint(settings, name) != digest:
+        # A migration file was added, removed, or EDITED. Only the last of those
+        # is dangerous, and only that one is invisible: `upgrade head` would
+        # happily do nothing and leave the old definition in place. Rebuilding is
+        # the only correct response, and it is cheap.
+        drop_database(settings, name)
+        create_database(settings, name)
+
+    with alembic_config_for(name) as cfg:
         command.upgrade(cfg, "head")
+    write_fingerprint(settings, name, digest)
     yield
 
 

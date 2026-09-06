@@ -18,8 +18,7 @@ never write a destructive `upgrade()`. Tightening a constraint is done in
 
 ```python
 # Step 3
-op.execute("ALTER TABLE orders ADD CONSTRAINT ck_orders_total_positive "
-           "CHECK (total > 0) NOT VALID")
+op.execute("ALTER TABLE orders ADD CONSTRAINT ck_orders_total_positive CHECK (total > 0) NOT VALID")
 # Step 4, a later revision
 op.execute("ALTER TABLE orders VALIDATE CONSTRAINT ck_orders_total_positive")
 ```
@@ -86,6 +85,20 @@ next one turns up.
 |---|---|---|
 | Server defaults, unless `compare_server_default=True` | CP3.6 | enabled in `migrations/env.py` AND in the drift test's `MigrationContext` |
 | CHECK constraint expression changes, when the constraint NAME is unchanged | CP6 | `tests/test_check_constraints.py`, which reads `pg_get_constraintdef` and compares literals |
+| NUMERIC CHECK changes -- `> 0` to `>= 0` -- which the CP6 guard above SKIPS, because it compares quoted literals and a numeric check has none | CP10b | the same file's `test_every_numeric_check_compares_the_same_way_the_model_does`, which compares operators and bounds |
+
+The CP10b one is worth dwelling on: **two guards agreed that nothing had
+happened.** Autogenerate saw no diff because the constraint name had not
+changed, and the CP6 guard skipped the constraint entirely because
+`if not expected_literals: continue` -- a numeric check has no quoted values to
+compare. Widening `ping_number > 0` to `>= 0` was therefore invisible to the
+entire build. When you add a guard, check what it declines to look at.
+
+Note also that Postgres does not store a CHECK as written: it stores the parsed
+tree and prints it back canonically. `BETWEEN` comes back as `>= AND <=`, and
+`IN (...)` as `= ANY (ARRAY[...])`. Any test comparing an expression to the
+model must put the model through the same rewrites, or every `BETWEEN` in the
+schema reports as drift.
 
 Known to be shaky for the same reason, not yet bitten and not yet guarded:
 
@@ -99,6 +112,69 @@ Known to be shaky for the same reason, not yet bitten and not yet guarded:
 
 If you change one of those, write the direct assertion at the same time. Do not
 rely on the diff being empty as evidence that the database agrees with you.
+
+### The migration only runs correctly on a database that does not exist yet
+
+This is now the third time autogenerate has produced a migration that runs
+cleanly against a database which has already been migrated, and fails against a
+genuinely empty one. It is a distinct failure from the CHANGING-vs-APPEARING
+gap above, and it deserves its own name:
+
+> **Autogenerate emits operations in MODEL order, not in DEPENDENCY order. The
+> diff it computes is a set; the migration it writes is a sequence, and it does
+> not sort that sequence.**
+
+The symptom is always the same and always misleading: the migration passes for
+the person who wrote it, because their database already contains the object the
+new object depends on. It fails the first time it runs somewhere clean, which
+is usually staging, or a colleague, or production.
+
+| Occurrence | What was misordered |
+|---|---|
+| CP5 | `UNIQUE(recipients.id, shop_id)` emitted after the table whose FK targets it |
+| CP8 | surfaced as a dev database silently a migration behind, so head "worked" |
+| CP10 | same shape as CP5 -- the recipients UNIQUE after `orders`, and dropped BEFORE the tables on downgrade |
+
+Note the downgrade half. Autogenerate reverses the operation list, which is the
+right order for drops in most cases and the wrong one whenever the upgrade
+order was already wrong. Fixing only the upgrade leaves a downgrade that fails,
+and the round-trip test is the only thing that will tell you.
+
+**The rule:** every migration is round-tripped `upgrade head` -> `downgrade` ->
+`upgrade head` on a **throwaway database created for that run**, never on your
+dev database and never on the test database. If it has ever been migrated
+before, it cannot tell you whether the ordering is right.
+
+### An edited migration does not re-apply
+
+The sharper variant, found at CP10 and worth stating on its own because nothing
+about it looks stale:
+
+> **Alembic identifies a migration by its revision id, not by its contents.
+> Editing a migration that has already been applied somewhere leaves that
+> database holding the OLD definition, with `alembic current` reporting head
+> and every test passing against a schema that no longer exists in the file.**
+
+At CP10 the composite-FK `ON DELETE SET NULL` fix was made in a migration the
+test database had already run. `upgrade head` was a no-op, the test database
+kept the broken FK, and the failing test kept failing for a reason that had
+already been fixed in the source.
+
+**The rule:** whenever a committed migration is edited after being applied
+anywhere, the local test database must be **rebuilt from scratch**, not
+upgraded. Dropping it is the fix; there is no incremental one.
+
+Since the rule is easy to state and easy to forget, `tests/conftest.py` now
+enforces it mechanically. `migrated_test_database` writes a fingerprint of every
+file in `migrations/versions/` into an `alembic_version_fingerprint` table, and
+on the next run compares it. A mismatch -- a file edited, added, or removed --
+drops the database and rebuilds it. It costs one `sha256` over a dozen small
+files per session, it is self-healing rather than advisory, and it makes the
+failure mode impossible rather than documented. `tests/test_migration_fingerprint.py`
+proves the detection by mutating a file's bytes.
+
+That is worth having even for two people. A rule that says "remember to drop
+your database" is a rule that works right up until the one time it matters.
 
 ### Related: never address a migration by counting steps
 

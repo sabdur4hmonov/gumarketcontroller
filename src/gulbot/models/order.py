@@ -71,12 +71,27 @@ class PingState(StrEnum):
     There is no EXPIRED: a ping whose moment has passed is simply not created
     (see `materialize_order_pings`), and no CANCELLED, because a ping goes to
     the shop's own group -- there is no one to block the bot.
+
+    SENDING is the CLAIM, and it is why this table needs no `message_log` row.
+    CP6 needed a separate ledger because a GROUP of notification rows shares one
+    message, so the claim had to live somewhere that could name the group. Here
+    one ping is one message, so the row claims itself: pending -> sending is a
+    compare-and-swap that COMMITS BEFORE Telegram is called, which is the whole
+    reason a worker that dies mid-send cannot cause a second one.
+
+    FAILED is retryable, not terminal -- the tick picks up 'failed' rows again.
+    DEAD_LETTER is where a row stops.
     """
 
     PENDING = "pending"
+    SENDING = "sending"
     SENT = "sent"
     FAILED = "failed"
     DEAD_LETTER = "dead_letter"
+
+
+#: States the tick will pick up and try to send.
+SENDABLE_PING_STATES = (PingState.PENDING.value, PingState.FAILED.value)
 
 
 ORDER_STATUSES_SQL = ", ".join(f"'{s.value}'" for s in OrderStatus)
@@ -199,13 +214,22 @@ class OrderReminder(IdMixin, Base):
     shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     order_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 
-    #: 1-based position in `shops.order_ping_offset_hours`.
+    #: 0 is the placement ANNOUNCEMENT -- due immediately, not in the offsets
+    #: array. 1..n are the delivery reminders and index
+    #: `shops.order_ping_offset_hours`. Both are the same kind of thing to the
+    #: send path (one message to the shop, sent once, claimed the same way), so
+    #: they share one outbox rather than growing a second.
     ping_number: Mapped[int] = mapped_column(SmallInteger, nullable=False)
 
     due_at_utc: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     state: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'pending'"))
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    #: When this row entered SENDING. A claim older than the timeout belonged to
+    #: a worker that died, and may be retaken -- the same contract message_log
+    #: states for CP6, collapsed into the row it protects.
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -217,7 +241,10 @@ class OrderReminder(IdMixin, Base):
             ["order_id", "shop_id"], ["orders.id", "orders.shop_id"], ondelete="CASCADE"
         ),
         CheckConstraint(f"state IN ({PING_STATES_SQL})", name="state_known"),
-        CheckConstraint("ping_number > 0", name="ping_number_positive"),
+        # >= 0, not > 0: ping 0 is the placement announcement. Widened at CP10b
+        # by dropping and recreating this one constraint, which is what
+        # CONTRIBUTING means by an additive enumeration change.
+        CheckConstraint("ping_number >= 0", name="ping_number_positive"),
         # The send path's query: what is due, oldest first.
         Index("ix_order_reminders_due", "state", "due_at_utc"),
     )

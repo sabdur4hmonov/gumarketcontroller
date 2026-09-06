@@ -15,6 +15,12 @@ halves of a double-tap therefore carry the same token and collide on a unique
 index. Answering the callback and clearing the keyboard are still done, and are
 still not the guarantee -- see `services/orders.py`.
 
+TELLING THE SHOP IS NOT DONE INLINE. Submit writes an outbox row (ping 0) and
+commits; the message to the group is then FLUSHED from here so it arrives at
+once, with the beat as the safety net if this process dies mid-send. Sending
+inline and hoping would mean a Telegram hiccup could lose an order the customer
+has already been told was accepted, which is the worst failure this system has.
+
 WHAT THIS FLOW DOES NOT DO: transition a status. It writes 'placed' and stops.
 No confirm, no reject, no delivery, no customer-facing status updates beyond the
 one acknowledgement. `tests/test_order_scope.py` fails the build if that changes.
@@ -22,6 +28,7 @@ one acknowledgement. `tests/test_order_scope.py` fails the build if that changes
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime, time, timedelta
 from typing import Any
@@ -57,8 +64,11 @@ from gulbot.models.order import LANDMARK_MAX_LENGTH
 from gulbot.models.product import Product
 from gulbot.scheduling.delivery import available_dates, available_hours
 from gulbot.scheduling.occurrences import TASHKENT
+from gulbot.sending.order_pings import run_order_ping_tick
+from gulbot.sending.telegram import TelegramTransport
 from gulbot.services.orders import (
     OrderDraft,
+    announce_order,
     create_order,
     dates_at_capacity,
     load_slot_policy,
@@ -66,6 +76,8 @@ from gulbot.services.orders import (
 )
 from gulbot.utils.render import escape, format_date_long, format_price
 from gulbot.utils.text import sanitize_label
+
+log = logging.getLogger("gulbot.bot.orders")
 
 BACK_LABELS = set(CATALOG["btn.nav.back"].values())
 
@@ -273,6 +285,7 @@ async def submit_order(
     if order is not None and created:
         delivery_at_utc = datetime.combine(day, hour, tzinfo=TASHKENT).astimezone(UTC)
         await materialize_order_pings(session, order=order, delivery_at_utc=delivery_at_utc)
+        await announce_order(session, order=order)
 
     await state.clear()
     # The loser of a double-tap is told the same thing: from the customer's
@@ -281,6 +294,39 @@ async def submit_order(
         t("order.placed", lang, summary=_summary(lang, data)),
         reply_markup=main_menu_keyboard(lang),
     )
+
+    if order is not None and created:
+        await _tell_the_shop_now(session, callback, order_id=order.id)
+
+
+async def _tell_the_shop_now(
+    session: AsyncSession, callback: CallbackQuery, *, order_id: int
+) -> None:
+    """Deliver this order's announcement immediately instead of waiting a beat.
+
+    Runs exactly the tick's own code, narrowed to one order, so there is ONE
+    implementation of claiming and sending. The claim is what makes calling it
+    from here safe: the beat cannot send a second copy of a row this already
+    took, and if this process dies mid-send the claim goes stale and the beat
+    picks it up.
+
+    Deliberately last, and deliberately swallowing everything. The customer has
+    already been told their order was accepted, and that is true -- the row is
+    committed. If Telegram is down for the group, the ping stays in the outbox
+    and the beat retries it; an exception escaping here would turn a delivered
+    order into an error message for the customer.
+    """
+    if callback.bot is None:  # pragma: no cover - aiogram always sets it
+        return
+    try:
+        await run_order_ping_tick(
+            session,
+            transport=TelegramTransport(callback.bot),
+            now_utc=datetime.now(UTC),
+            only_order_id=order_id,
+        )
+    except Exception:  # pragma: no cover - the beat is the retry
+        log.exception("immediate shop notification failed for order %s", order_id)
 
 
 async def discard_order(callback: CallbackQuery, state: FSMContext, lang: str) -> None:

@@ -40,6 +40,13 @@ app.conf.update(
             "task": "gulbot.send_due_reminders",
             "schedule": 60.0,
         },
+        # CP10b. A SEPARATE task from the reminder tick, not a branch inside it:
+        # the two outboxes fail independently, and one wedged on a Telegram
+        # outage must not stop the other. It also keeps the log lines readable.
+        "send-order-pings": {
+            "task": "gulbot.send_order_pings",
+            "schedule": 60.0,
+        },
         "materialize-nightly": {
             "task": "gulbot.materialize_all_shops",
             # 03:00 Asia/Tashkent: well clear of the 09:00-20:00 send window.

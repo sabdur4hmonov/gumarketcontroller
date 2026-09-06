@@ -31,6 +31,7 @@ from gulbot.models.order import Order, OrderReminder, OrderStatus
 from gulbot.models.product import Product
 from gulbot.models.shop import Shop
 from gulbot.scheduling.delivery import SlotPolicy
+from gulbot.sending.order_card import ANNOUNCEMENT
 
 
 @dataclass(frozen=True)
@@ -149,6 +150,40 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
 
     await session.flush()
     return await session.get(Order, order_id), True
+
+
+async def announce_order(
+    session: AsyncSession, *, order: Order, now_utc: datetime | None = None
+) -> bool:
+    """Queue the "new order" message to the shop. Idempotent.
+
+    Ping 0, due immediately. It goes through the SAME outbox as the delivery
+    reminders rather than being sent inline from the request handler, and that
+    is the point: an order the shop never learns about is the worst failure this
+    system has, so it must survive a Telegram hiccup, a dropped connection and a
+    process restart. Best-effort inline sending survives none of those.
+
+    Immediacy is not sacrificed for it -- the handler flushes this row itself the
+    moment the transaction commits (see the router), and the beat is the safety
+    net rather than the normal path.
+
+    Returns whether a row was created; False means it already existed, which is
+    what makes calling this twice harmless.
+    """
+    statement = (
+        insert(OrderReminder)
+        .values(
+            shop_id=order.shop_id,
+            order_id=order.id,
+            ping_number=ANNOUNCEMENT,
+            due_at_utc=now_utc or datetime.now(UTC),
+        )
+        .on_conflict_do_nothing(index_elements=["order_id", "ping_number"])
+        .returning(OrderReminder.id)
+    )
+    created = await session.scalar(statement)
+    await session.flush()
+    return created is not None
 
 
 def ping_times(

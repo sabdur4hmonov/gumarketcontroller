@@ -114,6 +114,92 @@ def test_every_check_constraint_permits_exactly_what_the_model_says(
     assert not problems, "CHECK constraints drifted:\n  " + "\n  ".join(problems)
 
 
+#: Comparison operators, longest first so `>=` is never read as `>` then `=`.
+_OPERATOR = re.compile(r">=|<=|<>|!=|=|>|<")
+
+#: Standalone integers. Excludes anything glued to a word or a decimal point, so
+#: identifiers and type parameters cannot be mistaken for bounds.
+_NUMBER = re.compile(r"(?<![\w.])\d+(?![\w.])")
+
+#: Postgres does not store a CHECK as written -- it stores the parsed tree and
+#: prints it back canonically. Two rewrites reach numeric checks, and the model
+#: has to be put through the same ones or every BETWEEN and IN in the schema
+#: reports as drift. Found by writing the comparison and watching four
+#: pre-existing constraints fail it.
+_REWRITES = (
+    (re.compile(r"\bBETWEEN\b", re.IGNORECASE), ">= AND <="),  # a >= lo AND a <= hi
+    (re.compile(r"\bIN\s*\(", re.IGNORECASE), "= ("),  # a = ANY (ARRAY[...])
+)
+
+
+def canonicalise(sqltext: str) -> str:
+    for pattern, replacement in _REWRITES:
+        sqltext = pattern.sub(replacement, sqltext)
+    return sqltext
+
+
+@pytest.mark.infra
+def test_every_numeric_check_compares_the_same_way_the_model_does(
+    db_checks: dict[str, str],
+) -> None:
+    """The OTHER half of the blind spot, found at CP10b.
+
+    The literal comparison above skips any CHECK with no quoted values -- see
+    `if not expected_literals: continue` -- so every numeric and structural
+    constraint was unguarded. Changing `ping_number > 0` to `>= 0` was invisible
+    to autogenerate (the name did not change) AND to that test (no literals),
+    which is two guards agreeing that nothing had happened.
+
+    Comparing OPERATORS and BOUNDS catches it. Applied only to the checks the
+    literal test skips, on purpose: Postgres rewrites `x IN (...)` as
+    `x = ANY (ARRAY[...])`, so running this over an enum check would compare the
+    model's `IN` against the database's `=` and fail on every one of them.
+    """
+    problems = []
+    for _table, name, sqltext in model_check_constraints():
+        actual = db_checks.get(name)
+        if actual is None or _LITERAL.findall(sqltext):
+            continue
+        model = canonicalise(sqltext)
+        expected = (_OPERATOR.findall(model), _NUMBER.findall(model))
+        found = (_OPERATOR.findall(actual), _NUMBER.findall(actual))
+        if expected != found:
+            problems.append(f"{name}: model={expected} db={found}")
+    assert not problems, "numeric CHECK constraints drifted:\n  " + "\n  ".join(problems)
+
+
+@pytest.mark.infra
+def test_the_numeric_check_comparison_is_not_vacuous(db_checks: dict[str, str]) -> None:
+    """Guards the guard. If every CHECK happened to carry a quoted literal the
+    test above would skip all of them and pass while proving nothing."""
+    covered = [
+        name
+        for _table, name, sqltext in model_check_constraints()
+        if name in db_checks and not _LITERAL.findall(sqltext)
+    ]
+    assert len(covered) >= 5, f"only {len(covered)} numeric checks were compared: {covered}"
+
+
+@pytest.mark.infra
+def test_the_ping_number_check_admits_the_announcement(db_checks: dict[str, str]) -> None:
+    """Spelled out, because this is the one that moved at CP10b.
+
+    Ping 0 is the "new order" announcement. `> 0` would reject it at INSERT time
+    inside the request handler -- so the customer would be told their order
+    failed after it had already been written.
+    """
+    assert ">= 0" in db_checks["ck_order_reminders_ping_number_positive"]
+
+
+@pytest.mark.infra
+def test_the_ping_state_check_admits_the_claim(db_checks: dict[str, str]) -> None:
+    """'sending' IS the claim. Without it in the database the compare-and-swap
+    that makes a ping single-flight cannot be written at all."""
+    definition = db_checks["ck_order_reminders_state_known"]
+    for state in ("pending", "sending", "sent", "failed", "dead_letter"):
+        assert f"'{state}'" in definition, f"{state} is not storable"
+
+
 @pytest.mark.infra
 def test_the_notification_state_check_lists_every_state(db_checks: dict[str, str]) -> None:
     """Spelled out, because this one changed at CP6 and autogenerate missed it."""

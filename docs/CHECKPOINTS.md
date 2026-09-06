@@ -24,7 +24,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP9 | Search and presentation: a bouquet on every reminder | done |
 | CP9.5 | Ranking fix: resolve the STORED tag, not the preset | done |
 | CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
-| CP10b | Group notification + admin ping tick | **blocked**: needs a real Telegram group |
+| CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -236,6 +236,45 @@ WHAT CP10a DOES NOT DO: transition a status. It writes 'placed' and stops. The
 other four statuses are in the CHECK from the start so the migration that starts
 using them is additive. `tests/test_order_scope.py` fails the build if any code
 in the order path issues an UPDATE against `orders` at all.
+
+## What CP10b guarantees
+
+**The shop is told exactly once, and it survives a crash.** `order_reminders`
+rows are claimed by moving `state` pending -> sending, and that COMMITS before
+Telegram is called. A worker that dies mid-send leaves the row claimed, so the
+next tick skips it until the claim goes stale -- which is the only case where
+the claim differs from SKIP LOCKED (two live workers) or from the resolve (a
+finished one). Proven by killing a worker between the two, and by a transport
+that opens its own connection mid-send and reads `sending` from outside the
+tick's transaction.
+
+**Telling the shop is not done inline.** Submit writes ping 0 and commits; the
+handler then flushes THAT ORDER's outbox by running the tick narrowed to one
+row, so delivery is immediate in the normal case and the beat is the retry. An
+order the shop never learns about is the worst failure this system has, and
+best-effort inline sending survives nothing.
+
+**PING 0 IS THE ANNOUNCEMENT.** It shares the delivery reminders' outbox
+because it is the same kind of thing -- one message to the shop, sent once,
+claimed the same way. A second table would have meant a second copy of the
+claim logic. `ping_number >= 0` was widened for it.
+
+**Routing is group, then owners, then loud.** `shops.group_chat_id` wins; with
+no group every id in `owner_telegram_ids` is tried and the fallback is logged as
+a WARNING because it means setup is unfinished; with neither, the ping fails
+with an ERROR naming the shop and order, and parks after the usual five
+attempts. Leaving it pending forever would mean re-reading a growing pile of
+undeliverable rows once a minute for the life of the shop. The order is never
+at risk either way -- it is written and committed before any of this.
+
+**The card is the snapshot.** The product row is not consulted even when it
+still exists. Prices, names and the photo are what the customer agreed to buy.
+
+CP10b changed CP10a's table twice, additively, and both were things CP10a could
+not have known because the send path did not exist yet: `claimed_at` (a claim
+needs a clock) and 'sending' in the state CHECK (the claim needs a state to move
+to). Autogenerate detected the column and NEITHER constraint -- it compares
+CHECKs by name.
 
 ## Briefs already agreed for future checkpoints
 

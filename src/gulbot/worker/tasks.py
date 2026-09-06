@@ -56,6 +56,37 @@ async def _send_due_reminders() -> dict[str, int]:
     return {"groups": result.groups, "sent": result.sent}
 
 
+async def _send_order_pings() -> dict[str, int]:
+    """The shop-facing outbox. Same lifetime discipline as the reminder tick.
+
+    The bot is built here and its session closed in a `finally` -- `build_bot()`
+    is uncached for exactly this reason. An aiohttp session that outlived the
+    call would hand the NEXT task a client bound to a closed event loop, which
+    is the defect CP8 spent a live run finding.
+    """
+    from gulbot.bot.factory import build_bot
+    from gulbot.sending.order_pings import run_order_ping_tick
+    from gulbot.sending.telegram import TelegramTransport
+
+    bot = build_bot()
+    try:
+        async with task_session_factory() as factory, factory() as session:
+            result = await run_order_ping_tick(
+                session, transport=TelegramTransport(bot), now_utc=datetime.now(UTC)
+            )
+    finally:
+        await bot.session.close()
+    log.info(
+        "order pings: claimed=%s sent=%s failed=%s dead=%s undeliverable=%s",
+        result.claimed,
+        result.sent,
+        result.failed,
+        result.dead_lettered,
+        result.undeliverable,
+    )
+    return {"claimed": result.claimed, "sent": result.sent}
+
+
 async def _materialize_all_shops() -> dict[str, int]:
     totals = {"inserted": 0, "pruned": 0}
     async with task_session_factory() as factory, factory() as session:
@@ -72,6 +103,11 @@ async def _materialize_all_shops() -> dict[str, int]:
 @app.task(name="gulbot.send_due_reminders")
 def send_due_reminders() -> dict[str, int]:
     return asyncio.run(_send_due_reminders())
+
+
+@app.task(name="gulbot.send_order_pings")
+def send_order_pings() -> dict[str, int]:
+    return asyncio.run(_send_order_pings())
 
 
 @app.task(name="gulbot.materialize_all_shops")
