@@ -262,8 +262,8 @@ Found 2026-09-07, after a full-suite run on a loaded machine took 1818s instead
 of the usual ~210s and one claim test failed:
 
 ```python
-now = datetime.now(UTC)          # read 1
-ping = await _ping(...)          # inserts due_at_utc = datetime.now(UTC), read 2
+now = datetime.now(UTC)  # read 1
+ping = await _ping(...)  # inserts due_at_utc = datetime.now(UTC), read 2
 claimed = await claim_due_pings(session, now_utc=now)
 ```
 
