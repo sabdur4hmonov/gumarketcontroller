@@ -19,7 +19,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.bot.channel import FinalizeScheduler, build_channel_router
-from gulbot.bot.middlewares import CustomerMiddleware, DbSessionMiddleware
+from gulbot.bot.middlewares import ChatGateMiddleware, CustomerMiddleware, DbSessionMiddleware
 from gulbot.bot.routers import build_routers
 from gulbot.config import get_settings
 from gulbot.worker.debounce import schedule_album_finalize
@@ -58,7 +58,10 @@ def build_dispatcher(
 ) -> Dispatcher:
     dispatcher = Dispatcher(storage=storage) if storage is not None else Dispatcher()
 
-    # Outer: run once per update, before routing.
+    # Outer: run once per update, before routing. The chat gate is FIRST so a
+    # message in the shop's admin group opens no session and creates no
+    # customer -- see ChatGateMiddleware for what it used to do instead.
+    dispatcher.update.outer_middleware(ChatGateMiddleware())
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))
 
