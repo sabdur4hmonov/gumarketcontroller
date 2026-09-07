@@ -65,10 +65,12 @@ MAX_PRICE_UZS = 50_000_000
 
 #: Currency words, Latin and Cyrillic, with every apostrophe variant allowed
 #: inside so'm.
-_CURRENCY = r"(?:so[’'‘ʼʻ`´]?m|s[oў]m|сум|сўм|uzs|у\.?е\.?)"
+#: Public because `naming.py` reuses both of these to find where a name stops
+#: and price information begins. One vocabulary, not two that drift apart.
+CURRENCY_WORDS = r"(?:so[’'‘ʼʻ`´]?m|s[oў]m|сум|сўм|uzs|у\.?е\.?)"
 
 #: Price words that can precede an amount.
-_PRICE_WORD = r"(?:narx(?:i)?|нарх(?:и)?|цена|price)"
+PRICE_WORDS = r"(?:narx(?:i)?|нарх(?:и)?|цена|price)"
 
 _SEPARATORS = "  .,'’"
 
@@ -89,8 +91,8 @@ _PHONE_LABEL_RE = re.compile(
 
 _NUMBER = r"\d[\d\s .,]*\d|\d"
 
-_LABELLED_SUFFIX_RE = re.compile(rf"({_NUMBER})\s*(?:k\b\s*)?{_CURRENCY}", re.IGNORECASE)
-_LABELLED_PREFIX_RE = re.compile(rf"{_PRICE_WORD}\D{{0,12}}?({_NUMBER})", re.IGNORECASE)
+_LABELLED_SUFFIX_RE = re.compile(rf"({_NUMBER})\s*(?:k\b\s*)?{CURRENCY_WORDS}", re.IGNORECASE)
+_LABELLED_PREFIX_RE = re.compile(rf"{PRICE_WORDS}\D{{0,12}}?({_NUMBER})", re.IGNORECASE)
 _K_FORM_RE = re.compile(rf"({_NUMBER})\s*k\b", re.IGNORECASE)
 _BARE_RE = re.compile(rf"({_NUMBER})")
 
