@@ -47,6 +47,19 @@ app.conf.update(
             "task": "gulbot.send_order_pings",
             "schedule": 60.0,
         },
+        # CP11.5. Every five minutes, not every minute: a stall is defined
+        # as fifteen minutes of silence, so checking twelve times inside
+        # that window is enough to catch it and cheap enough to ignore.
+        "health-check": {
+            "task": "gulbot.check_health",
+            "schedule": 300.0,
+        },
+        # 21:00 Asia/Tashkent: after the 20:00 send window closes, so the
+        # day's figures are final rather than half-counted.
+        "daily-summary": {
+            "task": "gulbot.send_daily_summary",
+            "schedule": crontab(hour=21, minute=0),
+        },
         "materialize-nightly": {
             "task": "gulbot.materialize_all_shops",
             # 03:00 Asia/Tashkent: well clear of the 09:00-20:00 send window.

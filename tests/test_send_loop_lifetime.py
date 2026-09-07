@@ -421,3 +421,92 @@ def test_two_order_ping_ticks_in_one_process_both_really_send(
         .fetchall()
     )
     assert states == [("sent", 2)]
+
+
+# --- 5. CP11.5's health tasks, the same audit -------------------------------
+
+
+@pytest.mark.infra
+def test_two_health_checks_in_one_process_both_really_send(
+    production_bot_at_the_stub: FakeTelegram,
+    committed_world: dict,
+    settings,  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The health tasks touch THREE loop-bound clients, more than any other job
+    in the project: the asyncpg pool, the aiohttp session, and -- uniquely --
+    a Redis client for the alert cooldown.
+
+    Redis is the one that actually caused the CP8 outage, so a task that opens
+    one is exactly where the defect would come back. It would fail on the second
+    tick and never the first, which is why this runs two.
+
+    The daily summary is used rather than the alert check, because the summary
+    sends unconditionally: an alert on a healthy shop correctly sends nothing,
+    and a test where the second run does nothing proves nothing about client
+    lifetime.
+    """
+    api = production_bot_at_the_stub
+    committed_world["conn"].execute(
+        "UPDATE shops SET group_chat_id = -1007777 WHERE id = %s", (committed_world["shop"],)
+    )
+
+    engines: list[tuple[object, object]] = []
+
+    @asynccontextmanager
+    async def test_session_factory(*_a: object, **_k: object):  # type: ignore[no-untyped-def]
+        async with task_session_factory(settings.postgres_test_db) as factory:
+            engine = factory.kw["bind"]
+            engines.append((engine, engine.pool))
+            yield factory
+
+    monkeypatch.setattr(tasks_module, "task_session_factory", test_session_factory)
+
+    first = asyncio.run(tasks_module._for_every_shop("summary"))
+    # The tick that would raise RuntimeError: Event loop is closed.
+    second = asyncio.run(tasks_module._for_every_shop("summary"))
+
+    assert first["announced"] >= 1
+    assert second["announced"] >= 1, "the second run must really send, not skip"
+    assert api.calls == ["sendMessage", "sendMessage"]
+
+    assert len(engines) == 2, "each run must build its own engine"
+    for engine, pool_before in engines:
+        assert engine.pool is not pool_before, "the run leaked its connection pool"
+
+
+@pytest.mark.infra
+def test_two_alert_checks_in_one_process_both_reach_redis(
+    production_bot_at_the_stub: FakeTelegram,
+    committed_world: dict,
+    settings,  # type: ignore[no-untyped-def]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The Redis half specifically, in two separate event loops.
+
+    Nothing is due, so neither run alerts -- what is under test is that the
+    SECOND run can still open a Redis client at all. A cached one would raise
+    rather than return quietly.
+    """
+    committed_world["conn"].execute(
+        "UPDATE shops SET group_chat_id = -1007777 WHERE id = %s", (committed_world["shop"],)
+    )
+
+    @asynccontextmanager
+    async def test_session_factory(*_a: object, **_k: object):  # type: ignore[no-untyped-def]
+        async with task_session_factory(settings.postgres_test_db) as factory:
+            yield factory
+
+    monkeypatch.setattr(tasks_module, "task_session_factory", test_session_factory)
+
+    from gulbot.sending.health import alert_cooldown
+
+    async def claim_twice() -> bool:
+        async with alert_cooldown() as cooldown:
+            return await cooldown.claim(shop_id=committed_world["shop"], kind="lifetime-probe")
+
+    first = asyncio.run(claim_twice())
+    second = asyncio.run(claim_twice())
+
+    assert first is True, "the first claim in a fresh window must succeed"
+    assert second is False, "and the second must see the key the first one wrote"

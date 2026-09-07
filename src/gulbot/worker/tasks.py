@@ -87,6 +87,46 @@ async def _send_order_pings() -> dict[str, int]:
     return {"claimed": result.claimed, "sent": result.sent}
 
 
+async def _for_every_shop(job: str) -> dict[str, int]:
+    """Run one health job for every shop. Shared by both CP11.5 tasks.
+
+    v1 has exactly one shop, so this is a loop over one row -- written as a
+    loop anyway because both jobs are shop-scoped in every query, and a
+    second shop should not need this file edited.
+
+    The bot is built here and closed in a `finally`, the same lifetime rule
+    as every other sending task: `build_bot()` is uncached, so the client
+    belongs to this call's event loop and dies with it.
+    """
+    from gulbot.bot.factory import build_bot
+    from gulbot.sending.alerts import check_and_alert, send_daily_summary
+    from gulbot.sending.telegram import TelegramTransport
+
+    counts = {"shops": 0, "announced": 0}
+    bot = build_bot()
+    try:
+        transport = TelegramTransport(bot)
+        now = datetime.now(UTC)
+        async with task_session_factory() as factory, factory() as session:
+            shop_ids = list(await session.scalars(select(Shop.id)))
+            for shop_id in shop_ids:
+                counts["shops"] += 1
+                if job == "summary":
+                    if await send_daily_summary(
+                        session, transport=transport, shop_id=shop_id, now_utc=now
+                    ):
+                        counts["announced"] += 1
+                else:
+                    announced = await check_and_alert(
+                        session, transport=transport, shop_id=shop_id, now_utc=now
+                    )
+                    counts["announced"] += len(announced)
+            await session.commit()
+    finally:
+        await bot.session.close()
+    return counts
+
+
 async def _materialize_all_shops() -> dict[str, int]:
     totals = {"inserted": 0, "pruned": 0}
     async with task_session_factory() as factory, factory() as session:
@@ -108,6 +148,20 @@ def send_due_reminders() -> dict[str, int]:
 @app.task(name="gulbot.send_order_pings")
 def send_order_pings() -> dict[str, int]:
     return asyncio.run(_send_order_pings())
+
+
+@app.task(name="gulbot.check_health")
+def check_health() -> dict[str, int]:
+    result = asyncio.run(_for_every_shop("check"))
+    log.info("health check: %s", result)
+    return result
+
+
+@app.task(name="gulbot.send_daily_summary")
+def send_daily_summary_task() -> dict[str, int]:
+    result = asyncio.run(_for_every_shop("summary"))
+    log.info("daily summary: %s", result)
+    return result
 
 
 @app.task(name="gulbot.materialize_all_shops")

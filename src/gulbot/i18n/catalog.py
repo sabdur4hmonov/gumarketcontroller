@@ -446,6 +446,31 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": ("Bu boshqa odamning raqami. O‘z raqamingizni tugma orqali yuboring yoki yozing."),
         "ru": ("Это чужой номер. Отправьте свой кнопкой или напишите."),
     },
+    # --- CP11.5. Health, for the SHOP's group. Not customer copy.
+    # The summary is deliberately dull: it is read at a glance every day,
+    # and its ABSENCE is the thing that means something.
+    "health.summary": {
+        "uz": "📊 <b>Bugun:</b> {reminders} eslatma, {orders} buyurtma.",
+        "ru": "📊 <b>Сегодня:</b> {reminders} напоминаний, {orders} заказов.",
+    },
+    # Appended to the summary only when something is parked, so a clean day
+    # stays one short line.
+    "health.summary.parked": {
+        "uz": "\n⚠️ {count} ta xabar yuborilmadi va to‘xtatildi.",
+        "ru": "\n⚠️ {count} сообщений не отправлено.",
+    },
+    # The alarm. Says WHAT is stuck and HOW LONG, because "something is
+    # wrong" is not actionable.
+    "health.stalled": {
+        "uz": "🚨 <b>Diqqat:</b> {count} ta xabar {minutes} daqiqadan beri yuborilmayapti."
+        "\nBot ishlayotganini tekshiring.",
+        "ru": "🚨 <b>Внимание:</b> {count} сообщений не отправлено уже {minutes} минут."
+        "\nПроверьте работу бота.",
+    },
+    "health.parked": {
+        "uz": "🚨 <b>Diqqat:</b> {count} ta xabar bir necha marta yuborilmadi va to‘xtatildi.",
+        "ru": "🚨 <b>Внимание:</b> {count} сообщений отклонено после нескольких попыток.",
+    },
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
     "btn.language.ru": {"uz": "🇷🇺 Русский", "ru": "🇷🇺 Русский"},
