@@ -405,6 +405,47 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": '{phone} · <a href="tg://user?id={tg}">mijoz</a>',
         "ru": '{phone} · <a href="tg://user?id={tg}">клиент</a>',
     },
+    # --- CP10c. The customer's phone number ------------------------------
+    # Asked at the END of onboarding, where the customer has already got value
+    # from the bot, rather than at the start where it is pure friction. Skippable
+    # there and required at order time, because that is the moment it is needed
+    # and the moment the reason is obvious.
+    "phone.ask_onboarding": {
+        "uz": (
+            "Buyurtma bergangingizda kuryer siz bilan bog‘lanishi uchun "
+            "telefon raqamingiz kerak bo‘ladi.\n\n"
+            "Pastdagi tugma orqali yuboring yoki keyinroq aytasiz."
+        ),
+        "ru": (
+            "Когда вы сделаете "
+            "заказ, курьеру "
+            "понадобится "
+            "ваш номер.\n\n"
+            "Отправьте кнопкой "
+            "ниже или позже."
+        ),
+    },
+    # At order time the reason is concrete, so it is stated concretely.
+    "phone.ask_order": {
+        "uz": ("Kuryer yetkazib berishdan oldin bog‘lanishi uchun telefon raqamingizni yuboring."),
+        "ru": ("Отправьте номер телефона — курьер позвонит перед доставкой."),
+    },
+    "phone.saved": {
+        "uz": "Raqamingiz saqlandi: {phone}",
+        "ru": "Номер сохранён: {phone}",
+    },
+    "phone.invalid": {
+        "uz": (
+            "Bu raqamga o‘xshamadi. Masalan: 90 123 45 67 — yoki pastdagi tugmadan foydalaning."
+        ),
+        "ru": ("Не похоже на номер. Например: 90 123 45 67 — или нажмите кнопку ниже."),
+    },
+    # Someone else's contact is not this customer's number. Storing it would put
+    # a stranger's number on the shop's card under this customer's name.
+    "phone.not_yours": {
+        "uz": ("Bu boshqa odamning raqami. O‘z raqamingizni tugma orqali yuboring yoki yozing."),
+        "ru": ("Это чужой номер. Отправьте свой кнопкой или напишите."),
+    },
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
     "btn.language.ru": {"uz": "🇷🇺 Русский", "ru": "🇷🇺 Русский"},
@@ -413,6 +454,14 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "btn.settings.change_language": {
         "uz": "🌐 Tilni o'zgartirish",
         "ru": "🌐 Сменить язык",
+    },
+    "btn.share_phone": {
+        "uz": "📱 Raqamimni yuborish",
+        "ru": "📱 Отправить номер",
+    },
+    "btn.phone.skip": {
+        "uz": "Keyinroq",
+        "ru": "Позже",
     },
     "btn.nav.back": {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад"},
     "btn.nav.cancel": {"uz": "✖️ Bekor qilish", "ru": "✖️ Отмена"},

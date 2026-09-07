@@ -36,6 +36,7 @@ from gulbot.bot.callbacks import (
     YesNoCB,
 )
 from gulbot.bot.factory import build_dispatcher
+from gulbot.bot.states import Onboarding
 from gulbot.i18n.catalog import CATALOG
 
 USER_ID = 920_001
@@ -101,14 +102,25 @@ class Driver:
         await self.tap(FlowerCB(choice="skip").pack())
 
     async def finish_all(self) -> None:
-        """No more people, and skip both customer-level preferences.
+        """No more people, skip both customer-level preferences, skip the phone.
 
         Tapping the preference skips is harmless when they are not asked: the
         chain has already ended, so the callbacks match nothing.
+
+        The phone skip is NOT harmless in the same way -- it is text, and at
+        state None the fallback would answer it, putting an unexpected line in
+        `sent`. So it is sent only when the flow is actually waiting for it.
         """
         await self.tap(YesNoCB(scope="people", answer="no").pack())
         await self.tap(ReminderCountCB(value="skip").pack())
         await self.tap(SendTimeCB(value="skip").pack())
+        await self.skip_phone()
+
+    async def skip_phone(self) -> None:
+        """Decline the CP10c number request, if it is being asked."""
+        context = self.dispatcher.fsm.get_context(self.bot, USER_ID, USER_ID)
+        if await context.get_state() == Onboarding.sharing_phone.state:
+            await self.text(CATALOG["btn.phone.skip"]["uz"])
 
     async def open_menu_list(self) -> None:
         await self.text(CATALOG["btn.menu.occasions"]["uz"])
@@ -128,7 +140,13 @@ class Driver:
 
 @pytest_asyncio.fixture
 async def driver(dispatcher: Dispatcher, bot_and_session: tuple[Bot, RecordingSession]) -> Driver:
-    """A first-contact customer, sitting at the chained onboarding type picker."""
+    """A first-contact customer, sitting at the chained onboarding type picker.
+
+    Deliberately NOT pre-inserted with a phone, tempting as that was: `/start`
+    branches on `customer_created`, so a customer that already exists takes the
+    returning-customer path and the onboarding chain never runs. `finish_all`
+    skips the phone step instead.
+    """
     bot, recorder = bot_and_session
     d = Driver(dispatcher, bot, recorder)
     await d.text("/start")
@@ -221,6 +239,94 @@ async def test_finishing_onboarding_says_so(driver: Driver) -> None:
     driver.recorder.calls.clear()
     await driver.finish_all()
     assert CATALOG["recipients.onboarding_done"]["uz"] in driver.sent
+
+
+@pytest.mark.infra
+async def test_onboarding_ends_by_asking_for_a_phone_number(driver: Driver) -> None:
+    """CP10c. Asked at the END, where the customer has their dates saved and the
+    reason lands as a reason rather than an interrogation.
+
+    The chain now COMES TO REST here instead of at the menu, which is the part
+    worth pinning: three test files had to learn about it.
+    """
+    await driver.add_person("mother", 3, 8)
+    await driver.finish_person()
+    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.tap(ReminderCountCB(value="skip").pack())
+    driver.recorder.calls.clear()
+    await driver.tap(SendTimeCB(value="skip").pack())
+
+    assert CATALOG["phone.ask_onboarding"]["uz"] in driver.sent
+    assert CATALOG["recipients.onboarding_done"]["uz"] not in driver.sent, (
+        "the chain is not over until the ask is answered"
+    )
+
+
+@pytest.mark.infra
+async def test_declining_the_phone_still_finishes_onboarding(
+    driver: Driver, db: AsyncConnection
+) -> None:
+    """A customer who only wants reminders is never made to hand over a number
+    for a service that will not phone them."""
+    await driver.add_person("mother", 3, 8)
+    await driver.finish_person()
+    await driver.finish_all()
+
+    assert CATALOG["recipients.onboarding_done"]["uz"] in driver.sent
+    stored = (
+        await db.execute(
+            text("SELECT phone FROM customers WHERE telegram_user_id = :t"), {"t": USER_ID}
+        )
+    ).scalar_one()
+    assert stored is None
+
+
+@pytest.mark.infra
+async def test_giving_the_phone_at_onboarding_stores_it(
+    driver: Driver, db: AsyncConnection
+) -> None:
+    await driver.add_person("mother", 3, 8)
+    await driver.finish_person()
+    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    await driver.tap(ReminderCountCB(value="skip").pack())
+    await driver.tap(SendTimeCB(value="skip").pack())
+    await driver.text("90 123 45 67")
+
+    assert CATALOG["recipients.onboarding_done"]["uz"] in driver.sent
+    row = (
+        await db.execute(
+            text("SELECT phone, phone_verified FROM customers WHERE telegram_user_id = :t"),
+            {"t": USER_ID},
+        )
+    ).one()
+    assert row.phone == "+998901234567"
+    assert row.phone_verified is False
+
+
+@pytest.mark.infra
+async def test_a_returning_customer_is_not_asked_again(driver: Driver, db: AsyncConnection) -> None:
+    """Asked ONCE. Adding a date later is not onboarding, so the chain ends at
+    the menu exactly as it did before CP10c."""
+    await driver.add_person("mother", 3, 8)
+    await driver.finish_person()
+    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+    # ANSWERED, not skipped. Skipping leaves the columns NULL, which is how CP5
+    # tells "not asked" from "chose 3" -- so a skipping customer is asked the
+    # preference question again next time, and this test would trip over that
+    # instead of reaching the point it is about.
+    await driver.tap(ReminderCountCB(value="2").pack())
+    await driver.tap(SendTimeCB(value="morning").pack())
+    await driver.skip_phone()
+
+    await driver.open_menu_list()
+    await driver.tap(AddOccasionCB(action="start").pack())
+    await driver.add_person("spouse", 5, 9)
+    await driver.finish_person()
+    driver.recorder.calls.clear()
+    await driver.tap(YesNoCB(scope="people", answer="no").pack())
+
+    assert CATALOG["phone.ask_onboarding"]["uz"] not in driver.sent
+    assert CATALOG["menu.title"]["uz"] in driver.sent
 
 
 @pytest.mark.infra

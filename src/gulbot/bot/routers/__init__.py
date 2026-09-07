@@ -17,6 +17,7 @@ from gulbot.bot.routers.nav import build_nav_router
 from gulbot.bot.routers.occasions import build_occasions_router
 from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
+from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
 
 
@@ -27,6 +28,10 @@ def build_routers() -> tuple[Router, ...]:
         build_onboarding_router(),
         build_settings_router(),
         build_occasions_router(),
+        # CP10c. Owns ONE state (Onboarding.sharing_phone) and nothing else, so
+        # its position here is not delicate -- but it goes after occasions
+        # because that is the flow which hands control to it.
+        build_phone_router(),
         # CP10. Its own callback prefixes and its own states, so it neither
         # shadows nor is shadowed by the occasions flow.
         build_orders_router(),

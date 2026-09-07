@@ -64,7 +64,8 @@ from gulbot.bot.keyboards import (
     year_keyboard,
     yes_no_keyboard,
 )
-from gulbot.bot.states import AddOccasion, EditRecipient
+from gulbot.bot.routers.phone import ask_for_phone
+from gulbot.bot.states import AddOccasion, EditRecipient, Onboarding
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
@@ -607,9 +608,24 @@ async def more_people_yes(callback: CallbackQuery, state: FSMContext, lang: str)
     )
 
 
-async def _finish_chain(target: Message, state: FSMContext, lang: str) -> None:
+async def _finish_chain(
+    target: Message, state: FSMContext, lang: str, customer: Customer | None = None
+) -> None:
+    """The single exit from the chained flow.
+
+    ONE last question, and only on first contact: the phone number. It is asked
+    here rather than at the start because by now the customer has their dates
+    saved and knows what the bot is for, so "a courier will need to call you"
+    lands as a reason instead of an interrogation. Skippable -- the reminder
+    half of the product needs no number, and the order flow asks again when it
+    actually does.
+    """
     data = await state.get_data()
     was_onboarding = bool(data.get("onboarding"))
+    if was_onboarding and customer is not None and not customer.phone:
+        await state.set_state(Onboarding.sharing_phone)
+        await ask_for_phone(target, state, lang, with_skip=True)
+        return
     await state.clear()
     key = "recipients.onboarding_done" if was_onboarding else "menu.title"
     await target.answer(t(key, lang), reply_markup=main_menu_keyboard(lang))
@@ -626,7 +642,7 @@ async def more_people_no(
     await callback.answer()
     target = _reply_target(callback)
     if await has_answered_reminder_preferences(session, customer_id=customer.id):
-        await _finish_chain(target, state, lang)
+        await _finish_chain(target, state, lang, customer)
         return
     await state.set_state(AddOccasion.asking_reminder_count)
     await target.answer(
@@ -666,7 +682,7 @@ async def pick_send_time(
     if callback_data.value != "skip":
         await set_send_time(session, customer=customer, slot=callback_data.value)
         await target.answer(t("prefs.saved", lang))
-    await _finish_chain(target, state, lang)
+    await _finish_chain(target, state, lang, customer)
 
 
 # --- renaming --------------------------------------------------------------

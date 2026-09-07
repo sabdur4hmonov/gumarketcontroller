@@ -56,6 +56,7 @@ from gulbot.bot.keyboards import (
     order_location_keyboard,
     share_location_keyboard,
 )
+from gulbot.bot.routers.phone import accept_contact, accept_typed, ask_for_phone
 from gulbot.bot.states import PlaceOrder
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
@@ -232,20 +233,56 @@ def _summary(lang: str, data: dict[str, Any]) -> str:
     )
 
 
-async def enter_landmark(message: Message, state: FSMContext, lang: str) -> None:
+async def enter_landmark(
+    message: Message, state: FSMContext, customer: Customer, lang: str
+) -> None:
     landmark = sanitize_label(message.text or "", max_length=LANDMARK_MAX_LENGTH)
     if not landmark:
         await message.answer(t("order.landmark_empty", lang))
         return
-    # The token is minted HERE, with the screen: both halves of a double-tap
-    # then carry the same one and collide on the unique index.
-    await state.update_data(landmark=landmark, submit_token=uuid.uuid4().hex)
+    await state.update_data(landmark=landmark)
+    if not customer.phone:
+        # BEFORE the confirmation screen, not after the confirm tap. Two
+        # reasons, and the second is the load-bearing one: the number then
+        # appears on the screen the customer approves, and nothing is
+        # interposed between that tap and the insert. A round trip in that gap
+        # is exactly where CP10a's double-tap race would come back.
+        await state.set_state(PlaceOrder.entering_phone)
+        await ask_for_phone(message, state, lang, with_skip=False)
+        return
+    await _show_confirmation(message, state, lang)
+
+
+async def _show_confirmation(message: Message, state: FSMContext, lang: str) -> None:
+    """The last screen before anything is written.
+
+    The token is minted HERE, with the screen: both halves of a double-tap then
+    carry the same one and collide on the unique index. Reached from the
+    landmark step, or from the phone step when one had to be collected.
+    """
+    await state.update_data(submit_token=uuid.uuid4().hex)
     await state.set_state(PlaceOrder.confirming)
     data = await state.get_data()
     await message.answer(
         t("order.confirm", lang, summary=_summary(lang, data)),
         reply_markup=order_confirm_keyboard(lang),
     )
+
+
+async def order_phone_contact(
+    message: Message, state: FSMContext, session: AsyncSession, customer: Customer, lang: str
+) -> None:
+    if await accept_contact(message, session, customer, lang) is None:
+        return
+    await _show_confirmation(message, state, lang)
+
+
+async def order_phone_typed(
+    message: Message, state: FSMContext, session: AsyncSession, customer: Customer, lang: str
+) -> None:
+    if await accept_typed(message, session, customer, lang) is None:
+        return
+    await _show_confirmation(message, state, lang)
 
 
 async def submit_order(
@@ -419,6 +456,9 @@ def build_orders_router() -> Router:
     )
     router.callback_query.register(back_to_location, PlaceOrder.confirming, OrderBackCB.filter())
     router.message.register(
+        back_to_location_from_pin, PlaceOrder.entering_phone, F.text.in_(BACK_LABELS)
+    )
+    router.message.register(
         back_to_location_from_pin, PlaceOrder.waiting_location, F.text.in_(BACK_LABELS)
     )
 
@@ -437,6 +477,12 @@ def build_orders_router() -> Router:
     )
     router.message.register(
         enter_landmark, PlaceOrder.entering_landmark, F.text, flags={"catch_all": True}
+    )
+    # A contact message is not text, so it cannot be swallowed by the catch-all
+    # below. There is no Skip here: at order time the courier needs a number.
+    router.message.register(order_phone_contact, PlaceOrder.entering_phone, F.contact)
+    router.message.register(
+        order_phone_typed, PlaceOrder.entering_phone, F.text, flags={"catch_all": True}
     )
     router.callback_query.register(
         submit_order, PlaceOrder.confirming, OrderConfirmCB.filter(F.action == "submit")

@@ -12,6 +12,10 @@ from aiogram.fsm.state import State, StatesGroup
 
 class Onboarding(StatesGroup):
     choosing_language = State()
+    #: Asked ONCE, at the end of the first-contact chain, and skippable. A
+    #: customer who only ever wants reminders is not made to hand over a phone
+    #: number for a service that will never phone them.
+    sharing_phone = State()
 
 
 class SettingsFlow(StatesGroup):
@@ -77,4 +81,10 @@ class PlaceOrder(StatesGroup):
     entering_address = State()
     waiting_location = State()
     entering_landmark = State()
+    #: NOT skippable, and only reached when the number is still missing. This is
+    #: the moment it is actually needed and the moment the customer understands
+    #: why it is being asked -- and it sits BEFORE the confirmation screen, not
+    #: after the confirm tap, so the number appears on the screen they approve
+    #: and nothing is interposed between that tap and the insert.
+    entering_phone = State()
     confirming = State()

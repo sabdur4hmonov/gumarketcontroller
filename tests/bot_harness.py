@@ -18,7 +18,16 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.session.base import BaseSession
 from aiogram.methods import TelegramMethod
 from aiogram.methods.base import TelegramType
-from aiogram.types import CallbackQuery, Chat, Location, Message, PhotoSize, Update, User
+from aiogram.types import (
+    CallbackQuery,
+    Chat,
+    Contact,
+    Location,
+    Message,
+    PhotoSize,
+    Update,
+    User,
+)
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 
 TEST_TOKEN = "42:TESTTOKENTESTTOKENTESTTOKENTESTTOKEN"
@@ -147,6 +156,36 @@ def channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
 
 def edited_channel_post_update(update_id: int = 1, **kwargs: Any) -> Update:
     return Update(update_id=update_id, edited_channel_post=channel_message(**kwargs))
+
+
+def contact_update(
+    *,
+    user_id: int,
+    phone_number: str = "+998901234567",
+    contact_user_id: int | None = None,
+    update_id: int = 1,
+) -> Update:
+    """A shared contact, as Telegram's request_contact button produces one.
+
+    `contact_user_id` defaults to the SENDER, which is what the button gives.
+    Passing a different id models the customer picking a friend out of their
+    address book instead -- Telegram allows it, and it must not be stored as
+    this customer's number.
+    """
+    return Update(
+        update_id=update_id,
+        message=Message(
+            message_id=update_id,
+            date=datetime.now(tz=UTC),
+            chat=Chat(id=user_id, type="private"),
+            from_user=User(id=user_id, is_bot=False, first_name="Aziz"),
+            contact=Contact(
+                phone_number=phone_number,
+                first_name="Aziz",
+                user_id=user_id if contact_user_id is None else contact_user_id,
+            ),
+        ),
+    )
 
 
 def location_update(

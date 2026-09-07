@@ -138,9 +138,50 @@ async def driver(db: AsyncConnection) -> Driver:
             {"s": shop},
         )
     ).scalar_one()
+    # WITH a phone. CP10c makes the order flow ask for one when it is missing,
+    # so a customer created by the middleware (no phone) would route every test
+    # in this file through that extra step and stop testing what it was written
+    # to test. The missing-phone path has its own fixture below.
+    await db.execute(
+        text(
+            "INSERT INTO customers (shop_id, telegram_user_id, phone, phone_verified) "
+            "VALUES (:s, :t, '+998901112233', true)"
+        ),
+        {"s": shop, "t": USER_ID},
+    )
     sessions = bound_session_factory(db)
     bot, recorder = make_bot()
     dispatcher = build_dispatcher(session_factory=sessions, shop_id=shop, storage=MemoryStorage())
+    return Driver(dispatcher, bot, recorder, db, shop, product)
+
+
+@pytest_asyncio.fixture
+async def phoneless(db: AsyncConnection) -> Driver:
+    """The same world, with a customer who has never given a number."""
+    shop = (
+        await db.execute(
+            text(
+                "INSERT INTO shops (name, working_hours) "
+                "VALUES ('S', CAST(:wh AS jsonb)) RETURNING id"
+            ),
+            {"wh": json.dumps(DEFAULT_WORKING_HOURS)},
+        )
+    ).scalar_one()
+    product = (
+        await db.execute(
+            text(
+                "INSERT INTO products (shop_id, name, telegram_file_id, source, "
+                " channel_message_id, price_uzs, price_confidence, finalized_at) "
+                "VALUES (:s, 'Oq atirgul', 'file-1', 'channel', 1, 450000, 'high', now()) "
+                "RETURNING id"
+            ),
+            {"s": shop},
+        )
+    ).scalar_one()
+    bot, recorder = make_bot()
+    dispatcher = build_dispatcher(
+        session_factory=bound_session_factory(db), shop_id=shop, storage=MemoryStorage()
+    )
     return Driver(dispatcher, bot, recorder, db, shop, product)
 
 
@@ -372,3 +413,100 @@ async def test_the_shop_is_told_at_once_and_the_order_survives_if_it_cannot_be(
     assert announcement.state == "failed", "the handler tried, and there was nowhere to send"
     assert announcement.attempts == 1, "it tried exactly once, and the beat has the rest"
     assert order.status == "placed", "the order is unaffected by the notification failing"
+
+
+# --- CP10c: the number the courier will dial -------------------------------
+
+
+async def test_a_customer_with_a_number_is_not_asked_again(driver: Driver) -> None:
+    """The step exists only when it is needed. Asking a customer who already
+    gave a number is friction with nothing behind it."""
+    await driver.through_to_landmark()
+    await driver.say("Ko'k eshik")
+    assert CATALOG["phone.ask_order"]["uz"] not in driver.sent
+    # And the flow really is at the confirmation, not merely past the ask:
+    # submitting writes the order.
+    await driver.tap(OrderConfirmCB(action="submit").pack())
+    assert len(await driver.orders()) == 1
+
+
+async def test_a_customer_without_one_is_asked_before_the_confirmation(phoneless: Driver) -> None:
+    """BEFORE, not after the confirm tap. Two reasons, and the second is the
+    load-bearing one: the number is on the screen the customer approves, and
+    nothing is interposed between that tap and the insert."""
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    assert CATALOG["phone.ask_order"]["uz"] in phoneless.sent
+    assert await phoneless.orders() == [], "still nothing written"
+
+
+async def test_giving_the_number_reaches_the_confirmation_and_then_the_order(
+    phoneless: Driver,
+) -> None:
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    await phoneless.say("90 123 45 67")
+    await phoneless.tap(OrderConfirmCB(action="submit").pack())
+
+    rows = await phoneless.orders()
+    assert len(rows) == 1
+    stored = (
+        await phoneless.db.execute(
+            text("SELECT phone, phone_verified FROM customers WHERE telegram_user_id = :t"),
+            {"t": USER_ID},
+        )
+    ).one()
+    assert stored.phone == "+998901234567"
+    assert stored.phone_verified is False
+
+
+async def test_the_order_cannot_be_submitted_from_the_phone_step(phoneless: Driver) -> None:
+    """The confirm button belongs to `confirming`. Tapping a stale one while the
+    phone is still outstanding must not write an order -- this is the guard that
+    makes requiring the number actually mean something."""
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    await phoneless.tap(OrderConfirmCB(action="submit").pack())
+    assert await phoneless.orders() == []
+
+
+async def test_an_unreadable_number_keeps_the_flow_where_it_is(phoneless: Driver) -> None:
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    await phoneless.say("salom")
+    assert CATALOG["phone.invalid"]["uz"] in phoneless.sent
+    await phoneless.tap(OrderConfirmCB(action="submit").pack())
+    assert await phoneless.orders() == [], "a bad number must not fall through to submit"
+
+
+async def test_cancel_wins_from_the_order_phone_step(phoneless: Driver) -> None:
+    """Every text-waiting state has to prove this, and this file is where the
+    behavioural half lives."""
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    await phoneless.say(CANCEL)
+    assert CATALOG["nav.cancelled"]["uz"] in phoneless.sent
+    assert await phoneless.orders() == []
+
+
+async def test_the_number_reaches_the_shops_card(phoneless: Driver) -> None:
+    """The whole point of the change, end to end: a number the customer gave
+    during the order comes back out on the message the shop reads."""
+    from gulbot.sending.order_card import ANNOUNCEMENT, render_card
+    from gulbot.sending.order_pings import load_card
+
+    await phoneless.through_to_landmark()
+    await phoneless.say("Ko'k eshik")
+    await phoneless.say("90 123 45 67")
+    await phoneless.tap(OrderConfirmCB(action="submit").pack())
+
+    order = (await phoneless.orders())[0]
+    async with bound_session_factory(phoneless.db)() as session:
+        card = await load_card(session, order_id=order.id)
+    assert card is not None
+    rendered = render_card(card, ping_number=ANNOUNCEMENT)
+    assert "+998901234567" in rendered
+    assert CATALOG["group.no_phone"]["uz"] not in rendered
+    # Typed by hand, so it is shown AND marked -- never withheld. The courier
+    # still needs something to dial.
+    assert "tasdiqlanmagan" in rendered

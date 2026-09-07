@@ -41,6 +41,24 @@ async def get_or_create_customer(
     return customer, inserted_id is not None
 
 
+async def set_phone(
+    session: AsyncSession, *, customer: Customer, phone: str, verified: bool
+) -> None:
+    """Store the customer's number.
+
+    Lives here rather than in the order router on purpose. CP10's scope fence
+    forbids that router issuing any UPDATE at all -- a blunt rule that turns out
+    to be the right one, because it pushes a write that is nothing to do with
+    orders into the layer that owns customers.
+
+    `verified` is Telegram's word, not ours: True only when the contact button
+    handed us a contact whose `user_id` is the sender's own.
+    """
+    customer.phone = phone
+    customer.phone_verified = verified
+    await session.flush()
+
+
 async def set_language(session: AsyncSession, *, customer: Customer, lang: str) -> None:
     customer.lang = lang
     await session.flush()

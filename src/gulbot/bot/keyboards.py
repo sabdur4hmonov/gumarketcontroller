@@ -474,6 +474,22 @@ def share_location_keyboard(lang: str) -> ReplyKeyboardMarkup:
     )
 
 
+def share_phone_keyboard(lang: str, *, with_skip: bool) -> ReplyKeyboardMarkup:
+    """Telegram's native contact button, which like the location one exists only
+    on a REPLY keyboard.
+
+    `with_skip` is the whole onboarding/order split in one flag: at onboarding a
+    customer may decline and still use the reminder half of the product; at
+    order time the courier needs a number, so the only ways out are giving one
+    or cancelling.
+    """
+    rows = [[KeyboardButton(text=t("btn.share_phone", lang), request_contact=True)]]
+    if with_skip:
+        rows.append([KeyboardButton(text=t("btn.phone.skip", lang))])
+    rows.append([KeyboardButton(text=t("btn.nav.cancel", lang))])
+    return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, one_time_keyboard=True)
+
+
 def order_confirm_keyboard(lang: str) -> InlineKeyboardMarkup:
     """Nothing is written to `orders` until one of these is tapped."""
     return InlineKeyboardMarkup(

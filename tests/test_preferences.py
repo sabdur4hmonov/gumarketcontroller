@@ -41,6 +41,7 @@ from gulbot.bot.callbacks import (
     YesNoCB,
 )
 from gulbot.bot.factory import build_dispatcher
+from gulbot.bot.states import Onboarding
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import (
     DEFAULT_REMINDER_COUNT,
@@ -245,6 +246,18 @@ class Driver:
         await self.tap(YearSkipCB(action="skip").pack())
         await self.tap(ConfirmCB(action="save").pack())
 
+    async def skip_phone(self) -> None:
+        """Decline CP10c's number request, if it is being asked.
+
+        The onboarding chain now COMES TO REST here rather than at the menu, so
+        anything sent afterwards is read as a phone number until this is
+        answered. Sent only when the flow is actually waiting, because at state
+        None it would be answered by the fallback instead.
+        """
+        context = self.dispatcher.fsm.get_context(self.bot, USER_ID, USER_ID)
+        if await context.get_state() == Onboarding.sharing_phone.state:
+            await self.text(CATALOG["btn.phone.skip"]["uz"])
+
     @property
     def sent(self) -> list[str]:
         return self.recorder.sent_texts
@@ -340,6 +353,7 @@ async def test_flower_question_is_not_repeated_for_a_person_who_has_one(
     await driver.tap(YesNoCB(scope="people", answer="no").pack())
     await driver.tap(ReminderCountCB(value="skip").pack())
     await driver.tap(SendTimeCB(value="skip").pack())
+    await driver.skip_phone()
 
     recipient_id = (await _recipient(db))["id"]
     await driver.text(CATALOG["btn.menu.occasions"]["uz"])
@@ -436,6 +450,7 @@ async def test_skipping_both_leaves_them_null(driver: Driver, db: AsyncConnectio
     await driver.tap(ReminderCountCB(value="skip").pack())
     driver.recorder.calls.clear()
     await driver.tap(SendTimeCB(value="skip").pack())
+    await driver.skip_phone()
 
     prefs = await _customer_prefs(db)
     assert prefs["reminder_count"] is None
@@ -452,6 +467,7 @@ async def test_preferences_are_asked_only_once(driver: Driver) -> None:
     await driver.tap(YesNoCB(scope="people", answer="no").pack())
     await driver.tap(ReminderCountCB(value="2").pack())
     await driver.tap(SendTimeCB(value="morning").pack())
+    await driver.skip_phone()
 
     await driver.text(CATALOG["btn.menu.occasions"]["uz"])
     from gulbot.bot.callbacks import AddOccasionCB
