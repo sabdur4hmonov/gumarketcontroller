@@ -42,9 +42,10 @@ import logging
 from typing import Any
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.callbacks import BrowsePageCB, BrowsePickCB
@@ -119,11 +120,33 @@ async def _show_page(
         has_next=listing.has_more,
     )
     body = t("browse.title", lang)
-    if edit:
-        await target.edit_text(body, reply_markup=keyboard)
-    else:
-        await target.answer(body, reply_markup=keyboard)
+    await _render(target, body, keyboard, edit=edit)
     await state.set_state(Browse.listing)
+
+
+async def _render(
+    target: Message, body: str, keyboard: InlineKeyboardMarkup, *, edit: bool
+) -> None:
+    """Rewrite the list in place, or send it -- but never fail on the rewrite.
+
+    Editing is cosmetic: it keeps paging from leaving a trail of dead lists up
+    the chat. Telegram refuses an edit for several ordinary reasons -- the
+    message is older than 48 hours, it was deleted, or the new content is
+    byte-identical to the old -- and none of those is a reason the customer
+    should be left staring at a page that did not change. So a refused edit
+    falls back to a new message, which is the behaviour the customer wanted
+    anyway.
+
+    Found by the live run: the first version let the exception escape, and the
+    handler died silently mid-page.
+    """
+    if edit:
+        try:
+            await target.edit_text(body, reply_markup=keyboard)
+            return
+        except TelegramBadRequest as exc:
+            log.info("list edit refused (%s); sending a new one", exc.message)
+    await target.answer(body, reply_markup=keyboard)
 
 
 async def open_browse(

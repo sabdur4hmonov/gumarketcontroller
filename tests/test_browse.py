@@ -417,3 +417,31 @@ async def test_cancel_leaves_the_browse_flow(driver: Driver) -> None:
     await driver.say(BROWSE)
     await driver.say(CATALOG["btn.nav.cancel"]["uz"])
     assert CATALOG["nav.cancelled"]["uz"] in driver.sent
+
+
+async def test_a_refused_edit_falls_back_to_a_new_message(
+    driver: Driver, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Found by the live run, where the first version let the exception escape
+    and the handler died silently mid-page.
+
+    Telegram refuses an edit for several ordinary reasons -- the message is over
+    48 hours old, it was deleted, the new content is byte-identical. None of
+    them is a reason to leave the customer staring at a page that did not
+    change, so the list is sent instead.
+    """
+    from aiogram.exceptions import TelegramBadRequest
+    from aiogram.methods import EditMessageText
+
+    for n in range(7):
+        await add_product(driver.db, driver.shop, name=f"b{n}", minutes=n)
+    await driver.say(BROWSE)
+
+    async def refuse(*args: object, **kwargs: object):  # type: ignore[no-untyped-def]
+        raise TelegramBadRequest(method=EditMessageText(text="x"), message="can't be edited")
+
+    monkeypatch.setattr("aiogram.types.Message.edit_text", refuse)
+    await driver.tap(BrowsePageCB(action="next").pack())
+
+    # Two renders: the first page, and the second sent rather than edited.
+    assert driver.sent.count(CATALOG["browse.title"]["uz"]) == 2
