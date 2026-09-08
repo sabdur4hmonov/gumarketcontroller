@@ -11,6 +11,7 @@ only ever be attached to one Dispatcher, so singletons make a second dispatcher
 
 from aiogram import Router
 
+from gulbot.bot.routers.browse import build_browse_router
 from gulbot.bot.routers.fallback import build_fallback_router
 from gulbot.bot.routers.menu import build_menu_router
 from gulbot.bot.routers.nav import build_nav_router
@@ -32,6 +33,11 @@ def build_routers() -> tuple[Router, ...]:
         # its position here is not delicate -- but it goes after occasions
         # because that is the flow which hands control to it.
         build_phone_router(),
+        # CP11. Owns two button-only states and the menu entry. It sits
+        # ahead of orders because it hands control to it: a bouquet chosen
+        # here starts the order flow through the SAME callback a reminder
+        # carries, rather than a second entry point that could drift.
+        build_browse_router(),
         # CP10. Its own callback prefixes and its own states, so it neither
         # shadows nor is shadowed by the occasions flow.
         build_orders_router(),

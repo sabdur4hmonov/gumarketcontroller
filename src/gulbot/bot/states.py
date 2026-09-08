@@ -62,6 +62,21 @@ class EditRecipient(StatesGroup):
     entering_label = State()
 
 
+class Browse(StatesGroup):
+    """Looking through the catalogue without a reminder to start from.
+
+    NO text-waiting states at all, which is why this group adds nothing to
+    the surface Cancel and /start have to be proven against: every step is a
+    button. A search box would change that, and is deliberately not here.
+    """
+
+    #: A page of bouquets. The cursor stack lives in FSM data, so paging
+    #: backwards needs no second query shape.
+    listing = State()
+    #: One bouquet, shown as the shop's own post.
+    viewing = State()
+
+
 class PlaceOrder(StatesGroup):
     """Ordering a bouquet. Picker-driven, same discipline as AddOccasion.
 

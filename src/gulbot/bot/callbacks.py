@@ -171,6 +171,28 @@ class SendTimeCB(CallbackData, prefix="sendtime"):
         return [cls(value=v).pack() for v in ("morning", "noon", "evening", "skip")]
 
 
+class BrowsePageCB(CallbackData, prefix="brwpage"):
+    """Paging through the catalogue. Direction only -- the cursor lives in
+    FSM data, because a cursor in callback data would be a timestamp a
+    customer could edit."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("next", "prev", "close")]
+
+
+class BrowsePickCB(CallbackData, prefix="brwpick"):
+    """One bouquet chosen from the list."""
+
+    product_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(product_id=n).pack() for n in (1, 4242)]
+
+
 class OrderStartCB(CallbackData, prefix="ordstart"):
     """The button under a bouquet. Carries only a product id, so a future
     browse screen is a new caller rather than a rewrite."""
@@ -249,6 +271,8 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OrderLocationCB,
     OrderConfirmCB,
     OrderBackCB,
+    BrowsePageCB,
+    BrowsePickCB,
 )
 
 

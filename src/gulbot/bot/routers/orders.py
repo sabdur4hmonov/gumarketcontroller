@@ -57,7 +57,7 @@ from gulbot.bot.keyboards import (
     share_location_keyboard,
 )
 from gulbot.bot.routers.phone import accept_contact, accept_typed, ask_for_phone
-from gulbot.bot.states import PlaceOrder
+from gulbot.bot.states import Browse, PlaceOrder
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
@@ -440,7 +440,11 @@ def build_orders_router() -> Router:
     router = Router(name="orders")
 
     # Entry, from the button under a bouquet.
-    router.callback_query.register(start_order, StateFilter(None), OrderStartCB.filter())
+    # Reachable from a reminder (state None) AND from CP11's browse view.
+    # One handler for both, so the order flow has a single entry point.
+    router.callback_query.register(
+        start_order, StateFilter(None, Browse.viewing), OrderStartCB.filter()
+    )
 
     # Back first, per state, so it is never shadowed by the step's own handler.
     router.callback_query.register(back_from_date, PlaceOrder.choosing_date, OrderBackCB.filter())

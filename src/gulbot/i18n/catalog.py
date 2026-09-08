@@ -471,6 +471,23 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "🚨 <b>Diqqat:</b> {count} ta xabar bir necha marta yuborilmadi va to‘xtatildi.",
         "ru": "🚨 <b>Внимание:</b> {count} сообщений отклонено после нескольких попыток.",
     },
+    # --- CP11. Browsing the catalogue without a reminder to start from ----
+    "browse.title": {
+        "uz": "💐 Qaysi guldastani ko‘rmoqchisiz?",
+        "ru": "💐 Какой букет посмотрим?",
+    },
+    "browse.empty": {
+        "uz": "Hozircha guldastalar yo‘q. Tez orada qo‘shamiz!",
+        "ru": "Пока нет букетов. Скоро добавим!",
+    },
+    "browse.gone": {
+        "uz": "Bu guldasta endi mavjud emas.",
+        "ru": "Этого букета больше нет.",
+    },
+    # The list row. Price on the same line, because a customer scanning a list
+    # is choosing on price as much as on name.
+    "browse.row": {"uz": "{name} — {price}", "ru": "{name} — {price}"},
+    "browse.row.no_price": {"uz": "{name}", "ru": "{name}"},
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
     "btn.language.ru": {"uz": "🇷🇺 Русский", "ru": "🇷🇺 Русский"},
@@ -487,6 +504,19 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "btn.phone.skip": {
         "uz": "Keyinroq",
         "ru": "Позже",
+    },
+    "btn.menu.browse": {
+        "uz": "💐 Gul buyurtma qilish",
+        "ru": "💐 Заказать цветы",
+    },
+    "ibtn.browse.next": {"uz": "▶️ Yana", "ru": "▶️ Ещё"},
+    "ibtn.browse.prev": {
+        "uz": "◀️ Oldingi",
+        "ru": "◀️ Назад",
+    },
+    "ibtn.browse.back_to_list": {
+        "uz": "⬅️ Ro‘yxatga",
+        "ru": "⬅️ К списку",
     },
     "btn.nav.back": {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад"},
     "btn.nav.cancel": {"uz": "✖️ Bekor qilish", "ru": "✖️ Отмена"},

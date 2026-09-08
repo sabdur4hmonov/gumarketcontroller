@@ -50,13 +50,37 @@ WHAT IS EXCLUDED, and why each one matters:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 
-from sqlalchemy import Boolean, ColumnElement, func, literal, select
+from sqlalchemy import Boolean, ColumnElement, func, literal, select, tuple_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.catalog.prices import PriceConfidence
 from gulbot.models.product import HashtagAlias, Product, ProductHashtag
 from gulbot.services.hashtag_aliases import resolve_alias
+
+
+def sellable(shop_id: int) -> list[ColumnElement[bool]]:
+    """What makes a product showable to a customer. ONE definition.
+
+    Both the reminder chooser and the browse list filter on exactly these
+    four, and they must never disagree: a bouquet a customer can find by
+    browsing but never be offered in a reminder -- or worse, the reverse --
+    would be a difference nobody could explain from the outside.
+
+        active = false          the shop hid it, or an order was rejected
+        deleted_at IS NOT NULL  nothing writes this yet; filtered anyway,
+                                because adding it to a query later is free
+                                and forgetting it is a silent bug
+        finalized_at IS NULL    a provisional album whose name, price and
+                                tags are not settled
+    """
+    return [
+        Product.shop_id == shop_id,
+        Product.active.is_(True),
+        Product.deleted_at.is_(None),
+        Product.finalized_at.is_not(None),
+    ]
 
 
 @dataclass(frozen=True)
@@ -130,12 +154,7 @@ async def choose_bouquet(
 
     product = await session.scalar(
         select(Product)
-        .where(
-            Product.shop_id == shop_id,
-            Product.active.is_(True),
-            Product.deleted_at.is_(None),
-            Product.finalized_at.is_not(None),
-        )
+        .where(*sellable(shop_id))
         .order_by(matched.desc(), Product.indexed_at.desc(), Product.id.desc())
         .limit(1)
     )
@@ -149,3 +168,90 @@ async def choose_bouquet(
         price_confidence=product.price_confidence,
         telegram_file_id=product.telegram_file_id,
     )
+
+
+# --- CP11: the browse list -------------------------------------------------
+
+
+#: Rows per page. Five inline buttons plus a navigation row is about as much as
+#: fits on a phone without scrolling the keyboard.
+PAGE_SIZE = 5
+
+
+@dataclass(frozen=True)
+class Listing:
+    """One page of the catalogue, and whether there is more of it."""
+
+    bouquets: tuple[Bouquet, ...]
+    cursor: tuple[datetime, int] | None
+
+    @property
+    def has_more(self) -> bool:
+        return self.cursor is not None
+
+
+async def list_bouquets(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    after: tuple[datetime, int] | None = None,
+    limit: int = PAGE_SIZE,
+) -> Listing:
+    """A page of sellable bouquets, newest first.
+
+    KEYSET, not OFFSET, and the reason is that this is the query a shop grows
+    into. `OFFSET 200` makes Postgres walk and discard two hundred rows on every
+    tap; a keyset comparison seeks straight to the position on the index and
+    costs the same on page forty as on page one. It also cannot skip or repeat a
+    row when the catalogue changes between taps -- a new post arriving while a
+    customer is on page two shifts every OFFSET page by one.
+
+    The cursor is the (indexed_at, id) of the last row returned, compared as a
+    ROW rather than as two columns, so ties on `indexed_at` -- an album indexed
+    in the same instant -- break on the id instead of dropping rows.
+    """
+    query = select(Product).where(*sellable(shop_id))
+    if after is not None:
+        indexed_at, product_id = after
+        query = query.where(
+            tuple_(Product.indexed_at, Product.id)
+            < tuple_(literal(indexed_at), literal(product_id))
+        )
+
+    rows = list(
+        await session.scalars(
+            query.order_by(Product.indexed_at.desc(), Product.id.desc()).limit(limit + 1)
+        )
+    )
+    # One extra row is fetched purely to answer "is there a next page" without a
+    # second COUNT query over the whole catalogue.
+    more = len(rows) > limit
+    page = rows[:limit]
+    cursor = (page[-1].indexed_at, page[-1].id) if page and more else None
+
+    return Listing(
+        bouquets=tuple(
+            Bouquet(
+                product_id=product.id,
+                name=product.name,
+                price_uzs=product.price_uzs,
+                price_confidence=product.price_confidence,
+                telegram_file_id=product.telegram_file_id,
+            )
+            for product in page
+        ),
+        cursor=cursor,
+    )
+
+
+async def load_product(session: AsyncSession, *, shop_id: int, product_id: int) -> Product | None:
+    """One product, if it is still sellable.
+
+    Returns the ORM row rather than a `Bouquet` because the browse view needs
+    the channel coordinates to reproduce the shop's original post, and those
+    have no business on a type the reminder path passes around.
+    """
+    product: Product | None = await session.scalar(
+        select(Product).where(*sellable(shop_id), Product.id == product_id)
+    )
+    return product

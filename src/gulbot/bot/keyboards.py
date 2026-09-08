@@ -15,6 +15,8 @@ from aiogram.types import (
 from gulbot.bot.callbacks import (
     AddOccasionCB,
     BackCB,
+    BrowsePageCB,
+    BrowsePickCB,
     ConfirmCB,
     DayCB,
     EditOccasionCB,
@@ -57,8 +59,16 @@ def language_keyboard(lang: str, *, with_back: bool) -> ReplyKeyboardMarkup:
 
 
 def main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    """Ordering goes FIRST, on its own row.
+
+    Until CP11 the only way to order was the button attached to a reminder,
+    so a customer who wanted flowers on a day with nothing due could not buy
+    any. It leads because it is the thing that earns money; dates are the
+    thing that brings people back.
+    """
     return _kb(
         [
+            [t("btn.menu.browse", lang)],
             [t("btn.menu.occasions", lang)],
             [t("btn.menu.settings", lang), t("btn.menu.help", lang)],
         ]
@@ -503,5 +513,81 @@ def order_confirm_keyboard(lang: str) -> InlineKeyboardMarkup:
                 ),
             ],
             _order_back_row(lang),
+        ]
+    )
+
+
+# --- CP11: browsing the catalogue ------------------------------------------
+
+
+#: Inline button labels are read on a phone, in one line. A 200-character
+#: product name has to be cut somewhere, and cutting it here rather than in the
+#: name itself keeps the full text for the card the shop reads.
+ROW_LABEL_MAX = 40
+
+
+def browse_list_keyboard(
+    lang: str,
+    rows: Sequence[tuple[int, str]],
+    *,
+    has_prev: bool,
+    has_next: bool,
+) -> InlineKeyboardMarkup:
+    """One button per bouquet, then a navigation row.
+
+    Prev and Next appear only when they lead somewhere. A dead button that
+    answers with nothing is worse than no button: the customer taps it twice
+    before deciding the bot is broken.
+    """
+    keyboard: list[list[InlineKeyboardButton]] = [
+        [
+            InlineKeyboardButton(
+                text=label[:ROW_LABEL_MAX],
+                callback_data=BrowsePickCB(product_id=product_id).pack(),
+            )
+        ]
+        for product_id, label in rows
+    ]
+
+    nav: list[InlineKeyboardButton] = []
+    if has_prev:
+        nav.append(
+            InlineKeyboardButton(
+                text=t("ibtn.browse.prev", lang),
+                callback_data=BrowsePageCB(action="prev").pack(),
+            )
+        )
+    if has_next:
+        nav.append(
+            InlineKeyboardButton(
+                text=t("ibtn.browse.next", lang),
+                callback_data=BrowsePageCB(action="next").pack(),
+            )
+        )
+    if nav:
+        keyboard.append(nav)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
+def browse_product_keyboard(lang: str, product_id: int) -> InlineKeyboardMarkup:
+    """Under the shop's own post: order it, or go back to the list.
+
+    The order button is the SAME callback a reminder carries, so the order flow
+    has one entry point rather than two that could drift.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.order_now", lang),
+                    callback_data=OrderStartCB(product_id=product_id).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.browse.back_to_list", lang),
+                    callback_data=BrowsePageCB(action="close").pack(),
+                )
+            ],
         ]
     )

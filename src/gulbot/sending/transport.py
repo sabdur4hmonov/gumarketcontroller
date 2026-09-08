@@ -70,7 +70,15 @@ class Attachment:
 
 
 class Transport(Protocol):
-    """The only capabilities the dispatcher has."""
+    """The only capabilities the dispatcher has.
+
+    `copy_message` is CP11's, and only the browse screen uses it: it
+    reproduces the shop's own channel post verbatim -- their words, their
+    formatting, their line breaks -- with no parse_mode of ours involved, so
+    a caption containing `<` or `&` cannot make the send fail. The reminder
+    path deliberately does NOT use it: a reminder has to carry the reminder
+    TEXT, and a copy cannot.
+    """
 
     async def send_text(self, *, chat_id: int, text: str) -> SendResult: ...
 
@@ -80,5 +88,14 @@ class Transport(Protocol):
         chat_id: int,
         file_id: str,
         caption: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> SendResult: ...
+
+    async def copy_message(
+        self,
+        *,
+        chat_id: int,
+        from_chat_id: int,
+        message_id: int,
         reply_markup: InlineKeyboardMarkup | None = None,
     ) -> SendResult: ...
