@@ -54,7 +54,9 @@ from gulbot.db.session import build_session_factory  # noqa: E402
 from gulbot.sending.order_pings import run_order_ping_tick  # noqa: E402
 from gulbot.sending.telegram import TelegramTransport  # noqa: E402
 
-PROBE_TOKEN = "cp13-live-probe"
+#: Marks a probe order so cleanup can find it. `orders.submit_token` is
+#: varchar(32), so this plus a unix timestamp has to fit inside it.
+PROBE_TOKEN = "cp13probe"
 
 
 def dsn() -> str:
@@ -140,7 +142,7 @@ def make_probe_order(customer_tg: int) -> tuple[int, int, int]:
                 price,
                 file_id,
                 date.today() + timedelta(days=2),
-                f"{PROBE_TOKEN}-{datetime.now(UTC).timestamp()}",
+                f"{PROBE_TOKEN}{int(datetime.now(UTC).timestamp())}",
             ),
         ).fetchone()[0]
         conn.execute(
