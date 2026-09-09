@@ -450,20 +450,26 @@ def order_hour_keyboard(lang: str, hours: Sequence[time]) -> InlineKeyboardMarku
 
 
 def order_location_keyboard(lang: str) -> InlineKeyboardMarkup:
-    """Write an address, or drop a pin. The customer's choice -- the CHECK on
-    `orders` is what guarantees exactly one of them is stored."""
+    """Drop a pin, or write an address. The customer's choice -- the CHECK on
+    `orders` is what guarantees exactly one of them is stored.
+
+    THE PIN GOES FIRST. It is the better answer for both sides: the courier
+    gets coordinates instead of an approximate address, and the customer taps
+    once instead of typing. It was second, and the shop owner missed it
+    entirely on a first pass through their own bot.
+    """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
-                    text=t("ibtn.location_text", lang),
-                    callback_data=OrderLocationCB(mode="text").pack(),
+                    text=t("ibtn.location_pin", lang),
+                    callback_data=OrderLocationCB(mode="pin").pack(),
                 )
             ],
             [
                 InlineKeyboardButton(
-                    text=t("ibtn.location_pin", lang),
-                    callback_data=OrderLocationCB(mode="pin").pack(),
+                    text=t("ibtn.location_text", lang),
+                    callback_data=OrderLocationCB(mode="text").pack(),
                 )
             ],
             _order_back_row(lang),

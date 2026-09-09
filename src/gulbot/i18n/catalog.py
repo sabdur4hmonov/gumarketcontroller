@@ -262,12 +262,24 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Извините, свободного времени пока нет. Попробуйте позже.",
     },
     "order.choose_hour": {"uz": "🕐 Soat nechchida?", "ru": "🕐 В котором часу?"},
+    # Names BOTH ways rather than asking "how", so the location option is
+    # visible in the question and not only in a button. The shop owner
+    # missed the pin entirely on a first pass through their own bot.
     "order.choose_location": {
-        "uz": "📍 Manzilni qanday yuborasiz?",
-        "ru": "📍 Как отправите адрес?",
+        "uz": "📍 Qayerga yetkazib beraylik?\n\n"
+        "Joylashuvingizni yuboring — shunda kuryer aniq topadi. "
+        "Yoki manzilni o‘zingiz yozing.",
+        "ru": "📍 Куда доставить?\n\n"
+        "Отправьте локацию — курьеру будет точнее. "
+        "Или напишите адрес сами.",
     },
     "ibtn.location_text": {"uz": "✍️ Manzil yozish", "ru": "✍️ Написать адрес"},
-    "ibtn.location_pin": {"uz": "📍 Joylashuvni yuborish", "ru": "📍 Отправить локацию"},
+    # The pin goes FIRST in the keyboard and says what it is for, not what
+    # it is called.
+    "ibtn.location_pin": {
+        "uz": "📍 Joylashuvni yuborish (tezroq)",
+        "ru": "📍 Отправить локацию (быстрее)",
+    },
     "order.enter_address": {"uz": "Manzilni yozing:", "ru": "Напишите адрес:"},
     "order.address_empty": {
         "uz": "Manzil bo‘sh bo‘lmasligi kerak. Qaytadan yozing.",
