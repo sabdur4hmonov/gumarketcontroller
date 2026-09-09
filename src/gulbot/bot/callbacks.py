@@ -194,14 +194,40 @@ class BrowsePickCB(CallbackData, prefix="brwpick"):
 
 
 class OrderStartCB(CallbackData, prefix="ordstart"):
-    """The button under a bouquet. Carries only a product id, so a future
-    browse screen is a new caller rather than a rewrite."""
+    """The button under a bouquet.
+
+    `recipient_id` is 0 when there is no one to name -- the browse screen,
+    where the customer picked a bouquet without any occasion behind it. From
+    a reminder it is the person the reminder was ABOUT, which does two
+    things: it is finally what writes `orders.recipient_id` (nothing ever
+    did, so the column was NULL on every order), and it gives "who is this
+    for" a one-tap answer instead of making the customer type a name the
+    bot already knows.
+
+    Zero rather than None because callback data is a string either way, and
+    an absent field would make the two callers produce different shapes.
+    """
 
     product_id: int
+    recipient_id: int = 0
 
     @classmethod
     def samples(cls) -> list[str]:
-        return [cls(product_id=1).pack()]
+        return [cls(product_id=1).pack(), cls(product_id=1, recipient_id=7).pack()]
+
+
+class OrderRecipientCB(CallbackData, prefix="ordrecip"):
+    """Accepting the name the bot already knows, or asking to type another.
+
+    Only ever shown when the order came from a reminder: the browse path has
+    no name to offer, so it goes straight to free text.
+    """
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("known", "other")]
 
 
 class OrderDateCB(CallbackData, prefix="orddate"):
@@ -266,6 +292,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     ReminderCountCB,
     SendTimeCB,
     OrderStartCB,
+    OrderRecipientCB,
     OrderDateCB,
     OrderHourCB,
     OrderLocationCB,

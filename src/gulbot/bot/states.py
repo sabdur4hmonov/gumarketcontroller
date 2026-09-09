@@ -96,6 +96,9 @@ class PlaceOrder(StatesGroup):
     entering_address = State()
     waiting_location = State()
     entering_landmark = State()
+    #: Who takes delivery. Offered as a one-tap button when the order came from
+    #: a reminder and the bot already knows the name; free text otherwise.
+    entering_recipient_name = State()
     #: NOT skippable, and only reached when the number is still missing. This is
     #: the moment it is actually needed and the moment the customer understands
     #: why it is being asked -- and it sits BEFORE the confirmation screen, not

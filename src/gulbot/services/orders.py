@@ -50,6 +50,10 @@ class OrderDraft:
     delivery_date: date
     delivery_hour: time
     landmark: str
+    #: Who takes delivery. Free text, and NOT the same thing as
+    #: `recipient_id` -- the flowers are often handed to whoever answers
+    #: the door.
+    recipient_name: str
     submit_token: str
     recipient_id: int | None = None
     location_text: str | None = None
@@ -134,6 +138,7 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
             delivery_location_lat=draft.location_lat,
             delivery_location_lon=draft.location_lon,
             landmark=draft.landmark,
+            recipient_name=draft.recipient_name,
             status=OrderStatus.PLACED.value,
             submit_token=draft.submit_token,
         )

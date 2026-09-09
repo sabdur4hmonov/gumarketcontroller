@@ -44,6 +44,9 @@ class OrderCard:
     delivery_hour: time
     landmark: str
     customer_telegram_id: int
+    #: Who the courier asks for at the door. None only for orders placed
+    #: before the question existed.
+    recipient_name: str | None = None
     location_text: str | None = None
     location_lat: float | None = None
     location_lon: float | None = None
@@ -95,6 +98,17 @@ def location_line(card: OrderCard, lang: str) -> str:
     )
 
 
+def recipient_line(card: OrderCard, lang: str) -> str:
+    """Who the courier asks for at the door.
+
+    Blank rather than invented for an order placed before the question
+    existed -- a name read out at the wrong door is worse than none.
+    """
+    if not card.recipient_name:
+        return t("group.no_recipient", lang)
+    return escape(card.recipient_name)
+
+
 def customer_line(card: OrderCard, lang: str) -> str:
     """The number to call, and a link to the chat.
 
@@ -125,5 +139,6 @@ def render_card(
         hour=card.delivery_hour.strftime("%H:%M"),
         location=location_line(card, lang),
         landmark=escape(card.landmark),
+        recipient=recipient_line(card, lang),
         customer=customer_line(card, lang),
     )

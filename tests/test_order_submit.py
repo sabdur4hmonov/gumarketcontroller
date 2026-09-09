@@ -51,6 +51,7 @@ def draft(token: str = "tok-1", **overrides: object) -> OrderDraft:
         "delivery_date": DELIVERY,
         "delivery_hour": HOUR,
         "landmark": "Ko'k eshik",
+        "recipient_name": "Aziza",
         "submit_token": token,
     }
     base.update(overrides)

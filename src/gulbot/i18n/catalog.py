@@ -304,8 +304,8 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     # {bouquet} is REUSED from the reminder keys below, so the
     # "narx operator tomonidan tasdiqlanadi" wording lives in exactly one place.
     "order.summary": {
-        "uz": "{bouquet}\n\n📅 {date}, soat {hour}\n📍 {location}\n🧭 {landmark}",
-        "ru": "{bouquet}\n\n📅 {date}, {hour}\n📍 {location}\n🧭 {landmark}",
+        "uz": "{bouquet}\n\n📅 {date}, soat {hour}\n📍 {location}\n🧭 {landmark}\n👤 {recipient}",
+        "ru": "{bouquet}\n\n📅 {date}, {hour}\n📍 {location}\n🧭 {landmark}\n👤 {recipient}",
     },
     "order.confirm": {
         "uz": "Buyurtmani tasdiqlaymizmi?\n\n{summary}",
@@ -395,9 +395,11 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     },
     "group.card": {
         "uz": "{heading}\n\n{bouquet}\n\n📅 {date}, soat {hour}\n"
-        "📍 {location}\n🧭 {landmark}\n👤 {customer}",
+        "📍 {location}\n🧭 {landmark}\n"
+        "🎁 {recipient}\n👤 {customer}",
         "ru": "{heading}\n\n{bouquet}\n\n📅 {date}, {hour}\n"
-        "📍 {location}\n🧭 {landmark}\n👤 {customer}",
+        "📍 {location}\n🧭 {landmark}\n"
+        "🎁 {recipient}\n👤 {customer}",
     },
     "group.pin": {
         "uz": '{lat}, {lon} — <a href="{url}">xaritada ochish</a>',
@@ -408,6 +410,12 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "group.phone_unverified": {
         "uz": "{phone} (tasdiqlanmagan)",
         "ru": "{phone} (не подтверждён)",
+    },
+    # Orders placed before CP12 have no answer. An honest blank beats an
+    # invented name a courier might read out at a door.
+    "group.no_recipient": {
+        "uz": "kimga topshirilishi ko‘rsatilmagan",
+        "ru": "получатель не указан",
     },
     "group.no_phone": {
         "uz": "telefon raqami yo‘q",
@@ -500,6 +508,23 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     # is choosing on price as much as on name.
     "browse.row": {"uz": "{name} — {price}", "ru": "{name} — {price}"},
     "browse.row.no_price": {"uz": "{name}", "ru": "{name}"},
+    # --- CP12. Who takes delivery -----------------------------------------
+    # NOT the same question as "whose birthday is it". The person placing the
+    # order is often not the person the courier hands the flowers to.
+    "order.ask_recipient": {
+        "uz": "👤 Kimga topshiriladi?\n\nQabul qiluvchining ismini yozing.",
+        "ru": "👤 Кому вручить?\n\nНапишите имя получателя.",
+    },
+    # When the order came from a reminder the bot already knows the name, so it
+    # is offered as a button and typing is the fallback rather than the default.
+    "order.ask_recipient_known": {
+        "uz": "👤 Kimga topshiriladi?",
+        "ru": "👤 Кому вручить?",
+    },
+    "order.recipient_empty": {
+        "uz": "Ism bo‘sh bo‘lmasligi kerak. Qaytadan yozing.",
+        "ru": "Имя не может быть пустым. Напишите ещё раз.",
+    },
     # --- button labels ---------------------------------------------------
     "btn.language.uz": {"uz": "🇺🇿 O'zbekcha", "ru": "🇺🇿 O'zbekcha"},
     "btn.language.ru": {"uz": "🇷🇺 Русский", "ru": "🇷🇺 Русский"},
@@ -529,6 +554,10 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.browse.back_to_list": {
         "uz": "⬅️ Ro‘yxatga",
         "ru": "⬅️ К списку",
+    },
+    "ibtn.recipient_other": {
+        "uz": "✍️ Boshqa odam",
+        "ru": "✍️ Другой человек",
     },
     "btn.nav.back": {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад"},
     "btn.nav.cancel": {"uz": "✖️ Bekor qilish", "ru": "✖️ Отмена"},

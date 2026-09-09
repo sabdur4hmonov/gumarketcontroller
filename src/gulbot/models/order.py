@@ -50,6 +50,10 @@ from gulbot.db.base import Base, IdMixin, TimestampMixin
 #: Room for "Metro yonida, 3-qavat, ko'k eshik" without inviting an essay.
 LANDMARK_MAX_LENGTH = 200
 
+#: A person's name, not a description. Shorter than the landmark on
+#: purpose: a courier reads this out loud at a door.
+RECIPIENT_NAME_MAX_LENGTH = 100
+
 
 class OrderStatus(StrEnum):
     """Every state an order will ever have.
@@ -130,6 +134,12 @@ class Order(IdMixin, TimestampMixin, Base):
     delivery_location_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     delivery_location_lat: Mapped[float | None] = mapped_column(Float, nullable=True)
     delivery_location_lon: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    #: WHO TAKES DELIVERY, as free text. Not the same thing as
+    #: `recipient_id`: that is a saved person on the customer's own list, and
+    #: the flowers are often handed to whoever answers the door. Asked at order
+    #: time because only then is it knowable.
+    recipient_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     #: Always asked, whichever location method was used. A dropped pin still
     #: needs "the blue gate behind the pharmacy" in Uzbekistan's addressing

@@ -30,6 +30,7 @@ from gulbot.bot.callbacks import (
     OrderDateCB,
     OrderHourCB,
     OrderLocationCB,
+    OrderRecipientCB,
     OrderStartCB,
     RecipientCB,
     RecipientListCB,
@@ -390,18 +391,21 @@ def send_time_keyboard(lang: str) -> InlineKeyboardMarkup:
 # --- CP10: ordering --------------------------------------------------------
 
 
-def order_button(lang: str, product_id: int) -> InlineKeyboardMarkup:
+def order_button(lang: str, product_id: int, recipient_id: int = 0) -> InlineKeyboardMarkup:
     """The one button under a bouquet.
 
-    Carries only the product id. A future browse screen attaches the same
-    button to the same flow without either side changing.
+    `recipient_id` is 0 from the browse screen, where no occasion is behind
+    the choice, and the reminder's recipient otherwise. Both callers attach
+    the same button to the same flow.
     """
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(
                     text=t("ibtn.order_now", lang),
-                    callback_data=OrderStartCB(product_id=product_id).pack(),
+                    callback_data=OrderStartCB(
+                        product_id=product_id, recipient_id=recipient_id
+                    ).pack(),
                 )
             ]
         ]
@@ -504,6 +508,32 @@ def share_phone_keyboard(lang: str, *, with_skip: bool) -> ReplyKeyboardMarkup:
         rows.append([KeyboardButton(text=t("btn.phone.skip", lang))])
     rows.append([KeyboardButton(text=t("btn.nav.cancel", lang))])
     return ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True, one_time_keyboard=True)
+
+
+def order_recipient_keyboard(lang: str, known_label: str) -> InlineKeyboardMarkup:
+    """The name the bot already knows, or a way to type a different one.
+
+    Shown only on the reminder path. The known label leads because it is
+    right most of the time -- someone who set a reminder for their mother is
+    usually sending the flowers to her.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=known_label[:ROW_LABEL_MAX],
+                    callback_data=OrderRecipientCB(action="known").pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.recipient_other", lang),
+                    callback_data=OrderRecipientCB(action="other").pack(),
+                )
+            ],
+            _order_back_row(lang),
+        ]
+    )
 
 
 def order_confirm_keyboard(lang: str) -> InlineKeyboardMarkup:

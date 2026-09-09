@@ -46,6 +46,7 @@ from gulbot.bot.callbacks import (
     OrderDateCB,
     OrderHourCB,
     OrderLocationCB,
+    OrderRecipientCB,
     OrderStartCB,
 )
 from gulbot.bot.keyboards import (
@@ -54,6 +55,7 @@ from gulbot.bot.keyboards import (
     order_date_keyboard,
     order_hour_keyboard,
     order_location_keyboard,
+    order_recipient_keyboard,
     share_location_keyboard,
 )
 from gulbot.bot.routers.phone import accept_contact, accept_typed, ask_for_phone
@@ -61,8 +63,9 @@ from gulbot.bot.states import Browse, PlaceOrder
 from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
-from gulbot.models.order import LANDMARK_MAX_LENGTH
+from gulbot.models.order import LANDMARK_MAX_LENGTH, RECIPIENT_NAME_MAX_LENGTH
 from gulbot.models.product import Product
+from gulbot.models.recipient import Recipient
 from gulbot.scheduling.delivery import available_dates, available_hours
 from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.order_pings import run_order_ping_tick
@@ -132,6 +135,10 @@ async def start_order(
         product_name=product.name,
         price_uzs=product.price_uzs,
         telegram_file_id=product.telegram_file_id,
+        # Zero from the browse screen, where no occasion is behind the
+        # choice. This is what finally writes `orders.recipient_id`, which
+        # has been NULL on every order since CP10a because nothing set it.
+        recipient_id=data.recipient_id or None,
     )
     await _show_dates(target, state, session, customer.shop_id, lang)
 
@@ -222,6 +229,7 @@ def _summary(lang: str, data: dict[str, Any]) -> str:
         if data.get("location_text")
         else t("order.location_pin", lang)
     )
+    recipient = escape(str(data.get("recipient_name") or ""))
     return t(
         "order.summary",
         lang,
@@ -230,17 +238,119 @@ def _summary(lang: str, data: dict[str, Any]) -> str:
         hour=f"{int(data['delivery_hour']):02d}:00",
         location=location,
         landmark=escape(str(data.get("landmark", ""))),
+        recipient=recipient,
     )
 
 
 async def enter_landmark(
-    message: Message, state: FSMContext, customer: Customer, lang: str
+    message: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
 ) -> None:
     landmark = sanitize_label(message.text or "", max_length=LANDMARK_MAX_LENGTH)
     if not landmark:
         await message.answer(t("order.landmark_empty", lang))
         return
     await state.update_data(landmark=landmark)
+    await _ask_recipient(message, state, session, customer, lang)
+
+
+async def _ask_recipient(
+    target: Message,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    """Who takes delivery.
+
+    NOT the same question as whose birthday it is. The person placing the
+    order is often not the person the courier hands the flowers to, and the
+    courier needs a name to ask for at the door.
+
+    Asked before the phone because it is the easier of the two to answer,
+    and because the pair reads in that order: who, then how to reach them.
+
+    From a reminder the bot already knows a name, so it is one tap. On the
+    browse path there is nothing to offer and the customer types.
+    """
+    await state.set_state(PlaceOrder.entering_recipient_name)
+    label = await _known_recipient_label(session, state, customer)
+    if label is None:
+        await target.answer(t("order.ask_recipient", lang))
+        return
+    await target.answer(
+        t("order.ask_recipient_known", lang),
+        reply_markup=order_recipient_keyboard(lang, label),
+    )
+
+
+async def _known_recipient_label(
+    session: AsyncSession, state: FSMContext, customer: Customer
+) -> str | None:
+    """The saved person this order came from, if any.
+
+    Read fresh rather than carried in FSM data: the customer may have
+    renamed them between the reminder arriving and the order being placed,
+    and the name offered should be the one they would recognise now.
+
+    Scoped to this customer AND this shop, so a tampered callback cannot
+    name somebody else's recipient.
+    """
+    data = await state.get_data()
+    recipient_id = data.get("recipient_id")
+    if not recipient_id:
+        return None
+    label = await session.scalar(
+        select(Recipient.label).where(
+            Recipient.id == int(recipient_id),
+            Recipient.shop_id == customer.shop_id,
+            Recipient.customer_id == customer.id,
+            Recipient.active.is_(True),
+        )
+    )
+    return str(label) if label else None
+
+
+async def accept_known_recipient(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    label = await _known_recipient_label(session, state, customer)
+    target = _target(callback)
+    if label is None:  # pragma: no cover - the button exists only when it is not
+        await target.answer(t("order.ask_recipient", lang))
+        return
+    await _recipient_chosen(target, state, customer, lang, label)
+
+
+async def ask_other_recipient(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+    """The known name was not the right one. Fall through to free text."""
+    await callback.answer()
+    await _target(callback).answer(t("order.ask_recipient", lang))
+
+
+async def enter_recipient_name(
+    message: Message, state: FSMContext, customer: Customer, lang: str
+) -> None:
+    name = sanitize_label(message.text or "", max_length=RECIPIENT_NAME_MAX_LENGTH)
+    if not name:
+        await message.answer(t("order.recipient_empty", lang))
+        return
+    await _recipient_chosen(message, state, customer, lang, name)
+
+
+async def _recipient_chosen(
+    target: Message, state: FSMContext, customer: Customer, lang: str, name: str
+) -> None:
+    """Store the name, then go on to the phone or straight to confirmation."""
+    await state.update_data(recipient_name=name)
     if not customer.phone:
         # BEFORE the confirmation screen, not after the confirm tap. Two
         # reasons, and the second is the load-bearing one: the number then
@@ -248,9 +358,9 @@ async def enter_landmark(
         # interposed between that tap and the insert. A round trip in that gap
         # is exactly where CP10a's double-tap race would come back.
         await state.set_state(PlaceOrder.entering_phone)
-        await ask_for_phone(message, state, lang, with_skip=False)
+        await ask_for_phone(target, state, lang, with_skip=False)
         return
-    await _show_confirmation(message, state, lang)
+    await _show_confirmation(target, state, lang)
 
 
 async def _show_confirmation(message: Message, state: FSMContext, lang: str) -> None:
@@ -310,6 +420,7 @@ async def submit_order(
         delivery_date=day,
         delivery_hour=hour,
         landmark=str(data["landmark"]),
+        recipient_name=str(data["recipient_name"]),
         submit_token=str(data["submit_token"]),
         recipient_id=data.get("recipient_id"),
         location_text=data.get("location_text"),
@@ -458,6 +569,9 @@ def build_orders_router() -> Router:
     router.callback_query.register(
         back_to_location, PlaceOrder.entering_landmark, OrderBackCB.filter()
     )
+    router.callback_query.register(
+        back_to_location, PlaceOrder.entering_recipient_name, OrderBackCB.filter()
+    )
     router.callback_query.register(back_to_location, PlaceOrder.confirming, OrderBackCB.filter())
     router.message.register(
         back_to_location_from_pin, PlaceOrder.entering_phone, F.text.in_(BACK_LABELS)
@@ -481,6 +595,25 @@ def build_orders_router() -> Router:
     )
     router.message.register(
         enter_landmark, PlaceOrder.entering_landmark, F.text, flags={"catch_all": True}
+    )
+    # Specific before the catch-all: the two recipient buttons are callbacks
+    # and cannot be swallowed by it, but the ordering is written this way so
+    # it stays true if either ever becomes text.
+    router.callback_query.register(
+        accept_known_recipient,
+        PlaceOrder.entering_recipient_name,
+        OrderRecipientCB.filter(F.action == "known"),
+    )
+    router.callback_query.register(
+        ask_other_recipient,
+        PlaceOrder.entering_recipient_name,
+        OrderRecipientCB.filter(F.action == "other"),
+    )
+    router.message.register(
+        enter_recipient_name,
+        PlaceOrder.entering_recipient_name,
+        F.text,
+        flags={"catch_all": True},
     )
     # A contact message is not text, so it cannot be swallowed by the catch-all
     # below. There is no Skip here: at order time the courier needs a number.

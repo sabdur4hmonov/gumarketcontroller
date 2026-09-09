@@ -92,5 +92,10 @@ async def attach_bouquet(
     return Attachment(
         file_id=bouquet.telegram_file_id,
         caption=caption,
-        reply_markup=order_button(group.lang, bouquet.product_id),
+        # The person the reminder is ABOUT, so the order flow can offer their
+        # label as a one-tap answer to "who is this for" -- and so the order
+        # finally records which recipient it came from.
+        reply_markup=order_button(
+            group.lang, bouquet.product_id, recipient.id if recipient is not None else 0
+        ),
     )
