@@ -92,6 +92,11 @@ class PingState(StrEnum):
     SENT = "sent"
     FAILED = "failed"
     DEAD_LETTER = "dead_letter"
+    #: CP13. The order was rejected, so the delivery it was reminding about is
+    #: not happening. CP10b's docstring said a ping needs no CANCELLED because
+    #: nobody can block the bot in its own group -- true, and beside the point:
+    #: this is not the destination refusing, it is the reason evaporating.
+    CANCELLED = "cancelled"
 
 
 #: States the tick will pick up and try to send.
@@ -147,6 +152,17 @@ class Order(IdMixin, TimestampMixin, Base):
     landmark: Mapped[str] = mapped_column(String(LANDMARK_MAX_LENGTH), nullable=False)
 
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'placed'"))
+
+    #: WHY it was rejected, in the shop's own words, so the customer is told
+    #: something rather than left guessing. NULL for every other status.
+    rejection_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+    #: When the shop last moved this order. NULL while it is still 'placed',
+    #: which makes "never acted on" a queryable state rather than an inference
+    #: from created_at.
+    status_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     #: Minted when the confirmation screen is rendered, so both halves of a
     #: double-tap carry the SAME value. UNIQUE below is what actually makes

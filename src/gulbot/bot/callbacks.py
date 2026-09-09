@@ -171,6 +171,27 @@ class SendTimeCB(CallbackData, prefix="sendtime"):
         return [cls(value=v).pack() for v in ("morning", "noon", "evening", "skip")]
 
 
+class OrderAdminCB(CallbackData, prefix="ordadm"):
+    """The two buttons on the shop's order card.
+
+    THE PREFIX IS LOAD-BEARING. It is the one thing the chat gate lets
+    through from a group -- see `ChatGateMiddleware` -- so renaming it
+    silently makes the buttons stop working rather than failing loudly.
+    `tests/test_admin_orders.py` pins the two names together.
+
+    The order id travels in the button rather than in state, because the
+    card outlives any conversation: an admin may act on a card from
+    yesterday, and there is no session to have remembered it.
+    """
+
+    action: str
+    order_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a, order_id=1).pack() for a in ("confirm", "reject")]
+
+
 class BrowsePageCB(CallbackData, prefix="brwpage"):
     """Paging through the catalogue. Direction only -- the cursor lives in
     FSM data, because a cursor in callback data would be a timestamp a
@@ -300,6 +321,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OrderBackCB,
     BrowsePageCB,
     BrowsePickCB,
+    OrderAdminCB,
 )
 
 

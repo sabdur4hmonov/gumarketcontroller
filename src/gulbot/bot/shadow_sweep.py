@@ -105,7 +105,7 @@ def _location(callback: object) -> str:
         return "<unknown>"
     if source_file is None:
         return "<unknown>"
-    tail = source_file.rsplit("gulbot", 1)[-1].lstrip("\/")
+    tail = source_file.rsplit("gulbot", 1)[-1].lstrip("\\/")
     return f"{tail}:{line}"
 
 

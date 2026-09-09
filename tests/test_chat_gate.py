@@ -26,7 +26,7 @@ from datetime import UTC, datetime
 import pytest
 import pytest_asyncio
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.types import Chat, Message, Update, User
+from aiogram.types import CallbackQuery, Chat, Message, Update, User
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 from tests.bot_harness import (
@@ -36,8 +36,19 @@ from tests.bot_harness import (
     make_bot,
 )
 
+from gulbot.bot.callbacks import (
+    BrowsePickCB,
+    OrderAdminCB,
+    OrderConfirmCB,
+    OrderStartCB,
+)
 from gulbot.bot.factory import build_dispatcher
-from gulbot.bot.middlewares import SERVED_CHAT_TYPES
+from gulbot.bot.middlewares import (
+    ADMIN_CALLBACK_PREFIX,
+    SERVED_CHAT_TYPES,
+    ChatGateMiddleware,
+)
+from gulbot.bot.states import AdminOrder
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
 
@@ -173,3 +184,103 @@ def test_the_gate_is_an_allow_list_not_a_block_list() -> None:
     invents next. Written down because the difference is invisible until it
     matters."""
     assert set(SERVED_CHAT_TYPES) == {"private", "channel"}
+
+
+# --- CP13: the one crack, and that it stays a crack ------------------------
+#
+# The shop acts on its own order cards FROM that group, so the gate can no
+# longer drop everything. A crack is exactly where the original bug gets back
+# in, so both halves are stated as equal claims: the exception works, and
+# everything outside it is still dropped.
+
+
+def group_tap(data: str, *, user_id: int = ADMIN_ID, update_id: int = 1) -> Update:
+    return Update(
+        update_id=update_id,
+        callback_query=CallbackQuery(
+            id=f"cb{update_id}",
+            from_user=User(id=user_id, is_bot=False, first_name="Admin"),
+            chat_instance=f"chat{update_id}",
+            data=data,
+            message=Message(
+                message_id=update_id,
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=GROUP_ID, type="supergroup", title="Shop admins"),
+                from_user=User(id=1, is_bot=True, first_name="bot"),
+                text="card",
+            ),
+        ),
+    )
+
+
+async def test_an_order_card_tap_is_let_through(harness: Harness) -> None:
+    """The exception, as its own claim, so a later change to the gate cannot
+    quietly close it again."""
+    gate = ChatGateMiddleware()
+    tap = group_tap(OrderAdminCB(action="confirm", order_id=7).pack())
+    assert await gate._is_shop_action(tap, {}) is True
+
+
+async def test_a_customer_callback_from_a_group_is_still_dropped(harness: Harness) -> None:
+    """NOT "any callback from a group". A customer-facing button forwarded into
+    the group would otherwise be answered there -- the same class of bug the
+    gate exists to close, arriving through the hole opened for the shop."""
+    gate = ChatGateMiddleware()
+    for payload in (
+        OrderStartCB(product_id=1).pack(),
+        BrowsePickCB(product_id=1).pack(),
+        OrderConfirmCB(action="submit").pack(),
+    ):
+        assert await gate._is_shop_action(group_tap(payload), {}) is False, payload
+
+
+def test_the_gate_and_the_callback_factory_agree_on_the_prefix() -> None:
+    """The gate matches on a string constant. If the factory's prefix changed,
+    the buttons would stop working SILENTLY rather than failing loudly, so the
+    two are pinned together."""
+    assert OrderAdminCB(action="confirm", order_id=1).pack().startswith(f"{ADMIN_CALLBACK_PREFIX}:")
+
+
+async def test_a_rejection_reason_is_let_through(harness: Harness) -> None:
+    """Gated on the TYPIST's own FSM state, not on the chat's."""
+    gate = ChatGateMiddleware()
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await context.set_state(AdminOrder.entering_reject_reason)
+    reason = message_from("supergroup", "gul tugadi", chat_id=GROUP_ID)
+    assert await gate._is_shop_action(reason, {"state": context}) is True
+
+
+async def test_a_group_message_with_no_reason_pending_is_refused(harness: Harness) -> None:
+    """Guards the guard. Without the state check the exception would read "any
+    message from a group", which is the original bug verbatim."""
+    gate = ChatGateMiddleware()
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    chatter = message_from("supergroup", "salom", chat_id=GROUP_ID)
+    assert await gate._is_shop_action(chatter, {"state": context}) is False
+
+
+async def test_one_admin_typing_does_not_open_the_gate_for_another(harness: Harness) -> None:
+    """WHY THE FSM STRATEGY CHANGED. aiogram's default keys state by CHAT, so in
+    a group every admin would share one state: one of them tapping Reject would
+    put the whole group into "waiting for a reason", and the next person's
+    message would be swallowed as it.
+
+    USER_IN_CHAT keys by (chat, user) instead. In a private chat the two are
+    identical -- chat_id IS the user id -- so no customer conversation changed.
+    """
+    gate = ChatGateMiddleware()
+    rejecting = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await rejecting.set_state(AdminOrder.entering_reject_reason)
+
+    bystander = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID + 1)
+    assert await bystander.get_state() is None, "state leaked between admins"
+
+    chatter = message_from("supergroup", "boshqa gap", chat_id=GROUP_ID)
+    assert await gate._is_shop_action(chatter, {"state": bystander}) is False
+
+
+async def test_start_in_a_group_is_still_ignored_after_the_crack(harness: Harness) -> None:
+    """The original bug, re-asserted AFTER the exception exists. This is the
+    test that would catch a gate loosened one step too far."""
+    assert await harness.feed(message_from("supergroup", "/start", chat_id=GROUP_ID)) == []
+    assert await harness.customers() == []

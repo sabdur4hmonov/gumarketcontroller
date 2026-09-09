@@ -15,6 +15,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.base import BaseStorage
 from aiogram.fsm.storage.redis import RedisStorage
+from aiogram.fsm.strategy import FSMStrategy
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -56,7 +57,17 @@ def build_dispatcher(
     storage: BaseStorage | None = None,
     schedule_finalize: FinalizeScheduler | None = None,
 ) -> Dispatcher:
-    dispatcher = Dispatcher(storage=storage) if storage is not None else Dispatcher()
+    # USER_IN_CHAT rather than aiogram's default CHAT strategy. In a private
+    # chat the two are identical -- chat_id IS the user id -- so no customer
+    # conversation changes. In a GROUP they differ, and the default would
+    # give every admin one shared FSM state: one of them typing a rejection
+    # reason would put the whole group into that state, and the next
+    # person's message would be read as their reason.
+    dispatcher = (
+        Dispatcher(storage=storage, fsm_strategy=FSMStrategy.USER_IN_CHAT)
+        if storage is not None
+        else Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
+    )
 
     # Outer: run once per update, before routing. The chat gate is FIRST so a
     # message in the shop's admin group opens no session and creates no

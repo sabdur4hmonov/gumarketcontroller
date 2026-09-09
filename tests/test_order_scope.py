@@ -1,18 +1,29 @@
-"""CP10's scope fence: an order is PLACED and then left alone.
+"""The scope fence: exactly ONE module may move an order between statuses.
 
-Confirm, reject, delivered, customer-facing status updates, peak mode and the
-escalation ladder are all Phase 2, already named in docs/CHECKPOINTS.md. Every
-one of them is a small, plausible-looking addition to the module that just
-wrote the order -- which is exactly why the fence exists rather than a comment.
+CP10 wrote this fence to say NOTHING may. CP13 makes the shop's order card
+actionable, so one module now has to -- and the fence is NARROWED rather
+than deleted, because the difference between those two is the difference
+between "we chose to allow this" and "someone turned off the alarm".
 
-The five statuses are in the CHECK from the start on purpose. The fence is not
-"the words must not appear in the schema", it is "no code may MOVE an order
-from one status to another". Those are different claims, and only the second is
-worth enforcing.
+What it still forbids, and why each one is a plausible-looking two-line
+addition to the module that just wrote the order:
+
+  * the ORDER PATH -- the FSM and the submit service -- still writes only
+    'placed' and still issues no UPDATE against `orders` at all. A customer
+    flow that could confirm its own order is not a feature, it is a bug
+    nobody would notice until a shop asked why everything was accepted.
+  * `delivered`, peak mode and the escalation ladder are still Phase 2, and
+    still named in docs/CHECKPOINTS.md rather than half-built here.
+
+The five statuses have been in the CHECK since CP10a on purpose, so the
+migration that began using two of them was additive. The fence is not "the
+words must not appear in the schema", it is "only one module may move an
+order", which is a different claim and the one worth enforcing.
 """
 
 from __future__ import annotations
 
+import ast
 import io
 import tokenize
 from pathlib import Path
@@ -23,19 +34,100 @@ from gulbot.models.order import OrderStatus
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+#: The CUSTOMER-facing order path. Still forbidden to move a status.
 ORDER_CODE = (
     REPO_ROOT / "src/gulbot/services/orders.py",
     REPO_ROOT / "src/gulbot/bot/routers/orders.py",
 )
 
-#: Phase 2, and each one looks like two lines from inside this code.
+#: The ONE module allowed to. Named here so the exception is a list of one
+#: rather than an absence of enforcement.
+TRANSITION_MODULE = REPO_ROOT / "src/gulbot/services/order_status.py"
+
+#: Still Phase 2, and each one looks like two lines from inside this code.
+#: `confirm_order` and `reject_order` have LEFT this list -- they exist now,
+#: in `order_status.py` -- but the customer path still must not call them,
+#: which the UPDATE check below enforces.
 FORBIDDEN = (
     "peak",
     "escalat",
-    "confirm_order",
-    "reject_order",
     "mark_delivered",
 )
+
+
+def names(status: OrderStatus) -> str:
+    """How a status reference LOOKS in `code_only` output.
+
+    `code_only` joins tokens with spaces, so `OrderStatus.CONFIRMED` is
+    stored as `OrderStatus . CONFIRMED`. Searching for the unspaced form
+    matches nothing, ever -- which is exactly what
+    `test_only_the_placed_status_is_ever_named` did from CP10a until CP13.
+    It passed the whole time and checked nothing.
+
+    Found while adding a NEW test with the same bug: it reported zero
+    transition modules in a codebase that had just gained one.
+    """
+    return f"OrderStatus . {status.name}"
+
+
+#: Calls whose arguments are being COMPARED against, not written. A status
+#: named inside one of these is code asking a question about existing rows.
+#: CP9's daily cap has excluded cancelled and rejected orders exactly this
+#: way since long before anything could transition an order.
+READ_CALLS = frozenset({"where", "having", "filter", "in_", "notin_", "is_", "isnot"})
+
+#: Calls that put a value INTO a row.
+WRITE_CALLS = frozenset({"values"})
+
+
+def statuses_written(path: Path) -> set[str]:
+    """The statuses this module puts INTO a row.
+
+    NAMING a status is not MOVING an order to it, and the first version of
+    this fence could not tell the two apart -- it read CP9's daily-cap filter
+    (`status.notin_([CANCELLED, REJECTED])`) as evidence that the customer
+    path transitions orders. It does not; it declines to count dead ones
+    against a cap.
+
+    So the claim is structural rather than textual: walk the AST, find every
+    `OrderStatus.X`, and climb to the nearest construct that settles which
+    side of the fence it is on.
+    """
+    tree = ast.parse(path.read_bytes())
+    parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
+    return {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "OrderStatus"
+        and _is_a_write(node, parents)
+    }
+
+
+def _is_a_write(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool:
+    """Climb until something settles it.
+
+    UNRECOGNISED CONSTRUCTS COUNT AS WRITES. A fence whose default is
+    "probably fine" is the kind that quietly stops holding; this one trips
+    loudly and someone classifies the new construct on purpose.
+    """
+    current: ast.AST | None = node
+    while (current := parents.get(current)) is not None:
+        if isinstance(current, ast.Compare):
+            return False
+        if isinstance(current, ast.Call):
+            func = current.func
+            called = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+            if called in READ_CALLS:
+                return False
+            if called in WRITE_CALLS:
+                return True
+        if isinstance(current, ast.keyword | ast.Assign | ast.Dict):
+            return True
+        if isinstance(current, ast.FunctionDef | ast.AsyncFunctionDef | ast.Module):
+            return True
+    return True
 
 
 def code_only(path: Path) -> str:
@@ -61,21 +153,20 @@ def test_no_phase_two_machinery_leaked_in(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", ORDER_CODE, ids=lambda p: p.name)
-def test_only_the_placed_status_is_ever_named(path: Path) -> None:
-    """The real claim: nothing here can move an order between statuses.
+def test_the_order_path_writes_only_the_placed_status(path: Path) -> None:
+    """The customer path may ASK about any status and WRITE only one.
 
-    Strings are stripped, so this reads the ENUM MEMBERS the code names.
-    `OrderStatus.PLACED` is the only one that may appear -- writing
-    `OrderStatus.CONFIRMED` anywhere in the order path is the transition this
-    checkpoint promised not to build.
+    This replaces CP10a's `test_only_the_placed_status_is_ever_named`, which
+    searched `code_only` output for the UNSPACED `OrderStatus.CONFIRMED` while
+    `code_only` emits `OrderStatus . CONFIRMED`. It therefore matched nothing
+    from CP10a until CP13 and passed for free the entire time.
+
+    Repairing the spacing made it fail -- correctly, on CP9's daily-cap filter
+    -- which showed the claim itself was wrong as well as unenforced. "Names"
+    was never the invariant. "Writes" is.
     """
-    source = code_only(path)
-    forbidden = [
-        status.name
-        for status in OrderStatus
-        if status is not OrderStatus.PLACED and f"OrderStatus.{status.name}" in source
-    ]
-    assert not forbidden, f"{path.name} names a status CP10 must not write: {forbidden}"
+    forbidden = statuses_written(path) - {OrderStatus.PLACED.name}
+    assert not forbidden, f"{path.name} writes a status it must not: {sorted(forbidden)}"
 
 
 def test_the_service_writes_placed_and_only_placed() -> None:
@@ -105,10 +196,56 @@ def test_nothing_in_the_order_path_updates_an_order() -> None:
         )
 
 
+def test_only_the_transition_module_updates_an_order_row() -> None:
+    """The same claim as above, reached a different way.
+
+    A transition is an UPDATE, so the modules that may UPDATE `orders` and the
+    modules that may write a status have to be the same one module. Two
+    independent routes to one answer, because the status scan reads names and
+    this reads the operation -- a bypass would have to fool both.
+    """
+    updaters = [
+        path
+        for path in sorted((REPO_ROOT / "src").rglob("*.py"))
+        if "update ( Order )" in code_only(path)
+    ]
+    assert updaters == [TRANSITION_MODULE], (
+        f"only the transition module may UPDATE an order; found {updaters}"
+    )
+
+
 def test_the_service_names_the_placed_status_exactly_once() -> None:
     """And that one mention is the insert. A second would be a transition."""
     source = code_only(REPO_ROOT / "src/gulbot/services/orders.py")
-    assert source.count("OrderStatus . PLACED") == 1
+    assert source.count(names(OrderStatus.PLACED)) == 1
+
+
+def test_only_one_module_may_transition_an_order() -> None:
+    """The narrowed claim, stated as a test rather than a comment.
+
+    A second module writing `OrderStatus.CONFIRMED` would be the fence
+    quietly becoming decorative -- which is what happens to every guard that
+    is loosened once and then loosened again by someone reading only the
+    loosened version.
+    """
+    writers = [
+        path
+        for path in sorted((REPO_ROOT / "src").rglob("*.py"))
+        if statuses_written(path) - {OrderStatus.PLACED.name}
+    ]
+    assert writers == [TRANSITION_MODULE], (
+        f"transitions must live in one module; found them in {writers}"
+    )
+
+
+def test_the_transition_module_actually_guards_its_updates() -> None:
+    """The exception is only safe because every transition is a
+    compare-and-swap. A bare UPDATE there would let two admins both succeed
+    and the customer be messaged twice."""
+    source = code_only(TRANSITION_MODULE)
+    assert "Order . status == OrderStatus . PLACED . value" in source, (
+        "a transition must be guarded on the order still being placed"
+    )
 
 
 def test_the_status_check_still_holds_every_future_value() -> None:

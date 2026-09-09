@@ -222,6 +222,52 @@ which is what `UNIQUE(customers.id, customers.shop_id)` exists to support. This
 makes a cross-tenant row *unrepresentable* rather than merely discouraged. See
 `tests/test_tenancy.py` for the proof.
 
+## The guard that searched for a string its own helper could never produce
+
+Found 2026-09-09, in `tests/test_order_scope.py`, live since CP10a.
+
+`code_only()` strips comments and strings by tokenizing, then joins the
+surviving tokens with `" "`. So `OrderStatus.CONFIRMED` comes out of it as
+`OrderStatus . CONFIRMED`, with spaces around the dot.
+
+`test_only_the_placed_status_is_ever_named` searched that output for
+`f"OrderStatus.{status.name}"` -- the unspaced form. It could not match. Not
+"did not happen to match": could not, for any input, ever. The test passed
+continuously for three checkpoints while enforcing nothing, and it was cited by
+name in two module docstrings as the thing keeping the order path honest.
+
+It surfaced only because CP13 added a NEW test with the same bug, whose expected
+answer was not empty -- it reported zero transition modules in a codebase that
+had just gained one, which is a claim obviously false on its face. A guard whose
+correct answer is "nothing" gives you no such signal.
+
+**Then it got worse, which is the useful part.** Repairing the spacing made the
+test fail -- correctly -- on `services/orders.py`, which has named
+`OrderStatus.CANCELLED` and `REJECTED` since CP9 inside the daily-cap
+`status.notin_([...])` filter. That is a READ. The fence's stated claim,
+"the order path must not NAME a non-placed status", was therefore not merely
+unenforced, it was **wrong**, and had it ever run it would have blocked correct
+code. Two defects hiding each other: the claim was false, and the enforcement
+was broken, so the suite stayed green.
+
+The fence now classifies structurally instead of textually -- walk the AST, find
+each `OrderStatus.X`, climb to the nearest construct that settles read from
+write -- and unrecognised constructs count as WRITES, so a new shape trips the
+alarm rather than quietly passing.
+
+### How to not ship the next one
+
+* **A guard whose passing condition is "found nothing" proves nothing by
+  passing.** Mutate it once, at the time you write it, and watch it go red.
+  Every fence in this repo now has a mutation recorded next to it for this
+  reason.
+* **Never hand-write the serialised form a helper produces.** Ask the helper.
+  `names(status)` now exists solely so no one retypes the spacing, and its
+  docstring says what went wrong the last time someone did.
+* **When a repaired guard fails, suspect the claim before the code.** The first
+  instinct was that CP13 had broken something. The code was right and the fence
+  was wrong.
+
 ## The one unexplained failure: test_concurrency, 2026-09-06
 
 Recorded rather than closed, because it has not reproduced and pretending
@@ -251,6 +297,38 @@ BEFORE the workers start, which separates "the fixture never planted three rows"
 from "a row vanished while the tick ran" -- the bare count could not -- and a
 `snapshot()` helper dumping this shop's rows, its `message_log`, and rows
 belonging to other shops.
+
+### A second occurrence, 2026-09-09 -- and this one was legible
+
+A different test in the same file, `test_two_processes_racing_one_row_send_exactly_once`,
+failed once in a full-suite run. The diagnostics added above did their job: the
+failure was readable on sight, and it was **not the invariant failing**.
+
+It failed at the `worker {marker} failed` branch -- the spawned subprocess exited
+non-zero -- with `asyncpg` raising `TimeoutError` out of `connection.py:connect`.
+The worker never reached the claim, never reached the transport, and sent
+nothing. "Send exactly once" was never in question; a process could not open a
+database connection.
+
+Checked at the time: `max_connections` is 100 and exactly 2 were in use. So this
+is not pool exhaustion. The engine in `db/session.py` sets no explicit connect
+timeout, so asyncpg's default applies, and the two workers are deliberately
+spawned as simultaneous fresh OS processes -- each paying Windows process start,
+a full app import, and a connection through Docker Desktop's port proxy on 5433.
+
+Re-run three times in isolation immediately afterwards: three passes.
+
+**Why this is worth writing down rather than shrugging at.** A red suite whose
+failure is "TimeoutError connecting" and a red suite whose failure is "the
+message was sent twice" mean completely different things, and before CP10b's
+diagnostics this test could only say `assert len(rows) == 3`. The lesson is not
+about Postgres. It is that a concurrency test must fail in a way that
+distinguishes *the invariant broke* from *the harness could not run*, or every
+failure costs a day and settles nothing.
+
+Still open: whether the 2026-09-06 occurrence had the same infrastructural
+cause. It failed differently and left no stderr, so the honest answer is that
+nobody knows.
 
 Note that the SAME full-suite loop turned up a real, reproducible flake in
 `test_order_pings` (see the section above), which the isolated 100-run loop

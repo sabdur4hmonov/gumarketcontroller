@@ -62,6 +62,21 @@ class EditRecipient(StatesGroup):
     entering_label = State()
 
 
+class AdminOrder(StatesGroup):
+    """The shop acting on an order, in its own group.
+
+    The ONLY state in this project that belongs to a group chat rather than
+    a customer conversation. Everything else the bot does in a group is
+    dropped by the chat gate; this is the exception the gate names.
+
+    One state, and it exists because rejecting requires a reason. Confirming
+    needs no state at all -- the button carries the order id and the
+    transition is one statement.
+    """
+
+    entering_reject_reason = State()
+
+
 class Browse(StatesGroup):
     """Looking through the catalogue without a reminder to start from.
 
