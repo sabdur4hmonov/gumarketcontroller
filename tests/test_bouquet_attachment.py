@@ -48,7 +48,9 @@ class RecordingTransport:
         self.photos: list[tuple[str, str]] = []
         self.markups: list[object] = []
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
         self.texts.append(text)
         return SendResult.sent(len(self.texts) + len(self.photos))
 

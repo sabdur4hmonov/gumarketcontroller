@@ -268,6 +268,39 @@ alarm rather than quietly passing.
   instinct was that CP13 had broken something. The code was right and the fence
   was wrong.
 
+### And then the replacement over-claimed, which is the same mistake mirrored
+
+The structural fence classified a status reference as a WRITE if it sat inside
+any keyword argument. True while nothing but the database consumed a status.
+False the moment CP13 added the two modules that TALK about outcomes:
+
+* `routers/admin_orders.py` passes `status=OrderStatus.CONFIRMED` to the
+  notifier and to the card renderer -- function arguments, not row values.
+* `services/order_notify.py` uses the statuses as DICT KEYS, mapping an outcome
+  to the copy the customer reads.
+
+Neither writes anything, and both tripped the fence. That IS the fence working
+-- it stopped the change and demanded a reason -- but the reason turned out to
+be that "keyword argument" had only ever been a **proxy** for "database write",
+and the proxy had drifted away from the thing it stood for.
+
+The fix was not a cleverer proxy. It was to split the claim into the two it had
+been conflating, and state each one directly:
+
+| Claim | How it is enforced | What it stops |
+|---|---|---|
+| the MECHANISM | only `order_status.py` may `update(Order)` | nothing can transition what nothing updates |
+| the BLAST RADIUS | the modules naming a non-placed status are a named list | a fifth module joining is a decision, not a slip |
+| the CUSTOMER PATH | `services/orders.py` and `routers/orders.py` write only `placed` | a customer flow that could accept its own order |
+
+Three narrow claims that are each exactly true beat one broad claim that is
+approximately true. A bypass now has to fool two independent checks -- one reads
+names, the other reads the operation.
+
+**The general rule:** when a fence fires on code you believe is correct, the
+question is not "how do I let this through". It is "what was this fence
+actually trying to say, and does it still say it".
+
 ## The one unexplained failure: test_concurrency, 2026-09-06
 
 Recorded rather than closed, because it has not reproduced and pretending

@@ -20,6 +20,8 @@ from aiogram.types import Chat, TelegramObject, Update, User
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.bot.states import AdminOrder
+from gulbot.i18n import button_labels
+from gulbot.i18n.catalog import DEFAULT_LANGUAGE
 from gulbot.services.customers import get_or_create_customer
 
 #: Callback data prefix the shop's order-card buttons carry. The ONE thing
@@ -94,6 +96,15 @@ class ChatGateMiddleware(BaseMiddleware):
             message from one admin who just tapped Reject -- not group
             chatter, and not another admin's message.
 
+            NOT a command, and NOT a button label, even in that state. Those
+            belong to nav and onboarding, whose handlers reply with a CUSTOMER
+            keyboard -- posting one into the shop's own group is the very bug
+            this gate exists to prevent. Refusing them here is what lets
+            `admin_orders` sit after nav (so Cancel and /start stay first
+            everywhere, which the shadow sweep enforces) without nav ever
+            actually running in a group. Cancel is an inline button on the
+            prompt instead.
+
         Everything else from a group is still dropped before a session is
         opened and before the customer middleware can register an admin as a
         customer.
@@ -107,6 +118,9 @@ class ChatGateMiddleware(BaseMiddleware):
             return payload.startswith(f"{ADMIN_CALLBACK_PREFIX}:")
 
         if event.message is None or event.message.text is None:
+            return False
+        body = event.message.text.strip()
+        if body.startswith("/") or body in button_labels():
             return False
         # aiogram's FSM middleware is registered in Dispatcher.__init__, so it
         # runs ahead of this one and the context is already here.
@@ -138,7 +152,19 @@ class DbSessionMiddleware(BaseMiddleware):
 
 
 class CustomerMiddleware(BaseMiddleware):
-    """Resolve the customer for this shop, creating them on first contact."""
+    """Resolve the customer for this shop, creating them on first contact.
+
+    NOT IN A GROUP. The shop's own group has no customer in it, and CP13's
+    gate exceptions -- a Confirm tap, a typed rejection reason -- arrive here
+    with a perfectly ordinary `event_from_user` attached to them: the admin.
+    Creating a customer row for that admin is the CP10c bug wearing different
+    clothes, and it would be invisible: no error, just a shop slowly acquiring
+    its own staff as customers, and eventually reminding them.
+
+    Until CP13 the gate made this unreachable, so the guard sat in one place.
+    Now the gate has holes in it on purpose, the rule has to live where the
+    question is actually asked.
+    """
 
     def __init__(self, shop_id: int) -> None:
         self.shop_id = shop_id
@@ -151,7 +177,14 @@ class CustomerMiddleware(BaseMiddleware):
     ) -> Any:
         user: User | None = data.get("event_from_user")
         session: AsyncSession | None = data.get("session")
-        if user is not None and session is not None and not user.is_bot:
+        chat: Chat | None = data.get("event_chat")
+        in_group = chat is not None and chat.type in GROUP_CHAT_TYPES
+        if in_group:
+            # The shop, not a customer. `lang` is still needed -- the card and
+            # its buttons are rendered in it -- so it comes from the default
+            # rather than from a customer row that must not exist.
+            data.setdefault("lang", DEFAULT_LANGUAGE)
+        elif user is not None and session is not None and not user.is_bot:
             customer, created = await get_or_create_customer(
                 session, shop_id=self.shop_id, telegram_user_id=user.id
             )

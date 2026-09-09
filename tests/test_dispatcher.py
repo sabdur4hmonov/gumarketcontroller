@@ -28,7 +28,9 @@ class FakeTransport:
         self._outcomes = list(outcomes)
         self.default = SendResult.sent(1)
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
         self.calls.append({"chat_id": chat_id, "text": text})
         if self._outcomes:
             return self._outcomes.pop(0)
@@ -42,7 +44,9 @@ class ExplodingTransport:
         self.calls: list[dict] = []
         self.boom = boom
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
         self.calls.append({"chat_id": chat_id, "text": text})
         if self.boom:
             raise RuntimeError("process died after Telegram accepted")
@@ -362,7 +366,9 @@ async def test_a_crash_mid_group_leaves_no_partially_sent_group(
         def __init__(self) -> None:
             self.calls: list[dict] = []
 
-        async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+        async def send_text(
+            self, *, chat_id: int, text: str, reply_markup: object = None
+        ) -> SendResult:
             self.calls.append({"chat_id": chat_id})
             raise RuntimeError("killed mid-group")
 

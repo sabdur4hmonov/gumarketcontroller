@@ -425,6 +425,79 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": '{phone} · <a href="tg://user?id={tg}">mijoz</a>',
         "ru": '{phone} · <a href="tg://user?id={tg}">клиент</a>',
     },
+    # --- CP13. The shop acts on the card ---------------------------------
+    # The buttons carry no order id in their LABEL, only in their callback
+    # data, so the same two strings serve every card ever posted.
+    "ibtn.confirm_order": {
+        "uz": "✅ Qabul qilindi",
+        "ru": "✅ Принят",
+    },
+    "ibtn.reject_order": {
+        "uz": "❌ Rad etish",
+        "ru": "❌ Отклонить",
+    },
+    # Named in the group, where several admins can see it, so it says WHICH
+    # order it is waiting on -- two rejections in flight at once would
+    # otherwise be two identical prompts.
+    "group.reason_prompt": {
+        "uz": "#{id} — rad etish sababini yozing:",
+        "ru": "#{id} — напишите причину отказа:",
+    },
+    # A BUTTON, not the typed "Bekor qilish" nav already understands: nav
+    # answers with a CUSTOMER reply keyboard, and this conversation happens
+    # in the shop's own group. See ChatGateMiddleware.
+    "ibtn.abort_reject": {
+        "uz": "↩️ Bekor qilish",
+        "ru": "↩️ Отмена",
+    },
+    "group.reject_aborted": {
+        "uz": "#{id} — rad etish bekor qilindi.",
+        "ru": "#{id} — отклонение отменено.",
+    },
+    # Appended to the card itself rather than sent as a new message: the card
+    # IS the record, and a group with a day of orders in it should read as a
+    # list of outcomes, not a list of questions.
+    "group.outcome.confirmed": {
+        "uz": "✅ <b>Qabul qilindi</b>",
+        "ru": "✅ <b>Принят</b>",
+    },
+    "group.outcome.rejected": {
+        "uz": "❌ <b>Rad etildi</b>\nℹ️ Sabab: {reason}",
+        "ru": "❌ <b>Отклонён</b>\nℹ️ Причина: {reason}",
+    },
+    # While a Reject prompt is open the chat gate lets this admin's next group
+    # message through as the reason. So the prompt EXPIRES: an admin pulled
+    # away mid-rejection must not have an unrelated message become one.
+    "group.reason_expired": {
+        "uz": "#{id} — kech qoldi. Rad etish uchun tugmani qayta bosing.",
+        "ru": "#{id} — время истекло. Нажмите кнопку ещё раз.",
+    },
+    "group.already_handled": {
+        "uz": "Bu buyurtma allaqachon ko‘rib chiqilgan.",
+        "ru": "Этот заказ уже обработан.",
+    },
+    "group.order_missing": {
+        "uz": "Buyurtma topilmadi.",
+        "ru": "Заказ не найден.",
+    },
+    # The honest half of a best-effort notification. The shop decided; the
+    # customer could not be reached. Saying so in the group is what turns a
+    # silent failure into a phone call someone actually makes.
+    "group.customer_not_notified": {
+        "uz": "⚠️ Mijozga xabar bormadi — o‘zingiz qo‘ng‘iroq qiling.",
+        "ru": "⚠️ Клиенту не дошло — позвоните сами.",
+    },
+    # --- CP13. What the CUSTOMER is told ---------------------------------
+    # The whole reason this checkpoint was pulled forward: without these, an
+    # order sits unconfirmed and the customer assumes it was accepted.
+    "order.status.confirmed": {
+        "uz": "✅ Buyurtmangiz #{id} qabul qilindi.",
+        "ru": "✅ Ваш заказ #{id} принят.",
+    },
+    "order.status.rejected": {
+        "uz": "❌ Afsuski, buyurtmangiz #{id} qabul qilinmadi.\nℹ️ Sabab: {reason}",
+        "ru": "❌ К сожалению, ваш заказ #{id} отклонён.\nℹ️ Причина: {reason}",
+    },
     # --- CP10c. The customer's phone number ------------------------------
     # Asked at the END of onboarding, where the customer has already got value
     # from the bot, rather than at the start where it is pure friction. Skippable

@@ -234,21 +234,35 @@ def is_stale(
     return now_utc.astimezone(TASHKENT).date() > occurrence
 
 
-async def claim(session: AsyncSession, group: DueGroup, *, now_utc: datetime, channel: str) -> bool:
-    """Take ownership of this send. False means someone else already has it.
+async def claim_send(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    template_key: str,
+    transition_key: str,
+    now_utc: datetime,
+    channel: str,
+) -> bool:
+    """Take ownership of ONE send. False means someone else already has it.
 
     Called BEFORE Telegram. An abandoned claim -- a worker that died mid-call --
     becomes re-claimable after CLAIM_TIMEOUT; until then this returns False and
     the send is skipped, which is what makes a retry safe.
+
+    Keyed on an explicit (customer, template, transition) rather than on a
+    `DueGroup`, so CP13's order-outcome message can use the same ledger and the
+    same re-claim window instead of growing a second copy of them. CP6 reaches
+    it through `claim` below, unchanged.
     """
     stmt = (
         insert(MessageLog)
         .values(
-            shop_id=group.shop_id,
-            customer_id=group.customer_id,
+            shop_id=shop_id,
+            customer_id=customer_id,
             channel=channel,
-            template_key=TEMPLATE_REMINDER,
-            transition_key=group.transition_key,
+            template_key=template_key,
+            transition_key=transition_key,
             status=MessageStatus.CLAIMED.value,
             claimed_at=now_utc,
             attempts=1,
@@ -264,9 +278,9 @@ async def claim(session: AsyncSession, group: DueGroup, *, now_utc: datetime, ch
     retake = (
         update(MessageLog)
         .where(
-            MessageLog.customer_id == group.customer_id,
-            MessageLog.template_key == TEMPLATE_REMINDER,
-            MessageLog.transition_key == group.transition_key,
+            MessageLog.customer_id == customer_id,
+            MessageLog.template_key == template_key,
+            MessageLog.transition_key == transition_key,
             MessageLog.status == MessageStatus.CLAIMED.value,
             MessageLog.claimed_at < now_utc - CLAIM_TIMEOUT,
         )
@@ -274,6 +288,40 @@ async def claim(session: AsyncSession, group: DueGroup, *, now_utc: datetime, ch
         .returning(MessageLog.id)
     )
     return await session.scalar(retake) is not None
+
+
+async def resolve_send(
+    session: AsyncSession,
+    *,
+    customer_id: int,
+    template_key: str,
+    transition_key: str,
+    status: MessageStatus,
+    now_utc: datetime,
+    error_code: str | None = None,
+) -> None:
+    await session.execute(
+        update(MessageLog)
+        .where(
+            MessageLog.customer_id == customer_id,
+            MessageLog.template_key == template_key,
+            MessageLog.transition_key == transition_key,
+        )
+        .values(status=status.value, error_code=error_code, resolved_at=now_utc)
+    )
+
+
+async def claim(session: AsyncSession, group: DueGroup, *, now_utc: datetime, channel: str) -> bool:
+    """CP6's reminder claim. The ledger key is the group's transition key."""
+    return await claim_send(
+        session,
+        shop_id=group.shop_id,
+        customer_id=group.customer_id,
+        template_key=TEMPLATE_REMINDER,
+        transition_key=group.transition_key,
+        now_utc=now_utc,
+        channel=channel,
+    )
 
 
 async def resolve_claim(
@@ -284,14 +332,14 @@ async def resolve_claim(
     now_utc: datetime,
     error_code: str | None = None,
 ) -> None:
-    await session.execute(
-        update(MessageLog)
-        .where(
-            MessageLog.customer_id == group.customer_id,
-            MessageLog.template_key == TEMPLATE_REMINDER,
-            MessageLog.transition_key == group.transition_key,
-        )
-        .values(status=status.value, error_code=error_code, resolved_at=now_utc)
+    await resolve_send(
+        session,
+        customer_id=group.customer_id,
+        template_key=TEMPLATE_REMINDER,
+        transition_key=group.transition_key,
+        status=status,
+        now_utc=now_utc,
+        error_code=error_code,
     )
 
 

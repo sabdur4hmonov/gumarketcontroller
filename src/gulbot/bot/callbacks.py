@@ -182,6 +182,12 @@ class OrderAdminCB(CallbackData, prefix="ordadm"):
     The order id travels in the button rather than in state, because the
     card outlives any conversation: an admin may act on a card from
     yesterday, and there is no session to have remembered it.
+
+    THREE actions, two of which are on the card. `abort` is on the rejection
+    PROMPT, not the card: it withdraws a Reject that has not been finalised.
+    It is a button rather than a typed "Cancel" because nav owns that label in
+    every state and nav answers with a customer keyboard, which must never
+    appear in the shop's group -- see `ChatGateMiddleware`.
     """
 
     action: str
@@ -189,7 +195,7 @@ class OrderAdminCB(CallbackData, prefix="ordadm"):
 
     @classmethod
     def samples(cls) -> list[str]:
-        return [cls(action=a, order_id=1).pack() for a in ("confirm", "reject")]
+        return [cls(action=a, order_id=1).pack() for a in ("confirm", "reject", "abort")]
 
 
 class BrowsePageCB(CallbackData, prefix="brwpage"):

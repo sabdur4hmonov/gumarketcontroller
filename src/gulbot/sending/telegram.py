@@ -31,8 +31,17 @@ class TelegramTransport:
     def __init__(self, bot: Bot) -> None:
         self._bot = bot
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
-        return await self._attempt(self._bot.send_message(chat_id=chat_id, text=text), chat_id)
+    async def send_text(
+        self,
+        *,
+        chat_id: int,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> SendResult:
+        return await self._attempt(
+            self._bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup),
+            chat_id,
+        )
 
     async def send_photo(
         self,

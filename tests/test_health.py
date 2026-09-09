@@ -118,7 +118,9 @@ class FakeTransport:
         self.texts: list[dict] = []
         self.ok = ok
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
         self.texts.append({"chat_id": chat_id, "text": text})
         return SendResult.sent(1) if self.ok else SendResult.failed("boom")
 

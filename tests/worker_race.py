@@ -33,7 +33,9 @@ class RecordingTransport:
         self.marker = marker
         self.calls: list[int] = []
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
         self.calls.append(chat_id)
         # A real network call takes time; without this both processes would
         # finish before either could observe the other.

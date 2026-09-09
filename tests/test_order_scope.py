@@ -105,6 +105,24 @@ def statuses_written(path: Path) -> set[str]:
     }
 
 
+def statuses_named(path: Path) -> set[str]:
+    """Every status this module mentions at all, however it uses it.
+
+    The coarse question, on purpose: `statuses_written` answers "does this put
+    a status into a row", which is the sharp claim about the customer order
+    path. This one answers "does this module know outcomes exist", which is
+    the claim about how far that knowledge has spread.
+    """
+    tree = ast.parse(path.read_bytes())
+    return {
+        node.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "OrderStatus"
+    }
+
+
 def _is_a_write(node: ast.AST, parents: dict[ast.AST, ast.AST]) -> bool:
     """Climb until something settles it.
 
@@ -220,21 +238,38 @@ def test_the_service_names_the_placed_status_exactly_once() -> None:
     assert source.count(names(OrderStatus.PLACED)) == 1
 
 
-def test_only_one_module_may_transition_an_order() -> None:
-    """The narrowed claim, stated as a test rather than a comment.
+def test_only_the_named_modules_reason_about_order_outcomes() -> None:
+    """Not "one module may transition" -- that is the UPDATE test above. This
+    is the blast radius: WHICH modules know an order can be anything other
+    than placed.
 
-    A second module writing `OrderStatus.CONFIRMED` would be the fence
-    quietly becoming decorative -- which is what happens to every guard that
-    is loosened once and then loosened again by someone reading only the
-    loosened version.
+    Four do, and each for a stated reason (`models/order.py` DEFINES the
+    enum rather than referencing it, so it does not appear here):
+
+      * `services/order_status.py`  moves an order between them.
+      * `services/order_notify.py`  maps an outcome to what the customer reads.
+      * `routers/admin_orders.py`   is where the shop taps the button.
+      * `services/orders.py`   asks about them -- CP9's daily cap does not
+        count cancelled or rejected orders. It still WRITES only 'placed',
+        which `test_the_order_path_writes_only_the_placed_status` pins.
+
+    A fifth module appearing here is not necessarily wrong. It is a decision,
+    and this test is what makes someone make it on purpose -- which is the
+    entire difference between a fence and a comment.
     """
-    writers = [
+    allowed = {
+        REPO_ROOT / "src/gulbot/services/orders.py",
+        REPO_ROOT / "src/gulbot/services/order_notify.py",
+        REPO_ROOT / "src/gulbot/bot/routers/admin_orders.py",
+        TRANSITION_MODULE,
+    }
+    aware = {
         path
-        for path in sorted((REPO_ROOT / "src").rglob("*.py"))
-        if statuses_written(path) - {OrderStatus.PLACED.name}
-    ]
-    assert writers == [TRANSITION_MODULE], (
-        f"transitions must live in one module; found them in {writers}"
+        for path in (REPO_ROOT / "src").rglob("*.py")
+        if statuses_named(path) - {OrderStatus.PLACED.name}
+    }
+    assert aware == allowed, (
+        f"unexpected: {sorted(aware - allowed)}; no longer present: {sorted(allowed - aware)}"
     )
 
 
@@ -262,15 +297,44 @@ def test_the_status_check_still_holds_every_future_value() -> None:
     }
 
 
-def test_the_order_flow_sends_no_status_updates_to_the_customer() -> None:
-    """Exactly one acknowledgement, and no further messages. A 'your order is
-    confirmed' key appearing here would mean the fence had moved."""
+#: The only outcomes a customer is told about. CP13 added both, deliberately.
+#: `delivered` is NOT here: nothing marks an order delivered, so copy for it
+#: would be a promise the product does not keep.
+CUSTOMER_STATUS_COPY = {"order.status.confirmed", "order.status.rejected"}
+
+
+def test_the_customer_hears_about_exactly_two_outcomes() -> None:
+    """CP10 asserted there was NO customer-facing status copy. That was true
+    then and is the thing CP13 was pulled forward to change -- an order sitting
+    unconfirmed while the customer assumes it was accepted is the silence this
+    checkpoint exists to remove.
+
+    So the claim narrows to a whitelist rather than being deleted. A third key
+    appearing here is either a status nothing sets, or a message someone added
+    without deciding it should exist.
+    """
     from gulbot.i18n.catalog import CATALOG
 
-    order_keys = {key for key in CATALOG if key.startswith("order.")}
     status_keys = {
         key
-        for key in order_keys
-        if any(word in key for word in ("confirmed", "delivered", "rejected"))
+        for key in CATALOG
+        if key.startswith("order.")
+        and any(word in key for word in ("confirmed", "delivered", "rejected"))
     }
-    assert not status_keys, f"customer-facing status copy exists already: {status_keys}"
+    assert status_keys == CUSTOMER_STATUS_COPY, (
+        f"customer-facing status copy changed: {sorted(status_keys)}"
+    )
+
+
+def test_every_outcome_the_customer_hears_about_has_copy_in_every_language() -> None:
+    """The notifier looks the key up by status. A status in its map with no
+    catalog entry sends the customer the literal key -- `t` returns the key
+    rather than raising, which is right for a missing button label and wrong
+    for the message telling someone their order was refused."""
+    from gulbot.i18n.catalog import CATALOG, LANGUAGES
+    from gulbot.services.order_notify import OUTCOME_COPY
+
+    for status, key in OUTCOME_COPY.items():
+        assert key in CATALOG, f"{status.value} has no copy"
+        for lang in LANGUAGES:
+            assert CATALOG[key].get(lang, "").strip(), f"{key} is empty in {lang}"

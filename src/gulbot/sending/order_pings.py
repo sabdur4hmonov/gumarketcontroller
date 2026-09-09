@@ -39,9 +39,11 @@ import logging
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
+from aiogram.types import InlineKeyboardMarkup
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.bot.keyboards import order_admin_keyboard
 from gulbot.models.customer import Customer
 from gulbot.models.order import SENDABLE_PING_STATES, Order, OrderReminder, PingState
 from gulbot.models.shop import Shop
@@ -228,20 +230,36 @@ async def _resolve(
 
 
 async def _deliver(
-    transport: Transport, *, targets: list[int], card: OrderCard, text: str, ping_number: int
+    transport: Transport,
+    *,
+    targets: list[int],
+    card: OrderCard,
+    text: str,
+    ping_number: int,
+    reply_markup: InlineKeyboardMarkup | None = None,
 ) -> tuple[bool, list[str]]:
-    """Send to every target. True if at least one accepted."""
+    """Send to every target. True if at least one accepted.
+
+    The keyboard rides on BOTH paths. A card too long to be a caption falls
+    back to text, and a fallback that quietly dropped the only way to act on
+    the order would be a hole nobody notices until an order sits unanswered.
+    """
     delivered = False
     errors: list[str] = []
     for chat_id in targets:
         if len(text) <= CAPTION_LIMIT:
             outcome = await transport.send_photo(
-                chat_id=chat_id, file_id=card.telegram_file_id, caption=text
+                chat_id=chat_id,
+                file_id=card.telegram_file_id,
+                caption=text,
+                reply_markup=reply_markup,
             )
         else:
             # Too long to be a caption. Still ONE call, and the shop still gets
             # every field -- the photo is what is dropped, not the order.
-            outcome = await transport.send_text(chat_id=chat_id, text=text)
+            outcome = await transport.send_text(
+                chat_id=chat_id, text=text, reply_markup=reply_markup
+            )
         if outcome.ok:
             delivered = True
             # The message id is the only handle anyone has on what the shop
@@ -344,8 +362,21 @@ async def run_order_ping_tick(
             else hours_ahead(card, ping.due_at_utc),
             lang=lang,
         )
+        # ONLY THE ANNOUNCEMENT CARRIES THE BUTTONS. The delivery pings are
+        # logistics for an order that has already been decided; putting
+        # Confirm on them would offer a decision twice and leave two cards
+        # disagreeing about which one is the record. A shop that never
+        # answers still gets the pings, which say the delivery is coming --
+        # that is the nudge, and it does not need a second button.
         delivered, errors = await _deliver(
-            transport, targets=targets, card=card, text=text, ping_number=ping.ping_number
+            transport,
+            targets=targets,
+            card=card,
+            text=text,
+            ping_number=ping.ping_number,
+            reply_markup=order_admin_keyboard(lang, card.order_id)
+            if ping.ping_number == ANNOUNCEMENT
+            else None,
         )
 
         if delivered:

@@ -22,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine
 from tests.bot_harness import bound_session_factory
 
+from gulbot.bot.callbacks import OrderAdminCB
 from gulbot.config import Settings
 from gulbot.models.order import Order, PingState
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
@@ -165,12 +166,21 @@ class FakeTransport:
     def _next(self) -> SendResult:
         return self._results.pop(0) if self._results else SendResult.sent(1)
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult:
-        self.texts.append({"chat_id": chat_id, "text": text})
+    async def send_text(
+        self, *, chat_id: int, text: str, reply_markup: object = None
+    ) -> SendResult:
+        self.texts.append({"chat_id": chat_id, "text": text, "reply_markup": reply_markup})
         return self._next()
 
     async def send_photo(self, *, chat_id: int, file_id: str, caption: str, **kw: object):  # type: ignore[no-untyped-def]
-        self.photos.append({"chat_id": chat_id, "file_id": file_id, "caption": caption})
+        self.photos.append(
+            {
+                "chat_id": chat_id,
+                "file_id": file_id,
+                "caption": caption,
+                "reply_markup": kw.get("reply_markup"),
+            }
+        )
         return self._next()
 
     @property
@@ -854,3 +864,78 @@ async def test_two_workers_send_one_message(committed_world: dict) -> None:
         .fetchone()[0]
     )
     assert state == PingState.SENT.value
+
+
+# --- CP13: the buttons the shop acts through -------------------------------
+
+
+def _actions(markup: object) -> list[str]:
+    """The callback actions on a card, in order."""
+    if markup is None:
+        return []
+    return [
+        OrderAdminCB.unpack(button.callback_data).action
+        for row in markup.inline_keyboard  # type: ignore[attr-defined]
+        for button in row
+    ]
+
+
+@pytest.mark.infra
+async def test_the_announcement_carries_confirm_and_reject(world: dict) -> None:
+    """Without these the order sits unconfirmed and the customer assumes it was
+    accepted, which is the silence CP13 was pulled forward to remove."""
+    await _ping(world["db"], world["shop"], world["order"], number=ANNOUNCEMENT)
+    transport = FakeTransport()
+    async with bound_session_factory(world["db"])() as session:
+        await run_order_ping_tick(session, transport=transport, now_utc=datetime.now(UTC))
+
+    assert _actions(transport.photos[0]["reply_markup"]) == ["confirm", "reject"]
+
+
+@pytest.mark.infra
+async def test_the_buttons_name_the_order_they_belong_to(world: dict) -> None:
+    """The id rides in the callback data because a card outlives every
+    conversation around it -- an admin may act on yesterday's card with no
+    state that remembers which order it was."""
+    await _ping(world["db"], world["shop"], world["order"], number=ANNOUNCEMENT)
+    transport = FakeTransport()
+    async with bound_session_factory(world["db"])() as session:
+        await run_order_ping_tick(session, transport=transport, now_utc=datetime.now(UTC))
+
+    markup = transport.photos[0]["reply_markup"]
+    ids = {
+        OrderAdminCB.unpack(b.callback_data).order_id for row in markup.inline_keyboard for b in row
+    }
+    assert ids == {world["order"]}
+
+
+@pytest.mark.infra
+async def test_a_delivery_ping_offers_no_decision(world: dict) -> None:
+    """The 3-hour warning is logistics for an order already decided. A second
+    Confirm on it would leave two cards disagreeing about which is the record.
+    """
+    await _ping(world["db"], world["shop"], world["order"], number=1)
+    transport = FakeTransport()
+    async with bound_session_factory(world["db"])() as session:
+        await run_order_ping_tick(session, transport=transport, now_utc=datetime.now(UTC))
+
+    assert transport.photos[0]["reply_markup"] is None
+
+
+@pytest.mark.infra
+async def test_a_card_too_long_for_a_caption_keeps_its_buttons(world: dict) -> None:
+    """WOULD FAIL against attaching the keyboard only on the photo path. A long
+    landmark would then produce an order nobody can act on -- and it would look
+    exactly like an order the shop chose to ignore."""
+    await _ping(world["db"], world["shop"], world["order"], number=ANNOUNCEMENT)
+    transport = FakeTransport()
+    async with bound_session_factory(world["db"])() as session:
+        await session.execute(
+            text("UPDATE orders SET delivery_location_text = :a WHERE id = :o"),
+            {"a": "z" * 900, "o": world["order"]},
+        )
+        result = await run_order_ping_tick(session, transport=transport, now_utc=datetime.now(UTC))
+
+    assert result.sent == 1
+    assert transport.photos == [], "this card must have gone as text"
+    assert _actions(transport.texts[0]["reply_markup"]) == ["confirm", "reject"]

@@ -11,6 +11,7 @@ only ever be attached to one Dispatcher, so singletons make a second dispatcher
 
 from aiogram import Router
 
+from gulbot.bot.routers.admin_orders import build_admin_orders_router
 from gulbot.bot.routers.browse import build_browse_router
 from gulbot.bot.routers.fallback import build_fallback_router
 from gulbot.bot.routers.menu import build_menu_router
@@ -27,6 +28,23 @@ def build_routers() -> tuple[Router, ...]:
     return (
         build_nav_router(),
         build_onboarding_router(),
+        # CP13. The only router here that serves a group, and it goes after BOTH
+        # escape hatches: Cancel lives in nav, /start lives in onboarding, and
+        # the standing rule since CP2 is that those two win from every state.
+        # `enter_reason` accepts any text, so anywhere earlier it shadows them.
+        #
+        # The first draft put it first and the shadow sweep failed the build,
+        # correctly, naming both. Moving it after nav fixed Cancel and left
+        # /start still shadowed -- which is exactly the value of a gate that
+        # walks the live dispatcher rather than a rule someone remembers.
+        #
+        # This ordering is only safe because the chat gate refuses commands and
+        # button labels as rejection reasons, so nav and onboarding are never
+        # actually reached FROM a group -- the static rule and the runtime
+        # behaviour agree rather than trading off. Cancel comes back as an
+        # inline button on the prompt, which arrives by callback prefix and
+        # touches neither router.
+        build_admin_orders_router(),
         build_settings_router(),
         build_occasions_router(),
         # CP10c. Owns ONE state (Onboarding.sharing_phone) and nothing else, so

@@ -25,6 +25,7 @@ from gulbot.bot.callbacks import (
     OccasionActionCB,
     OccasionKindCB,
     OccasionTypeCB,
+    OrderAdminCB,
     OrderBackCB,
     OrderConfirmCB,
     OrderDateCB,
@@ -386,6 +387,56 @@ def send_time_keyboard(lang: str) -> InlineKeyboardMarkup:
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+# --- CP13: the shop acts on the card ---------------------------------------
+
+
+def order_admin_keyboard(lang: str, order_id: int) -> InlineKeyboardMarkup:
+    """Confirm and Reject, under the order card in the shop's own group.
+
+    The order id rides in the CALLBACK DATA rather than in anyone's FSM state.
+    A card outlives every conversation around it -- an admin may act on
+    yesterday's card, scrolled back to, with no session that remembers which
+    order it was -- so the button has to carry its own subject.
+
+    Both buttons are on ONE row. Two rows would put Reject under a thumb
+    reaching for Confirm; side by side, the two are equally deliberate.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.confirm_order", lang),
+                    callback_data=OrderAdminCB(action="confirm", order_id=order_id).pack(),
+                ),
+                InlineKeyboardButton(
+                    text=t("ibtn.reject_order", lang),
+                    callback_data=OrderAdminCB(action="reject", order_id=order_id).pack(),
+                ),
+            ]
+        ]
+    )
+
+
+def reject_prompt_keyboard(lang: str, order_id: int) -> InlineKeyboardMarkup:
+    """The way out of a rejection that has not been finalised.
+
+    A BUTTON rather than the typed "Bekor qilish" nav already understands,
+    because nav answers with a customer reply keyboard and this conversation
+    happens in the shop's group. A callback carries its own prefix, so it
+    reaches this router without nav being involved at all.
+    """
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.abort_reject", lang),
+                    callback_data=OrderAdminCB(action="abort", order_id=order_id).pack(),
+                )
+            ]
+        ]
+    )
 
 
 # --- CP10: ordering --------------------------------------------------------

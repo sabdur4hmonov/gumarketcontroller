@@ -80,7 +80,13 @@ class Transport(Protocol):
     TEXT, and a copy cannot.
     """
 
-    async def send_text(self, *, chat_id: int, text: str) -> SendResult: ...
+    async def send_text(
+        self,
+        *,
+        chat_id: int,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+    ) -> SendResult: ...
 
     async def send_photo(
         self,

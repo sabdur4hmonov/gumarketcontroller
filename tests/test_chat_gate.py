@@ -284,3 +284,53 @@ async def test_start_in_a_group_is_still_ignored_after_the_crack(harness: Harnes
     test that would catch a gate loosened one step too far."""
     assert await harness.feed(message_from("supergroup", "/start", chat_id=GROUP_ID)) == []
     assert await harness.customers() == []
+
+
+# --- CP13, second pass: what the sweep forced ------------------------------
+#
+# `enter_reason` accepts ANY text, so registered anywhere ahead of nav and
+# onboarding it shadows Cancel and /start -- which the shadow sweep failed the
+# build over, naming both. The router moved behind them, and the gate stopped
+# letting either reach a handler from a group, so the static ordering and the
+# runtime behaviour agree instead of trading off.
+
+
+@pytest.mark.parametrize("label", sorted(CATALOG["btn.nav.cancel"].values()))
+async def test_a_cancel_label_is_never_a_rejection_reason(harness: Harness, label: str) -> None:
+    """Otherwise nav answers it -- with `main_menu_keyboard`, a CUSTOMER reply
+    keyboard, posted into the shop's own admin group. That is the CP10c bug
+    arriving through the door CP13 opened."""
+    gate = ChatGateMiddleware()
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await context.set_state(AdminOrder.entering_reject_reason)
+    typed = message_from("supergroup", label, chat_id=GROUP_ID)
+    assert await gate._is_shop_action(typed, {"state": context}) is False
+
+
+async def test_a_command_is_never_a_rejection_reason(harness: Harness) -> None:
+    """Same reason, for onboarding's `/start`: it would return the language
+    picker into the group, which is the ORIGINAL reported bug."""
+    gate = ChatGateMiddleware()
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await context.set_state(AdminOrder.entering_reject_reason)
+    for command in ("/start", "/help"):
+        typed = message_from("supergroup", command, chat_id=GROUP_ID)
+        assert await gate._is_shop_action(typed, {"state": context}) is False, command
+
+
+async def test_an_ordinary_reason_still_gets_through(harness: Harness) -> None:
+    """Guards the guard. A gate that refused everything would pass both tests
+    above and ship a Reject button that never finishes."""
+    gate = ChatGateMiddleware()
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await context.set_state(AdminOrder.entering_reject_reason)
+    typed = message_from("supergroup", "gul tugadi, uzr", chat_id=GROUP_ID)
+    assert await gate._is_shop_action(typed, {"state": context}) is True
+
+
+async def test_a_cancel_label_in_a_group_still_reaches_nothing(harness: Harness) -> None:
+    """End to end, not just the gate helper: nav must produce no reply."""
+    context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
+    await context.set_state(AdminOrder.entering_reject_reason)
+    label = CATALOG["btn.nav.cancel"]["uz"]
+    assert await harness.feed(message_from("supergroup", label, chat_id=GROUP_ID)) == []
