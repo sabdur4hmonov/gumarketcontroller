@@ -265,13 +265,28 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     # Names BOTH ways rather than asking "how", so the location option is
     # visible in the question and not only in a button. The shop owner
     # missed the pin entirely on a first pass through their own bot.
+    #
+    # The last line is a TELEGRAM limitation, not ours, and it is stated here
+    # because the customer cannot see the difference until it has already gone
+    # wrong. `KeyboardButtonRequestLocation` sends the device's CURRENT
+    # position and the Bot API offers no way to make it a place-picker --
+    # choosing an arbitrary point needs Telegram's own attachment menu
+    # (paperclip -> Location -> drag -> Send Selected Location), which no bot
+    # can open. Someone ordering flowers for delivery to an address they are
+    # not standing at is the ordinary case, not the edge one, so saying which
+    # button does what BEFORE the choice is cheaper than an order that goes to
+    # the wrong door. Typing the address already covers it.
     "order.choose_location": {
         "uz": "📍 Qayerga yetkazib beraylik?\n\n"
         "Joylashuvingizni yuboring — shunda kuryer aniq topadi. "
-        "Yoki manzilni o‘zingiz yozing.",
+        "Yoki manzilni o‘zingiz yozing.\n\n"
+        "ℹ️ Tugma siz hozir turgan joyni yuboradi. "
+        "Agar boshqa manzilni belgilamoqchi bo‘lsangiz, matn orqali yozing.",
         "ru": "📍 Куда доставить?\n\n"
         "Отправьте локацию — курьеру будет точнее. "
-        "Или напишите адрес сами.",
+        "Или напишите адрес сами.\n\n"
+        "ℹ️ Кнопка отправляет место, где вы сейчас находитесь. "
+        "Если нужен другой адрес, напишите его текстом.",
     },
     "ibtn.location_text": {"uz": "✍️ Manzil yozish", "ru": "✍️ Написать адрес"},
     # The pin goes FIRST in the keyboard and says what it is for, not what
