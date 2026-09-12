@@ -13,7 +13,12 @@ from tests.bot_harness import bound_session_factory
 
 from gulbot.models.message_log import CLAIM_TIMEOUT, MessageStatus
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
-from gulbot.sending.dispatcher import MAX_SEND_ATTEMPTS, run_tick, transition_key_for
+from gulbot.sending.dispatcher import (
+    MAX_SEND_ATTEMPTS,
+    RETRY_BACKOFF,
+    run_tick,
+    transition_key_for,
+)
 from gulbot.sending.render import render_reminder
 from gulbot.sending.transport import SendResult
 
@@ -772,68 +777,145 @@ async def test_blocking_one_customer_does_not_touch_another(
     assert statuses[other_customer] == "active"
 
 
-# --- PASS 1b (pre-deployment audit): what happens to a FAILED reminder -----
+# --- a failed reminder is retried, then parked, and always visible ---------
 #
-# PINNED, NOT ENDORSED. These tests record what the code does today so the
-# audit can report it with evidence. The behaviour is believed wrong and the
-# fix is awaiting the owner's decision, because it changes send semantics.
+# REGRESSION SUITE for the defect the pre-deployment audit found: a generic
+# send failure marked the row FAILED, `select_due_rows` took only PENDING, and
+# the reminder left the system permanently -- no retry, no dead letter, no
+# health alert. One dropped connection lost it, silently, in a reminder
+# product.
+#
+# MAX_SEND_ATTEMPTS only ever applied to 429s, which leave the state alone and
+# merely defer `due_at_utc`, which is why the retry tests above all passed.
+#
+# The fix gives this path the shape the order-ping tick already had:
+# `SENDABLE_STATES` includes FAILED, the failure defers and RELEASES its claim,
+# the ladder runs, and an exhausted row parks where the health check looks.
 
 
 @pytest.mark.infra
-async def test_a_failed_reminder_is_never_selected_again(
+async def test_a_generic_failure_is_retried_on_the_next_tick(
     db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
-    """One generic failure and the row leaves the system.
-
-    `_apply_outcome`'s last branch calls `mark_group(FAILED)`, and
-    `select_due_rows` filters on `state == PENDING`. So the row is not picked up
-    by the next tick, or any tick after it.
-
-    The 429 branch is different on purpose -- it leaves the state alone and only
-    defers `due_at_utc` -- which is why `test_a_429_is_retried_and_succeeds`
-    passes and why this one cannot.
-    """
-    await add_due_row(db, world, merge_key="audit-failed")
+    """THE regression test. Was: zero send attempts, forever."""
+    await add_due_row(db, world, merge_key="audit-retry")
     await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
     assert [r["state"] for r in await rows(db)] == ["failed"]
 
-    now = NOW
-    for _ in range(MAX_SEND_ATTEMPTS + 2):
-        now += timedelta(minutes=1)
-        retry = FakeTransport()
-        result = await tick(sessions, retry, now=now)
-        assert result.groups == 0, "a failed row was selected; the filter changed"
-        assert retry.calls == []
+    retry = FakeTransport()
+    result = await tick(sessions, retry, now=NOW + RETRY_BACKOFF)
 
-    final = (await rows(db))[0]
-    assert final["state"] == "failed", "still failed"
-    assert final["attempts"] == 1, (
-        "MAX_SEND_ATTEMPTS never applies: the row is not selected, so nothing "
-        "bumps attempts and nothing ever parks it in dead_letter"
-    )
+    assert len(retry.calls) == 1, "the failed reminder was not retried"
+    assert result.sent == 1
+    assert [r["state"] for r in await rows(db)] == ["sent"]
 
 
 @pytest.mark.infra
-async def test_a_failed_reminder_raises_no_health_alert(
+async def test_a_generic_failure_waits_the_backoff_before_retrying(
     db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
 ) -> None:
-    """And nobody is told. This is what makes it a silent loss rather than a
-    visible failure.
+    """Deferring is half the fix. Releasing the claim without pushing the due
+    time out would burn the whole ladder inside one tick."""
+    await add_due_row(db, world, merge_key="audit-backoff")
+    await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
 
-    `read_health` counts PENDING-and-overdue reminders and DEAD_LETTER ones. A
-    FAILED reminder is neither. Note the asymmetry with the order-ping half of
-    the very same function, which DOES count `PingState.FAILED` as overdue.
+    too_soon = FakeTransport()
+    await tick(sessions, too_soon, now=NOW + RETRY_BACKOFF - timedelta(seconds=1))
+    assert too_soon.calls == [], "retried before the backoff had elapsed"
+
+    on_time = FakeTransport()
+    await tick(sessions, on_time, now=NOW + RETRY_BACKOFF)
+    assert len(on_time.calls) == 1
+
+
+@pytest.mark.infra
+async def test_a_generic_failure_releases_its_claim(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The other half. A retained claim is why the old code could not re-send
+    even once `select_due_rows` found the row: `claim_send` cannot retake a
+    resolved claim, so every later tick skipped it."""
+    await add_due_row(db, world, merge_key="audit-release")
+    await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
+
+    held = (await db.execute(text("SELECT count(*) FROM message_log"))).scalar_one()
+    assert held == 0, "the claim was kept, so no later tick can re-send"
+
+
+@pytest.mark.infra
+async def test_the_ladder_reaches_the_dead_letter_after_five_real_attempts(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """MAX_SEND_ATTEMPTS, applied to a generic failure for the first time.
+
+    Counts the SENDS, not the ticks: the point of the fix is that the attempts
+    are real attempts. Before it, this loop produced one send and then five
+    ticks of nothing.
+    """
+    await add_due_row(db, world, merge_key="audit-ladder")
+
+    attempts_made = 0
+    now = NOW
+    for _ in range(MAX_SEND_ATTEMPTS + 1):
+        transport = FakeTransport(SendResult.failed("connection reset"))
+        await tick(sessions, transport, now=now)
+        attempts_made += len(transport.calls)
+        now += RETRY_BACKOFF
+
+    assert attempts_made == MAX_SEND_ATTEMPTS, (
+        f"expected {MAX_SEND_ATTEMPTS} genuine send attempts, made {attempts_made}"
+    )
+    parked = (await rows(db))[0]
+    assert parked["state"] == "dead_letter", "the ladder did not end in the dead letter"
+    assert parked["attempts"] > MAX_SEND_ATTEMPTS
+
+    after = FakeTransport()
+    await tick(sessions, after, now=now + RETRY_BACKOFF)
+    assert after.calls == [], "a dead-lettered reminder was retried"
+
+
+@pytest.mark.infra
+async def test_health_sees_a_failed_reminder_the_way_it_sees_a_failed_ping(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The asymmetry that made the loss silent.
+
+    `read_health` counted `PingState.FAILED` as overdue and did not count
+    `NotificationState.FAILED` at all -- in the same function. So a reminder
+    that would never be sent raised nothing.
     """
     from gulbot.sending.health import STALL_AFTER, read_health
 
-    await add_due_row(db, world, merge_key="audit-silent")
+    await add_due_row(db, world, merge_key="audit-health")
     await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
 
     async with sessions() as session:
         health = await read_health(
-            session, shop_id=world["shop_id"], now_utc=NOW + STALL_AFTER + timedelta(minutes=1)
+            session,
+            shop_id=world["shop_id"],
+            now_utc=NOW + STALL_AFTER + timedelta(minutes=1),
         )
 
-    assert health.overdue_reminders == 0, "a failed reminder is not counted as overdue"
-    assert health.parked_reminders == 0, "nor as parked"
-    assert not health.stalled, "so the alert never fires for a reminder that will never be sent"
+    assert health.overdue_reminders == 1, "a failed reminder is still owed to a customer"
+    assert health.stalled, "and the shop is told sending has stopped"
+
+
+@pytest.mark.infra
+async def test_health_reports_a_parked_reminder(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """The end of the ladder has to be visible too, or the fix just moves the
+    silence from 'failed' to 'dead_letter'."""
+    from gulbot.sending.health import read_health
+
+    await add_due_row(db, world, merge_key="audit-parked")
+    now = NOW
+    for _ in range(MAX_SEND_ATTEMPTS + 1):
+        await tick(sessions, FakeTransport(SendResult.failed("boom")), now=now)
+        now += RETRY_BACKOFF
+
+    async with sessions() as session:
+        health = await read_health(session, shop_id=world["shop_id"], now_utc=now)
+
+    assert health.parked_reminders == 1
+    assert health.parked, "a parked reminder must raise the dead-letter alert"

@@ -49,6 +49,17 @@ class NotificationState(StrEnum):
     DEAD_LETTER = "dead_letter"
 
 
+#: States the tick will pick up and try to send. DELIBERATELY the same shape
+#: as `SENDABLE_PING_STATES` in `models/order.py`: a row whose last attempt
+#: failed is a row still owed to a customer, not a finished one.
+#:
+#: FAILED was missing here until the pre-deployment audit. The consequence was
+#: that one dropped connection removed a reminder from the system permanently --
+#: never retried, never parked, never alerted on -- because this tuple is what
+#: `select_due_rows` filters by.
+SENDABLE_STATES = (NotificationState.PENDING.value, NotificationState.FAILED.value)
+
+
 class NotificationChannel(StrEnum):
     TELEGRAM = "telegram"
 

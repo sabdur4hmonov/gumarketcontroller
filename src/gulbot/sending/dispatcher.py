@@ -40,7 +40,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, text, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,7 +51,11 @@ from gulbot.models.message_log import (
     MessageLog,
     MessageStatus,
 )
-from gulbot.models.notification import NotificationState, ScheduledNotification
+from gulbot.models.notification import (
+    SENDABLE_STATES,
+    NotificationState,
+    ScheduledNotification,
+)
 from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
@@ -85,7 +89,18 @@ BATCH_SIZE = 100
 #: A row that has been claimed this many times without succeeding is parked.
 #: Five spreads retries over five minutes of ticks, which outlasts a transient
 #: Telegram outage without pestering a customer indefinitely.
+#:
+#: Until the pre-deployment audit this only ever applied to 429s: every other
+#: failure marked the row FAILED, and FAILED rows were not selected, so nothing
+#: bumped attempts and nothing ever reached the dead letter.
 MAX_SEND_ATTEMPTS = 5
+
+#: How long a generically-failed send waits before the next attempt. One minute
+#: per attempt is what makes MAX_SEND_ATTEMPTS mean the five minutes its comment
+#: claims. Fixed rather than exponential on purpose: a reminder is time-sensitive
+#: -- half an hour late is fine, five hours late is a different message -- so the
+#: ladder is short and then a human is told.
+RETRY_BACKOFF = timedelta(seconds=60)
 
 
 @dataclass
@@ -148,7 +163,7 @@ async def select_due_rows(
     result = await session.scalars(
         select(ScheduledNotification)
         .where(
-            ScheduledNotification.state == NotificationState.PENDING.value,
+            ScheduledNotification.state.in_(SENDABLE_STATES),
             ScheduledNotification.due_at_utc <= now_utc,
         )
         .order_by(ScheduledNotification.due_at_utc, ScheduledNotification.id)
@@ -492,6 +507,29 @@ async def run_tick(
     return result
 
 
+async def _defer_and_release(session: AsyncSession, group: DueGroup, *, until: datetime) -> None:
+    """Push the retry out and let go of the claim.
+
+    BOTH HALVES OR NEITHER. Deferring without releasing leaves a row that is
+    selected on every tick and skipped every time, because `claim_send` cannot
+    retake a resolved claim -- five attempts of nothing, which is what the
+    generic-failure path used to do. Releasing without deferring would retry
+    instantly and burn the ladder in one tick.
+    """
+    await session.execute(
+        update(ScheduledNotification)
+        .where(ScheduledNotification.id.in_([row.id for row in group.rows]))
+        .values(due_at_utc=until)
+    )
+    await session.execute(
+        delete(MessageLog).where(
+            MessageLog.customer_id == group.customer_id,
+            MessageLog.template_key == TEMPLATE_REMINDER,
+            MessageLog.transition_key == group.transition_key,
+        )
+    )
+
+
 async def _apply_outcome(
     session: AsyncSession,
     group: DueGroup,
@@ -525,30 +563,25 @@ async def _apply_outcome(
         #
         # Deferring in the database rather than sleeping keeps the tick free to
         # serve every other customer, and survives a worker restart.
-        await session.execute(
-            update(ScheduledNotification)
-            .where(ScheduledNotification.id.in_([row.id for row in group.rows]))
-            .values(due_at_utc=now_utc + timedelta(seconds=outcome.retry_after))
-        )
-        # Release the claim so the deferred retry may take it.
-        await session.execute(
-            text(
-                "DELETE FROM message_log WHERE customer_id = :c "
-                "AND template_key = :t AND transition_key = :k"
-            ),
-            {"c": group.customer_id, "t": TEMPLATE_REMINDER, "k": group.transition_key},
+        await _defer_and_release(
+            session, group, until=now_utc + timedelta(seconds=outcome.retry_after)
         )
         result.rate_limited += 1
         result.errors.append(f"429 retry_after={outcome.retry_after}")
         return
 
+    # EVERY OTHER FAILURE: a dropped connection, a 500, a timeout. Telegram has
+    # not told us it declined, so we do not know whether the message landed.
+    #
+    # The row stays SENDABLE and is deferred, and the claim is RELEASED so the
+    # next tick can genuinely re-send rather than skipping a claim it cannot
+    # retake. That accepts a duplicate reminder in the case where a timeout hid
+    # a delivery that actually happened -- the deliberate trade, because a
+    # duplicate is mildly annoying and a silent miss is the product failing.
+    #
+    # `mark_group(FAILED)` still records WHAT happened; it no longer means the
+    # row is finished, because FAILED is in `SENDABLE_STATES`.
     await mark_group(session, group, state=NotificationState.FAILED, now_utc=now_utc)
-    await resolve_claim(
-        session,
-        group,
-        status=MessageStatus.FAILED,
-        now_utc=now_utc,
-        error_code=outcome.error_code,
-    )
+    await _defer_and_release(session, group, until=now_utc + RETRY_BACKOFF)
     result.failed += 1
     result.errors.append(outcome.error_code or "unknown")

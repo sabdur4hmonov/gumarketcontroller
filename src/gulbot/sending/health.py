@@ -43,7 +43,11 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.models.notification import NotificationState, ScheduledNotification
+from gulbot.models.notification import (
+    SENDABLE_STATES,
+    NotificationState,
+    ScheduledNotification,
+)
 from gulbot.models.order import Order, OrderReminder, PingState
 from gulbot.scheduling.occurrences import TASHKENT
 
@@ -113,7 +117,11 @@ async def read_health(session: AsyncSession, *, shop_id: int, now_utc: datetime)
         .select_from(ScheduledNotification)
         .where(
             ScheduledNotification.shop_id == shop_id,
-            ScheduledNotification.state == NotificationState.PENDING.value,
+            # Both sendable states, exactly as the ping count below does. A
+            # reminder whose last attempt failed is still owed to a customer,
+            # and before the pre-deployment audit it was counted by neither
+            # this nor the parked query -- so nothing alerted on it at all.
+            ScheduledNotification.state.in_(SENDABLE_STATES),
             ScheduledNotification.due_at_utc <= cutoff,
         )
     )
