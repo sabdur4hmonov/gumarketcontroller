@@ -179,6 +179,14 @@ async def confirm(
 
     order_id = callback_data.order_id
     transition = await confirm_order(session, shop_id=shop_id, order_id=order_id)
+    # THE DECISION IS DURABLE BEFORE ANYONE IS TOLD. Committing here rather than
+    # letting `DbSessionMiddleware` do it at the end of the handler: everything
+    # after this point talks to Telegram, and a rollback after the customer has
+    # been messaged would leave the order 'placed' while the customer believes
+    # it is accepted -- the precise silence this checkpoint exists to remove.
+    # Committing even when nothing changed is harmless and keeps the rule in
+    # one place.
+    await session.commit()
     if not await _report(callback, transition, lang):
         return
 
@@ -268,6 +276,10 @@ async def enter_reason(
     await state.clear()
     reason = (message.text or "").strip()[:REJECTION_REASON_MAX_LENGTH]
     transition = await reject_order(session, shop_id=shop_id, order_id=order_id, reason=reason)
+    # Same phase boundary as `confirm`. One commit covers the status change AND
+    # the pings `reject_order` cancelled in the same transaction, so there is
+    # still no instant where an order is rejected and its reminders are armed.
+    await session.commit()
     if transition.missing:
         await message.answer(t("group.order_missing", lang))
         return

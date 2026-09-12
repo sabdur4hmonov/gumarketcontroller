@@ -7,6 +7,14 @@ runs. Two admins racing the same card cannot produce two "your order is
 confirmed" messages, and neither can a handler that crashes after Telegram
 accepted but before the transaction committed.
 
+THIS FUNCTION COMMITS. It is handed a session it did not open and commits it
+twice: once after claiming, before Telegram, and once after resolving. That is
+not tidy, and it is not optional -- a claim left inside the caller's
+transaction is not a claim at all. The pre-deployment audit found exactly that:
+the card edit failing after the customer had been messaged rolled the whole
+handler back, the ledger forgot the message, and the next tap sent a second
+one. See `tests/test_audit_claim_durability.py`.
+
 BEST EFFORT, AND HONEST ABOUT IT. This sends inline, in the handler, rather than
 through a queue a worker drains later, because the customer is owed the answer
 now and because there is no customer-facing outbox to put it in -- `message_log`
@@ -130,6 +138,16 @@ async def notify_customer_of_outcome(
         log.info("order %s outcome %s already claimed", order_id, status.value)
         return Notification(notified=True, sent_now=False)
 
+    # THE PHASE BOUNDARY, and the reason this function commits a session it did
+    # not open. A claim that is still inside the caller's transaction is not a
+    # claim: if anything after this point rolls back -- a failed card edit, a
+    # dropped connection, the process dying -- the ledger forgets a message the
+    # customer already has, and the next tap sends it again.
+    #
+    # Same discipline as `sending/dispatcher.py`, which commits between claiming
+    # and sending for exactly this reason and says so.
+    await session.commit()
+
     # The reason is FREE TEXT an admin typed into a group. It goes into an
     # HTML-parsed message, so it is escaped here rather than trusted -- an
     # unescaped "<" would fail the send and leave the customer told nothing.
@@ -150,6 +168,9 @@ async def notify_customer_of_outcome(
         now_utc=now_utc,
         error_code=None if outcome.ok else (outcome.error_code or "unknown"),
     )
+    # The outcome is durable too, so a later crash cannot turn a resolved send
+    # back into an open claim.
+    await session.commit()
 
     if outcome.ok:
         log.info(

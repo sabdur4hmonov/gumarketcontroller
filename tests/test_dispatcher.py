@@ -770,3 +770,70 @@ async def test_blocking_one_customer_does_not_touch_another(
     statuses = dict((await db.execute(text("SELECT id, status FROM customers ORDER BY id"))).all())
     assert statuses[world["customer_id"]] == "blocked"
     assert statuses[other_customer] == "active"
+
+
+# --- PASS 1b (pre-deployment audit): what happens to a FAILED reminder -----
+#
+# PINNED, NOT ENDORSED. These tests record what the code does today so the
+# audit can report it with evidence. The behaviour is believed wrong and the
+# fix is awaiting the owner's decision, because it changes send semantics.
+
+
+@pytest.mark.infra
+async def test_a_failed_reminder_is_never_selected_again(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """One generic failure and the row leaves the system.
+
+    `_apply_outcome`'s last branch calls `mark_group(FAILED)`, and
+    `select_due_rows` filters on `state == PENDING`. So the row is not picked up
+    by the next tick, or any tick after it.
+
+    The 429 branch is different on purpose -- it leaves the state alone and only
+    defers `due_at_utc` -- which is why `test_a_429_is_retried_and_succeeds`
+    passes and why this one cannot.
+    """
+    await add_due_row(db, world, merge_key="audit-failed")
+    await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
+    assert [r["state"] for r in await rows(db)] == ["failed"]
+
+    now = NOW
+    for _ in range(MAX_SEND_ATTEMPTS + 2):
+        now += timedelta(minutes=1)
+        retry = FakeTransport()
+        result = await tick(sessions, retry, now=now)
+        assert result.groups == 0, "a failed row was selected; the filter changed"
+        assert retry.calls == []
+
+    final = (await rows(db))[0]
+    assert final["state"] == "failed", "still failed"
+    assert final["attempts"] == 1, (
+        "MAX_SEND_ATTEMPTS never applies: the row is not selected, so nothing "
+        "bumps attempts and nothing ever parks it in dead_letter"
+    )
+
+
+@pytest.mark.infra
+async def test_a_failed_reminder_raises_no_health_alert(
+    db: AsyncConnection, world: dict, sessions: async_sessionmaker[AsyncSession]
+) -> None:
+    """And nobody is told. This is what makes it a silent loss rather than a
+    visible failure.
+
+    `read_health` counts PENDING-and-overdue reminders and DEAD_LETTER ones. A
+    FAILED reminder is neither. Note the asymmetry with the order-ping half of
+    the very same function, which DOES count `PingState.FAILED` as overdue.
+    """
+    from gulbot.sending.health import STALL_AFTER, read_health
+
+    await add_due_row(db, world, merge_key="audit-silent")
+    await tick(sessions, FakeTransport(SendResult.failed("connection reset")))
+
+    async with sessions() as session:
+        health = await read_health(
+            session, shop_id=world["shop_id"], now_utc=NOW + STALL_AFTER + timedelta(minutes=1)
+        )
+
+    assert health.overdue_reminders == 0, "a failed reminder is not counted as overdue"
+    assert health.parked_reminders == 0, "nor as parked"
+    assert not health.stalled, "so the alert never fires for a reminder that will never be sent"
