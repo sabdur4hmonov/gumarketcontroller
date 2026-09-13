@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
+from gulbot.services.occasions import discard_pending_reminders
 
 
 async def create_recipient(
@@ -122,9 +123,15 @@ async def deactivate_recipient(
     row = result.first()
     if row is None:
         return None
-    await session.execute(
-        update(Occasion).where(Occasion.recipient_id == recipient_id).values(active=False)
+    deactivated = await session.scalars(
+        update(Occasion)
+        .where(Occasion.recipient_id == recipient_id)
+        .values(active=False)
+        .returning(Occasion.id)
     )
+    # And what was already scheduled for them, now rather than at the nightly
+    # prune. See `discard_pending_reminders`.
+    await discard_pending_reminders(session, occasion_ids=list(deactivated))
     return str(row[0])
 
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from sqlalchemy import select, update
+from sqlalchemy import delete, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,6 +14,7 @@ from gulbot.models.consent import (
     ConsentSource,
     ConsentType,
 )
+from gulbot.models.notification import RECONCILABLE_STATES, ScheduledNotification
 from gulbot.models.occasion import MAX_DAY_IN_MONTH, Occasion
 
 
@@ -98,6 +99,34 @@ async def create_occasion(
     return await session.get(Occasion, new_id)
 
 
+async def discard_pending_reminders(session: AsyncSession, *, occasion_ids: Sequence[int]) -> int:
+    """Delete the reminders still scheduled for these dates. Returns how many.
+
+    THE MOMENT A DATE STOPS MATTERING, NOT AT 03:00. `materialize-nightly`
+    prunes reminders for deactivated dates, but only once a night -- so before
+    the pre-deployment audit, a person removed at 10:00 with a reminder due at
+    11:00 was reminded about anyway, by the bot's very next message.
+
+    The same `RECONCILABLE_STATES` as the nightly prune, so the two can never
+    disagree about which rows are still a schedule. SENT, EXPIRED, CANCELLED and
+    DEAD_LETTER rows are history and stay: the customer really did get those.
+
+    Deleted rather than cancelled, like the prune: an unsent reminder for a date
+    that no longer exists is not an event worth keeping.
+    """
+    if not occasion_ids:
+        return 0
+    result = await session.execute(
+        delete(ScheduledNotification)
+        .where(
+            ScheduledNotification.occasion_id.in_(occasion_ids),
+            ScheduledNotification.state.in_(RECONCILABLE_STATES),
+        )
+        .returning(ScheduledNotification.id)
+    )
+    return len(list(result))
+
+
 async def deactivate_occasion(
     session: AsyncSession, *, shop_id: int, customer_id: int, occasion_id: int
 ) -> str | None:
@@ -118,7 +147,10 @@ async def deactivate_occasion(
         .returning(Occasion.label)
     )
     row = result.first()
-    return row[0] if row else None
+    if row is None:
+        return None
+    await discard_pending_reminders(session, occasion_ids=[occasion_id])
+    return row[0]
 
 
 async def record_store_dates_consent(

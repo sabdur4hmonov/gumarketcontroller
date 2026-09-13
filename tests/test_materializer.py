@@ -364,13 +364,22 @@ async def test_reconciliation_never_touches_a_sent_row(
 
 
 @pytest.mark.infra
-@pytest.mark.parametrize("protected", ["sent", "failed", "expired"])
+@pytest.mark.parametrize("protected", ["sent", "expired"])
 async def test_only_pending_rows_are_reconcilable(
     db: AsyncConnection,
     world: dict,
     sessions: async_sessionmaker[AsyncSession],
     protected: str,
 ) -> None:
+    """History survives a change of reminder count; a schedule does not.
+
+    FAILED WAS ON THIS LIST UNTIL THE PRE-DEPLOYMENT AUDIT, and correctly so at
+    CP5, when a failed reminder was terminal and never retried -- it was
+    history. The audit made FAILED retryable, which makes it a schedule, and a
+    retried reminder for an offset the customer turned off is exactly what
+    `_prune_unwanted_offsets` exists to prevent. That case is now its own test
+    below rather than a quiet deletion from this parametrization.
+    """
     recipient = await add_recipient(db, world)
     await add_occasion(db, world, recipient, 3, 8)
 
@@ -391,6 +400,35 @@ async def test_only_pending_rows_are_reconcilable(
     survivors = {r["offset_days"]: r["state"] for r in await rows(db, world)}
     assert survivors.get(-1) == protected, survivors
     assert -7 not in survivors
+
+
+@pytest.mark.infra
+async def test_a_failed_row_for_an_offset_the_customer_turned_off_is_pruned(
+    db: AsyncConnection,
+    world: dict,
+    sessions: async_sessionmaker[AsyncSession],
+) -> None:
+    """The other side of the narrowing above, stated as a claim.
+
+    The customer cut their reminders from three to one. The offset they dropped
+    had a failed attempt against it. Since the audit a failed reminder is
+    retried, so leaving this row would send them a reminder they had just asked
+    not to receive -- the precise thing reconciliation is for.
+    """
+    recipient = await add_recipient(db, world)
+    await add_occasion(db, world, recipient, 3, 8)
+
+    await set_count(db, world, 3)
+    await run(sessions, world)
+    await db.execute(
+        text("UPDATE scheduled_notifications SET state = 'failed' WHERE offset_days = -1")
+    )
+
+    await set_count(db, world, 1)
+    await run(sessions, world)
+
+    survivors = {r["offset_days"]: r["state"] for r in await rows(db, world)}
+    assert -1 not in survivors, f"a failed reminder for a turned-off offset survived: {survivors}"
 
 
 # --- deactivation preserves history ----------------------------------------

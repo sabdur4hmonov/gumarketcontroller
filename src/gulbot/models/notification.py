@@ -66,7 +66,13 @@ class NotificationChannel(StrEnum):
 
 #: States the materializer may delete. Anything else is HISTORY, not a
 #: schedule, and reconciliation must never touch it.
-RECONCILABLE_STATES = (NotificationState.PENDING.value,)
+#:
+#: DEFINED AS SENDABLE_STATES, not beside it. "Still a schedule" and "will
+#: still be sent" are the same set, and keeping two tuples in step by hand is
+#: how they drifted: when the pre-deployment audit made FAILED sendable, this
+#: still said PENDING, so the nightly prune walked past a failed reminder for
+#: a deleted person and the tick retried it. One definition cannot drift.
+RECONCILABLE_STATES = SENDABLE_STATES
 
 
 class ScheduledNotification(IdMixin, Base):

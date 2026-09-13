@@ -409,7 +409,12 @@ async def block_customer(session: AsyncSession, group: DueGroup) -> None:
         update(ScheduledNotification)
         .where(
             ScheduledNotification.customer_id == group.customer_id,
-            ScheduledNotification.state == NotificationState.PENDING.value,
+            # EVERY sendable state, not just PENDING. Since FAILED became
+            # sendable, a PENDING-only filter left a failed reminder alive for
+            # a customer who had blocked the bot: its claim was resolved and
+            # could not be retaken, so it burned attempts into dead_letter and
+            # told the shop that sending had FAILED. Found in the audit.
+            ScheduledNotification.state.in_(SENDABLE_STATES),
         )
         .values(state=NotificationState.CANCELLED.value)
     )
