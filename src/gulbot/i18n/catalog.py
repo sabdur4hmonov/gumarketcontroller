@@ -295,6 +295,15 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "📍 Joylashuvni yuborish (tezroq)",
         "ru": "📍 Отправить локацию (быстрее)",
     },
+    # Said plainly, and immediately followed by the date picker. The customer
+    # did nothing wrong and loses nothing but the date -- which is why the
+    # second sentence promises the rest is kept.
+    "order.date_filled": {
+        "uz": "😔 Afsuski, {date} kuni joylar tugadi.\n"
+        "Boshqa kunni tanlang — qolgan javoblaringiz saqlanadi.",
+        "ru": "😔 К сожалению, на {date} мест больше нет.\n"
+        "Выберите другой день — остальные ответы сохранены.",
+    },
     "order.enter_address": {"uz": "Manzilni yozing:", "ru": "Напишите адрес:"},
     "order.address_empty": {
         "uz": "Manzil bo‘sh bo‘lmasligi kerak. Qaytadan yozing.",

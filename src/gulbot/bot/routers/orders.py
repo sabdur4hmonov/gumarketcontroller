@@ -64,15 +64,16 @@ from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
 from gulbot.models.order import LANDMARK_MAX_LENGTH, RECIPIENT_NAME_MAX_LENGTH
-from gulbot.models.product import Product
 from gulbot.models.recipient import Recipient
 from gulbot.scheduling.delivery import available_dates, available_hours
 from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.order_pings import run_order_ping_tick
 from gulbot.sending.telegram import TelegramTransport
+from gulbot.services.bouquets import load_product
 from gulbot.services.orders import (
     OrderDraft,
     announce_order,
+    claim_delivery_slot,
     create_order,
     dates_at_capacity,
     load_slot_policy,
@@ -116,12 +117,21 @@ async def _show_dates(
 async def start_order(
     callback: CallbackQuery, state: FSMContext, session: AsyncSession, customer: Customer, lang: str
 ) -> None:
-    """Entry. Takes only a product id, so a browse screen can call it too."""
+    """Entry. Takes only a product id, so a browse screen can call it too.
+
+    SELLABILITY IS CHECKED HERE, through the same `load_product` the browse view
+    uses. This used to run its own query filtered on id and shop only, which
+    meant the check and the button disagreed: the browse VIEW said "browse.gone"
+    for a withdrawn bouquet while the ORDER BUTTON under it still worked.
+
+    Deletion in this project is SOFT, so the row is still there -- which is why
+    the `order.gone` branch below never fired, and why a customer with a stale
+    browse card or reminder card could start and complete an order for a bouquet
+    the shop had withdrawn. Found in the pre-deployment audit.
+    """
     await callback.answer()
     data = OrderStartCB.unpack(callback.data or "")
-    product = await session.scalar(
-        select(Product).where(Product.id == data.product_id, Product.shop_id == customer.shop_id)
-    )
+    product = await load_product(session, shop_id=customer.shop_id, product_id=data.product_id)
     target = _target(callback)
     if product is None:
         await state.clear()
@@ -135,6 +145,10 @@ async def start_order(
         product_name=product.name,
         price_uzs=product.price_uzs,
         telegram_file_id=product.telegram_file_id,
+        # A fresh order never resumes. Without this an abandoned order that was
+        # bounced off a full date would leave the flag set, and the NEXT order
+        # would skip straight from hour to confirmation with the old address.
+        resume_at_confirm=False,
         # Zero from the browse screen, where no occasion is behind the
         # choice. This is what finally writes `orders.recipient_id`, which
         # has been NULL on every order since CP10a because nothing set it.
@@ -169,6 +183,16 @@ async def pick_hour(callback: CallbackQuery, state: FSMContext, lang: str) -> No
     await callback.answer()
     hour = OrderHourCB.unpack(callback.data or "").hour
     await state.update_data(delivery_hour=hour)
+
+    # RESUMING. The customer answered everything, then the date filled under
+    # them at submit. They have just re-chosen a day and an hour; asking again
+    # for the address, the landmark, the recipient and the phone would be
+    # punishing them for someone else's timing.
+    if (await state.get_data()).get("resume_at_confirm"):
+        await state.update_data(resume_at_confirm=False)
+        await _show_confirmation(_target(callback), state, lang)
+        return
+
     await state.set_state(PlaceOrder.choosing_location)
     await _target(callback).answer(
         t("order.choose_location", lang), reply_markup=order_location_keyboard(lang)
@@ -412,6 +436,25 @@ async def submit_order(
 
     day = datetime.fromisoformat(str(data["delivery_date"])).date()
     hour = time(int(data["delivery_hour"]))
+
+    # THE CAP, RE-CHECKED. `dates_at_capacity` hides a full date from the
+    # PICKER, which is still where the customer normally meets it -- but the
+    # picker ran before six more questions, so minutes may have passed and
+    # another customer may have taken the last slot. Without this the shop is
+    # silently overcommitted on exactly the days they are busiest.
+    #
+    # The customer is sent back to date selection rather than refused: every
+    # other answer they gave is still good, and `resume_at_confirm` carries them
+    # straight from the new hour back to the confirmation screen instead of
+    # asking for an address they already typed.
+    if not await claim_delivery_slot(session, shop_id=customer.shop_id, day=day):
+        await target.answer(
+            t("order.date_filled", lang, date=format_date_long(day.day, day.month, None, lang))
+        )
+        await state.update_data(resume_at_confirm=True)
+        await _show_dates(target, state, session, customer.shop_id, lang)
+        return
+
     draft = OrderDraft(
         product_id=int(data["product_id"]),
         product_name=str(data["product_name"]),

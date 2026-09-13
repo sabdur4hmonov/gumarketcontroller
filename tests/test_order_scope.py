@@ -249,16 +249,22 @@ def test_only_the_named_modules_reason_about_order_outcomes() -> None:
       * `services/order_status.py`  moves an order between them.
       * `services/order_notify.py`  maps an outcome to what the customer reads.
       * `routers/admin_orders.py`   is where the shop taps the button.
-      * `services/orders.py`   asks about them -- CP9's daily cap does not
-        count cancelled or rejected orders. It still WRITES only 'placed',
-        which `test_the_order_path_writes_only_the_placed_status` pins.
+      * `models/order.py`      groups them: `FREES_A_SLOT` names the two that
+        give a delivery day back, for the cap. The enum members themselves are
+        class-body assignments and are invisible to this scan; that tuple is
+        not, and it is the right place for it.
+
+    `services/orders.py` is NOT here any more. The cap predicate used to live
+    there, which made the customer order path name CANCELLED and REJECTED --
+    this fence caught it during the pre-deployment audit and the constant moved
+    to the model rather than the fence learning an exception.
 
     A fifth module appearing here is not necessarily wrong. It is a decision,
     and this test is what makes someone make it on purpose -- which is the
     entire difference between a fence and a comment.
     """
     allowed = {
-        REPO_ROOT / "src/gulbot/services/orders.py",
+        REPO_ROOT / "src/gulbot/models/order.py",
         REPO_ROOT / "src/gulbot/services/order_notify.py",
         REPO_ROOT / "src/gulbot/bot/routers/admin_orders.py",
         TRANSITION_MODULE,

@@ -14,20 +14,29 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time
+from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import CallbackQuery, Chat, Message, Update, User
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-from tests.bot_harness import bound_session_factory
+from tests.bot_harness import bound_session_factory, make_bot
 
+from gulbot.bot.callbacks import OrderConfirmCB, OrderHourCB, OrderStartCB
+from gulbot.bot.factory import build_dispatcher
+from gulbot.bot.states import PlaceOrder
 from gulbot.config import Settings
+from gulbot.i18n.catalog import CATALOG
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
 from gulbot.services.order_status import reject_order
-from gulbot.services.orders import OrderDraft, create_order, dates_at_capacity
+from gulbot.services.orders import OrderDraft, create_order
 
 pytestmark = pytest.mark.infra
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 DELIVERY = date(2027, 3, 8)
 HOUR = time(14, 0)
@@ -118,156 +127,9 @@ def engine_for(settings: Settings):  # type: ignore[no-untyped-def]
 # --------------------------------------------------------------------------
 
 
-async def test_two_concurrent_submits_both_pass_a_cap_of_one(committed: dict) -> None:
-    """THE CAP IS NOT ENFORCED AT SUBMIT. Two real connections, one cap slot.
-
-    `dates_at_capacity` hides a full date from the PICKER, which was the
-    standing design decision -- a full date is absent rather than offered and
-    then refused after the customer has answered six questions. `create_order`
-    then writes unconditionally.
-
-    So the check and the write are not only separated, they are separated by
-    the entire FSM: date, hour, location, landmark, recipient, phone, confirm.
-    The window is minutes wide, not microseconds, which makes this less a race
-    than a gap that two ordinary customers can walk through without hurrying.
-
-    Documented rather than fixed: closing it changes what a customer is told
-    after they have finished the flow, which is the owner's call.
-    """
-    settings = committed["settings"]
-    shop, product = committed["shop"], committed["product"]
-    customers = committed["customers"]
-
-    async def submit(customer_id: int, token: str) -> bool:
-        engine = engine_for(settings)
-        try:
-            async with async_sessionmaker(engine, expire_on_commit=False)() as session:
-                # What the picker would have told this customer.
-                full = await dates_at_capacity(
-                    session,
-                    shop_id=shop,
-                    horizon_start=DELIVERY - timedelta(days=1),
-                    horizon_end=DELIVERY + timedelta(days=1),
-                )
-                if DELIVERY in full:
-                    return False
-                order, created = await create_order(
-                    session,
-                    shop_id=shop,
-                    customer_id=customer_id,
-                    draft=draft(token=token, product_id=product),
-                )
-                await session.commit()
-                return created
-        finally:
-            await engine.dispose()
-
-    results = await asyncio.gather(submit(customers[0], "race-a"), submit(customers[1], "race-b"))
-
-    placed = (
-        committed["conn"]
-        .execute(
-            "SELECT count(*) FROM orders WHERE shop_id = %s AND delivery_date = %s",
-            (shop, DELIVERY),
-        )
-        .fetchone()[0]
-    )
-
-    assert results == [True, True], "both submits were accepted"
-    assert placed == 2, f"{placed} orders on a date whose cap is 1"
-
-
-async def test_the_cap_is_not_re_checked_at_submit_at_all(committed: dict) -> None:
-    """Narrower and sharper: not a timing window, an absent check.
-
-    Even with the date ALREADY visibly at capacity -- no concurrency, no
-    window, the previous order committed and readable -- `create_order` writes
-    the second one. Whatever the fix is, it is not "make the check atomic";
-    there is no check to make atomic.
-    """
-    shop, product = committed["shop"], committed["product"]
-    customers = committed["customers"]
-    settings = committed["settings"]
-
-    engine = engine_for(settings)
-    try:
-        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
-            await create_order(
-                session,
-                shop_id=shop,
-                customer_id=customers[0],
-                draft=draft(token="cap-first", product_id=product),
-            )
-            await session.commit()
-
-            full = await dates_at_capacity(
-                session,
-                shop_id=shop,
-                horizon_start=DELIVERY - timedelta(days=1),
-                horizon_end=DELIVERY + timedelta(days=1),
-            )
-            assert DELIVERY in full, "precondition: the picker now calls this date full"
-
-            _, created = await create_order(
-                session,
-                shop_id=shop,
-                customer_id=customers[1],
-                draft=draft(token="cap-second", product_id=product),
-            )
-            await session.commit()
-    finally:
-        await engine.dispose()
-
-    assert created, "create_order accepted an order for a date it knows is full"
-
-
 # --------------------------------------------------------------------------
 # the order button on a withdrawn product
 # --------------------------------------------------------------------------
-
-
-async def test_an_order_can_be_started_for_a_soft_deleted_product(committed: dict) -> None:
-    """`start_order` does not ask whether the product is still sellable.
-
-    `services/bouquets.py` has one `sellable()` predicate and three callers --
-    the list, the chooser and `load_product` -- so the browse VIEW correctly
-    says "browse.gone" for a withdrawn product. The ORDER BUTTON under that
-    same view reaches `routers/orders.py:start_order`, which runs its own query
-    filtered on id and shop only.
-
-    Deletion in this project is a SOFT delete (`deleted_at`), which is why the
-    `order.gone` branch never fires: the row is still there. So a customer with
-    a browse card or a reminder card open can start, and complete, an order for
-    a bouquet the shop has withdrawn.
-    """
-    from gulbot.models.product import Product
-
-    shop, product = committed["shop"], committed["product"]
-    committed["conn"].execute(
-        "UPDATE products SET deleted_at = now(), active = false WHERE id = %s", (product,)
-    )
-
-    engine = engine_for(committed["settings"])
-    try:
-        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
-            from sqlalchemy import select
-
-            from gulbot.services.bouquets import load_product
-
-            # What the browse view sees.
-            assert await load_product(session, shop_id=shop, product_id=product) is None
-
-            # What `start_order` sees, verbatim.
-            found = await session.scalar(
-                select(Product).where(Product.id == product, Product.shop_id == shop)
-            )
-    finally:
-        await engine.dispose()
-
-    assert found is not None, (
-        "start_order's query still returns a withdrawn product, so the order "
-        "button under a stale card remains live"
-    )
 
 
 # --------------------------------------------------------------------------
@@ -657,4 +519,323 @@ async def test_an_order_outcome_and_a_reminder_coexist_for_one_customer(
     )
     assert [r[0] for r in rows] == ["order_status.v1", "reminder.v1"], (
         "one path's ledger row displaced the other's"
+    )
+
+
+# --------------------------------------------------------------------------
+# the real flow, driven through the real dispatcher
+# --------------------------------------------------------------------------
+
+
+def confirm_tap(*, user_id: int, update_id: int) -> Update:
+    return Update(
+        update_id=update_id,
+        callback_query=CallbackQuery(
+            id=f"cb{update_id}",
+            from_user=User(id=user_id, is_bot=False, first_name="Mijoz"),
+            chat_instance=f"chat{update_id}",
+            data=OrderConfirmCB(action="submit").pack(),
+            message=Message(
+                message_id=update_id,
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=user_id, type="private"),
+                from_user=User(id=1, is_bot=True, first_name="bot"),
+                text="confirm",
+            ),
+        ),
+    )
+
+
+async def _armed_dispatcher(settings: Settings, shop: int, user_id: int, *, day: date):  # type: ignore[no-untyped-def]
+    """A dispatcher on its OWN engine, with one customer parked on the
+    confirmation screen having answered every question."""
+    engine = engine_for(settings)
+    bot, recorder = make_bot()
+    dispatcher = build_dispatcher(
+        session_factory=async_sessionmaker(engine, expire_on_commit=False),
+        shop_id=shop,
+        storage=MemoryStorage(),
+        schedule_finalize=lambda **kwargs: None,
+    )
+    context = dispatcher.fsm.get_context(bot, user_id, user_id)
+    await context.set_state(PlaceOrder.confirming)
+    await context.update_data(
+        product_id=None,  # filled by the caller
+        delivery_date=day.isoformat(),
+        delivery_hour=14,
+        landmark="Kok eshik",
+        recipient_name="Dilnoza",
+        location_text="Chilonzor 5",
+        submit_token=f"flow-{user_id}",
+    )
+    return engine, bot, recorder, dispatcher, context
+
+
+async def test_two_concurrent_submits_leave_exactly_one_order_on_a_cap_of_one(
+    committed: dict,
+) -> None:
+    """THE regression test for the cap, at the level a customer meets it.
+
+    Two customers, two connections, two dispatchers, one slot. Exactly one
+    order may land. The loser must be TOLD and sent back to date selection --
+    not silently accepted (the shop is overcommitted) and not silently dropped
+    (the customer thinks they ordered).
+    """
+    settings, shop, product = committed["settings"], committed["shop"], committed["product"]
+
+    async def submit(user_id: int, update_id: int) -> list[str]:
+        engine, bot, recorder, dispatcher, context = await _armed_dispatcher(
+            settings, shop, user_id, day=DELIVERY
+        )
+        await context.update_data(
+            product_id=product,
+            product_name="Oq atirgul",
+            price_uzs=450_000,
+            telegram_file_id="f",
+        )
+        try:
+            await dispatcher.feed_update(bot, confirm_tap(user_id=user_id, update_id=update_id))
+            return recorder.sent_texts
+        finally:
+            await engine.dispose()
+
+    both = await asyncio.gather(submit(880_000, 1), submit(880_001, 2))
+
+    placed = (
+        committed["conn"]
+        .execute(
+            "SELECT count(*) FROM orders WHERE shop_id = %s AND delivery_date = %s",
+            (shop, DELIVERY),
+        )
+        .fetchone()[0]
+    )
+    assert placed == 1, f"{placed} orders landed on a date whose cap is 1"
+
+    filled = [texts for texts in both if any("joylar tugadi" in x for x in texts)]
+    accepted = [
+        texts for texts in both if any("qabul qilindi" in x or "Buyurtma" in x for x in texts)
+    ]
+    assert len(filled) == 1, "the loser was not told the date had filled"
+    assert len(accepted) == 1, "the winner was not confirmed"
+
+
+async def test_the_loser_keeps_every_answer_they_already_gave(committed: dict) -> None:
+    """Being bounced costs the DATE and nothing else.
+
+    The point of the redirect over a plain refusal: re-asking for an address,
+    a landmark, a recipient and a phone number would punish this customer for
+    someone else's timing.
+    """
+    settings, shop, product = committed["settings"], committed["shop"], committed["product"]
+
+    # Fill the date first, so the next submit is guaranteed to lose.
+    await _place(committed, token="cap-taken")
+
+    engine, bot, recorder, dispatcher, context = await _armed_dispatcher(
+        settings, shop, 880_001, day=DELIVERY
+    )
+    await context.update_data(
+        product_id=product,
+        product_name="Oq atirgul",
+        price_uzs=450_000,
+        telegram_file_id="f",
+    )
+    try:
+        await dispatcher.feed_update(bot, confirm_tap(user_id=880_001, update_id=3))
+        kept = await context.get_data()
+        state = await context.get_state()
+    finally:
+        await engine.dispose()
+
+    assert any("joylar tugadi" in x for x in recorder.sent_texts), "the customer was not told"
+    assert state == PlaceOrder.choosing_date.state, f"not returned to date selection: {state}"
+    assert kept["landmark"] == "Kok eshik"
+    assert kept["location_text"] == "Chilonzor 5"
+    assert kept["recipient_name"] == "Dilnoza"
+    assert kept["resume_at_confirm"] is True, "the resume flag was not set"
+
+    placed = (
+        committed["conn"]
+        .execute("SELECT count(*) FROM orders WHERE shop_id = %s", (shop,))
+        .fetchone()[0]
+    )
+    assert placed == 1, "the bounced submit still wrote an order"
+
+
+async def test_the_order_button_on_a_withdrawn_bouquet_does_nothing(committed: dict) -> None:
+    """THE regression test for the sellability gap, at the level a customer
+    meets it: a real tap on a real stale card.
+
+    `start_order` now goes through `load_product`, the same predicate the browse
+    view uses, so the two can no longer disagree about what is sellable.
+    """
+    settings, shop, product = committed["settings"], committed["shop"], committed["product"]
+    committed["conn"].execute(
+        "UPDATE products SET deleted_at = now(), active = false WHERE id = %s", (product,)
+    )
+
+    engine = engine_for(settings)
+    bot, recorder = make_bot()
+    dispatcher = build_dispatcher(
+        session_factory=async_sessionmaker(engine, expire_on_commit=False),
+        shop_id=shop,
+        storage=MemoryStorage(),
+        schedule_finalize=lambda **kwargs: None,
+    )
+    tap_it = Update(
+        update_id=9,
+        callback_query=CallbackQuery(
+            id="cb9",
+            from_user=User(id=880_000, is_bot=False, first_name="Mijoz"),
+            chat_instance="chat9",
+            data=OrderStartCB(product_id=product).pack(),
+            message=Message(
+                message_id=9,
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=880_000, type="private"),
+                from_user=User(id=1, is_bot=True, first_name="bot"),
+                text="card",
+            ),
+        ),
+    )
+    try:
+        await dispatcher.feed_update(bot, tap_it)
+        state = await dispatcher.fsm.get_context(bot, 880_000, 880_000).get_state()
+    finally:
+        await engine.dispose()
+
+    assert any(CATALOG["order.gone"]["uz"] in x for x in recorder.sent_texts), (
+        f"the customer was not told the bouquet is gone: {recorder.sent_texts}"
+    )
+    assert state is None, "the order flow started for a withdrawn bouquet"
+
+
+def hour_tap(*, user_id: int, hour: int, update_id: int) -> Update:
+    return Update(
+        update_id=update_id,
+        callback_query=CallbackQuery(
+            id=f"cb{update_id}",
+            from_user=User(id=user_id, is_bot=False, first_name="Mijoz"),
+            chat_instance=f"chat{update_id}",
+            data=OrderHourCB(hour=hour).pack(),
+            message=Message(
+                message_id=update_id,
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=user_id, type="private"),
+                from_user=User(id=1, is_bot=True, first_name="bot"),
+                text="hours",
+            ),
+        ),
+    )
+
+
+async def test_resuming_goes_straight_back_to_the_confirmation(committed: dict) -> None:
+    """The promise the redirect makes: the customer re-picks a day and an hour
+    and lands back on the confirmation screen.
+
+    Without this the redirect would be a refusal wearing a friendly message --
+    they would be asked for the address, the landmark, the recipient and the
+    phone all over again.
+    """
+    settings, shop, product = committed["settings"], committed["shop"], committed["product"]
+    engine, bot, recorder, dispatcher, context = await _armed_dispatcher(
+        settings, shop, 880_000, day=DELIVERY
+    )
+    try:
+        await context.update_data(
+            product_id=product,
+            product_name="Oq atirgul",
+            price_uzs=450_000,
+            telegram_file_id="f",
+            resume_at_confirm=True,
+        )
+        await context.set_state(PlaceOrder.choosing_hour)
+        await dispatcher.feed_update(bot, hour_tap(user_id=880_000, hour=15, update_id=11))
+        state = await context.get_state()
+        data = await context.get_data()
+    finally:
+        await engine.dispose()
+
+    assert state == PlaceOrder.confirming.state, f"did not resume to confirmation: {state}"
+    assert not any(CATALOG["order.choose_location"]["uz"] in x for x in recorder.sent_texts), (
+        "the customer was asked for the address again"
+    )
+    assert data["resume_at_confirm"] is False, "the flag was not cleared after use"
+    assert data["delivery_hour"] == 15, "the newly chosen hour was not kept"
+
+
+async def test_the_resume_flag_cannot_leak_into_the_next_order(committed: dict) -> None:
+    """An abandoned bounced order must not make the NEXT order skip questions.
+
+    TWO THINGS KEEP THIS TRUE, and the first is the load-bearing one:
+
+      * `start_order` is registered `StateFilter(None, Browse.viewing)`, and the
+        only route to a stateless customer is `state.clear()`, which wipes FSM
+        DATA as well as the state. There is no `set_state(None)` anywhere in the
+        routers -- asserted below, because adding one later would silently
+        reopen this.
+      * `start_order` also resets the flag explicitly. Belt and braces, not the
+        guarantee.
+    """
+    settings, shop, product = committed["settings"], committed["shop"], committed["product"]
+    engine, bot, recorder, dispatcher, context = await _armed_dispatcher(
+        settings, shop, 880_000, day=DELIVERY
+    )
+    try:
+        await context.update_data(resume_at_confirm=True)
+
+        # Abandoning is what a customer actually does: Cancel, which clears.
+        await context.clear()
+        assert await context.get_data() == {}, "clear() left FSM data behind"
+
+        await dispatcher.feed_update(
+            bot,
+            Update(
+                update_id=12,
+                callback_query=CallbackQuery(
+                    id="cb12",
+                    from_user=User(id=880_000, is_bot=False, first_name="Mijoz"),
+                    chat_instance="chat12",
+                    data=OrderStartCB(product_id=product).pack(),
+                    message=Message(
+                        message_id=12,
+                        date=datetime.now(tz=UTC),
+                        chat=Chat(id=880_000, type="private"),
+                        from_user=User(id=1, is_bot=True, first_name="bot"),
+                        text="card",
+                    ),
+                ),
+            ),
+        )
+        assert (await context.get_data()).get("resume_at_confirm") is False
+
+        await context.set_state(PlaceOrder.choosing_hour)
+        recorder.calls.clear()
+        await dispatcher.feed_update(bot, hour_tap(user_id=880_000, hour=15, update_id=13))
+        state = await context.get_state()
+    finally:
+        await engine.dispose()
+
+    assert state == PlaceOrder.choosing_location.state, (
+        f"a fresh order skipped the location question: {state}"
+    )
+    assert any(CATALOG["order.choose_location"]["uz"] in x for x in recorder.sent_texts)
+
+
+def test_nothing_clears_the_state_without_clearing_the_data() -> None:
+    """The load-bearing half of the test above, as its own claim.
+
+    `start_order` is reachable only from no-state or Browse.viewing, and the
+    only door to no-state is `state.clear()`, which wipes FSM data too. A
+    `set_state(None)` added later would leave the data -- and `resume_at_confirm`
+    with it -- which is how a fresh order would silently skip the location
+    question carrying the previous order's address.
+    """
+    routers = REPO_ROOT / "src/gulbot/bot/routers"
+    offenders = sorted(
+        f.name for f in routers.rglob("*.py") if "set_state(None)" in f.read_text(encoding="utf-8")
+    )
+    assert offenders == [], (
+        f"{offenders} clear the state without clearing data, which would let "
+        "resume_at_confirm survive into an unrelated order"
     )

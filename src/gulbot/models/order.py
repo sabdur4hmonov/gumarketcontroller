@@ -102,6 +102,18 @@ class PingState(StrEnum):
 #: States the tick will pick up and try to send.
 SENDABLE_PING_STATES = (PingState.PENDING.value, PingState.FAILED.value)
 
+#: Statuses that no longer occupy a slot against `shops.daily_order_cap`: a
+#: cancelled or rejected order has given its day back.
+#:
+#: Here rather than in `services/orders.py` because it is a fact about the
+#: statuses, like the tuple above it -- and because the customer order path
+#: must not NAME a non-placed status at all, which `tests/test_order_scope.py`
+#: enforces and which caught this constant when it briefly lived there.
+#:
+#: Shared by the picker and the submit-time claim so the two cannot drift into
+#: disagreeing about what "full" means.
+FREES_A_SLOT = (OrderStatus.CANCELLED.value, OrderStatus.REJECTED.value)
+
 
 ORDER_STATUSES_SQL = ", ".join(f"'{s.value}'" for s in OrderStatus)
 PING_STATES_SQL = ", ".join(f"'{s.value}'" for s in PingState)

@@ -23,11 +23,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.models.order import Order, OrderReminder, OrderStatus
+from gulbot.models.order import FREES_A_SLOT, Order, OrderReminder, OrderStatus
 from gulbot.models.product import Product
 from gulbot.models.shop import Shop
 from gulbot.scheduling.delivery import SlotPolicy
@@ -77,6 +77,47 @@ async def load_slot_policy(session: AsyncSession, *, shop_id: int) -> SlotPolicy
     )
 
 
+async def claim_delivery_slot(session: AsyncSession, *, shop_id: int, day: date) -> bool:
+    """Take a slot on `day`, or report that there is none. Call INSIDE the
+    transaction that writes the order.
+
+    THE CLAIM IS AN ADVISORY LOCK held to commit. `dates_at_capacity` hides a
+    full date from the picker, but that runs before six more questions, so by
+    submit time the answer can be stale -- and re-reading it at submit is still
+    a check-then-act that two simultaneous submits both pass. The
+    pre-deployment audit proved exactly that: two orders on a cap of one.
+
+    Postgres cannot express "at most N rows matching a predicate" as a
+    constraint, and a counter table would be a schema change and a second
+    source of truth about how many orders a day holds. A transaction-scoped
+    advisory lock costs nothing uncontended, serialises only submits for the
+    SAME shop on the SAME day, and is released by the commit -- so a worker
+    dying mid-submit cannot leave a slot locked.
+
+    Under READ COMMITTED the count below runs after the lock is granted, which
+    is after any competing transaction has committed, so it sees that order.
+    That is what makes this sufficient rather than merely a smaller window.
+    """
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:shop, :day)"),
+        {"shop": shop_id, "day": day.toordinal()},
+    )
+    cap = await session.scalar(select(Shop.daily_order_cap).where(Shop.id == shop_id))
+    if cap is None:
+        return True
+
+    taken = await session.scalar(
+        select(func.count())
+        .select_from(Order)
+        .where(
+            Order.shop_id == shop_id,
+            Order.delivery_date == day,
+            Order.status.notin_(FREES_A_SLOT),
+        )
+    )
+    return (taken or 0) < cap
+
+
 async def dates_at_capacity(
     session: AsyncSession, *, shop_id: int, horizon_start: date, horizon_end: date
 ) -> frozenset[date]:
@@ -98,7 +139,7 @@ async def dates_at_capacity(
         .where(
             Order.shop_id == shop_id,
             Order.delivery_date.between(horizon_start, horizon_end),
-            Order.status.notin_([OrderStatus.CANCELLED.value, OrderStatus.REJECTED.value]),
+            Order.status.notin_(FREES_A_SLOT),
         )
         .group_by(Order.delivery_date)
         .having(func.count() >= cap)
