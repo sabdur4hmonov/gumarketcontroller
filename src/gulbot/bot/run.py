@@ -44,7 +44,13 @@ async def main() -> None:
 
     me = await bot.get_me()
     # Identity only. The token must never reach the logs.
-    log.info("starting as @%s (id=%s) for shop_id=%s", me.username, me.id, shop_id)
+    log.info(
+        "starting as @%s (id=%s) for shop_id=%s environment=%s",
+        me.username,
+        me.id,
+        shop_id,
+        get_settings().environment,
+    )
 
     try:
         await dispatcher.start_polling(bot, allowed_updates=ALLOWED_UPDATES)

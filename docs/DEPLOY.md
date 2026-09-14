@@ -6,6 +6,42 @@ host can verify. Each one says why it is here, so it is not skipped as ritual.
 Started by the pre-deployment audit, pass 5. Add to it whenever a fix needs the
 deploy to finish it.
 
+## 0. The production environment. Get this wrong and nothing else matters.
+
+Every production process refuses to start unless it runs with
+`ENVIRONMENT=production` and these four are **real environment variables**,
+exported for that process. They must not come from a `.env` file or a
+built-in default:
+
+```
+ENVIRONMENT=production
+BOT_TOKEN=<the production bot's token, never the dev one>
+POSTGRES_HOST=<production database host>
+POSTGRES_DB=<production database name>
+POSTGRES_PASSWORD=<not "gulbot">
+```
+
+A process with the wrong config dies at startup with
+`ProductionConfigError: REFUSING TO START`, followed by the name of every
+problem. That is the guard working. Fix the environment; do not work around it.
+
+**The guard cannot protect a process that never sets `ENVIRONMENT=production`.**
+Without that variable, a process is "local" and runs on dev defaults by design.
+So the first check after starting each process (bot, worker, beat) is its
+environment:
+
+```
+python -c "from gulbot.config import get_settings; print(get_settings().environment)"
+```
+
+Run it with that process's environment. It must print `production`. The bot
+also logs `environment=production` on its `starting as @...` line: check that
+the bot name on that line is the production bot.
+
+Do not copy a dev `.env` onto the server. The guard refuses a `.env`-supplied
+token or database, but a `.env` can still supply the settings it does not
+check, such as ports and Redis.
+
 ## 1. Before stopping anything
 
 - **Migrations at head, checked, not assumed.** Compare the database with the

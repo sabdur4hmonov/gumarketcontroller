@@ -6,6 +6,8 @@ tests/test_infrastructure.py can assert them in one place.
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
@@ -56,6 +58,93 @@ class Settings(BaseSettings):
         return f"redis://{self.redis_host}:{self.redis_port}/{db}"
 
 
+# --- the production guard ----------------------------------------------------
+#
+# THE MOST IMPORTANT CHECK IN THE PRE-DEPLOYMENT AUDIT, and the simplest. Every
+# other finding protects against something rare or subtle. This protects against
+# a deploy that forgets one environment variable: pydantic-settings then quietly
+# falls back to whatever `.env` sits in the working directory, and after that to
+# the built-in defaults -- which ARE the dev setup. The pilot's real customers
+# would flow through the dev bot token or into the dev database, and nothing
+# anywhere would say so. Reproduced in audit pass 6 before this existed.
+#
+# So in production the four settings that decide WHERE traffic goes must be
+# REAL environment variables, and the password must not be the dev one. Anything
+# else is refused at process start with an exception, never a warning: a warning
+# is a line that scrolls past, and the failure it warns about is silent.
+
+#: The ENVIRONMENT value that arms the guard. Compared after strip() and
+#: lower(), so " Production" arms it too rather than quietly not matching.
+PRODUCTION = "production"
+
+#: Must each come from a real, non-empty environment variable in production.
+#: Together they decide which bot answers and which database is written. A value
+#: from `.env` or from a default is refused even if it happens to be correct --
+#: the point is that nobody chose it for this deploy.
+PRODUCTION_REQUIRED_ENV = (
+    "BOT_TOKEN",
+    "POSTGRES_HOST",
+    "POSTGRES_DB",
+    "POSTGRES_PASSWORD",
+)
+
+#: The dev password, shipped as the default and in docker-compose.yml.
+DEV_DEFAULT_PASSWORD = "gulbot"
+
+
+class ProductionConfigError(RuntimeError):
+    """Raised at startup when a production process has non-production config.
+
+    Deliberately not caught anywhere. The process must die with this message.
+    """
+
+
+def production_config_problems(
+    settings: Settings, environ: Mapping[str, str] | None = None
+) -> list[str]:
+    """Every reason this configuration must not run in production. Names only.
+
+    The messages never contain a value -- a refusal that printed the token it was
+    refusing would be a leak of its own.
+    """
+    if settings.environment.strip().lower() != PRODUCTION:
+        return []
+    env = os.environ if environ is None else environ
+    # Names compared case-insensitively, as pydantic-settings reads them.
+    real = {key.upper(): value for key, value in env.items()}
+    problems = [
+        f"{name} is not set as a real, non-empty environment variable "
+        f"(a value from .env or the built-in default is refused in production)"
+        for name in PRODUCTION_REQUIRED_ENV
+        if not real.get(name, "").strip()
+    ]
+    if settings.postgres_password.get_secret_value() == DEV_DEFAULT_PASSWORD:
+        problems.append("POSTGRES_PASSWORD is the dev default password")
+    return problems
+
+
+def check_production_config(settings: Settings, environ: Mapping[str, str] | None = None) -> None:
+    """Raise ProductionConfigError listing EVERY problem at once."""
+    problems = production_config_problems(settings, environ)
+    if problems:
+        raise ProductionConfigError(
+            "REFUSING TO START: ENVIRONMENT=production, but this is not a production "
+            "configuration.\n"
+            + "\n".join(f"  - {problem}" for problem in problems)
+            + "\nSet each of these as a real environment variable for this process. "
+            "See docs/DEPLOY.md."
+        )
+
+
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    """The ONLY place the application builds its Settings.
+
+    The guard lives here rather than in each entrypoint so that it cannot be
+    forgotten by one: the bot, the Celery worker and beat, migrations, the seed
+    CLI and the scripts all get their configuration through this call, and all
+    of them call it before touching the network or the database.
+    """
+    settings = Settings()
+    check_production_config(settings)
+    return settings

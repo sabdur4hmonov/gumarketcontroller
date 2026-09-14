@@ -33,8 +33,9 @@ class SendResult:
     retry_after: float | None = None
     #: Set when the customer has blocked the bot (403).
     blocked: bool = False
-    #: Set when Telegram never answered at all -- a timeout or a connection
-    #: error, not a refusal. The only kind of failure the circuit breaker
+    #: Set when Telegram never answered at all -- a timeout, a connection
+    #: error, or an answer that is not the Bot API (an HTML error page) -- rather
+    #: than a refusal. The only kind of failure the circuit breaker
     #: counts, because it is the only kind that says Telegram is unreachable
     #: rather than that one message or one chat has a problem.
     network: bool = False

@@ -14,6 +14,7 @@ from collections.abc import Awaitable
 
 from aiogram import Bot
 from aiogram.exceptions import (
+    ClientDecodeError,
     TelegramAPIError,
     TelegramForbiddenError,
     TelegramNetworkError,
@@ -106,6 +107,10 @@ class TelegramTransport:
         except TelegramNetworkError as exc:
             log.warning("copy got no answer for chat=%s: %s", chat_id, type(exc).__name__)
             return SendResult.unreachable(type(exc).__name__)
+        except ClientDecodeError as exc:
+            # See _attempt: an answer that is not the Bot API at all.
+            log.warning("copy got a non-API answer for chat=%s: %s", chat_id, type(exc).__name__)
+            return SendResult.unreachable(type(exc).__name__)
         except TelegramAPIError as exc:
             log.warning("copy failed for chat=%s: %s", chat_id, type(exc).__name__)
             return SendResult.failed(type(exc).__name__)
@@ -133,6 +138,16 @@ class TelegramTransport:
             # generic branch, because it is a subclass of TelegramAPIError. Still
             # a plain failure to the row; the flag is what the breaker counts.
             log.warning("send got no answer for chat=%s: %s", chat_id, type(exc).__name__)
+            return SendResult.unreachable(type(exc).__name__)
+        except ClientDecodeError as exc:
+            # Something answered, but not the Bot API: an HTML error page from a
+            # proxy or from Telegram's edge during an incident. aiogram raises
+            # ClientDecodeError, which is NOT a TelegramAPIError, so before the
+            # audit it escaped this method, crashed the tick mid-send and stranded
+            # every claim behind it for CLAIM_TIMEOUT -- bypassing the breaker built
+            # for exactly this. It says Telegram is unreachable, so it is counted
+            # as such. The body is not logged: only the type.
+            log.warning("send got a non-API answer for chat=%s: %s", chat_id, type(exc).__name__)
             return SendResult.unreachable(type(exc).__name__)
         except TelegramAPIError as exc:
             log.warning("send failed for chat=%s: %s", chat_id, type(exc).__name__)

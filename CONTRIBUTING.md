@@ -220,6 +220,29 @@ set that groups states. Read each hit and write down, in the commit, what it
 assumes. A group of states defined in two places is the thing most likely to
 drift; prefer defining one in terms of the other.
 
+## Evidence rules from the pre-deployment audit
+
+Each rule is here because skipping it once produced a wrong conclusion.
+
+**Check the live database is at migration head yourself.** Run
+`alembic current` and `alembic heads` and compare them. A report of "applied" is
+not evidence: on this project it has been wrong twice.
+
+**An isolated rerun does not rule out a concurrency bug.** A test that fails
+under a loaded full-suite run and passes alone has not been fixed by passing
+alone. Timing bugs show up under load, so the loaded run is the evidence.
+
+**A mutation counts only when a test FAILS ON AN ASSERTION.** If the mutant
+makes a test ERROR, in setup, at import, or in a fixture, nothing has been shown
+about the protection. Pass 6's first sweep reported a mutation "caught" when its
+tests had only errored in conftest. Keep each mutant runnable, with companion
+edits if needed, and treat an ERROR as an invalid mutation, not a catch.
+
+**Run the whole gate before committing, not just lint and the tests.** Passes 1
+to 4 ran lint and tests but not the typecheck, and a mypy error from pass 3 sat
+at HEAD until pass 5. `make check` runs lint, typecheck, shadow and tests, in
+that order, and stops at the first failure.
+
 ## Enumerations are `text` + `CHECK`, not Postgres `ENUM`
 
 Native enums cannot be extended inside a normal transactional migration without
