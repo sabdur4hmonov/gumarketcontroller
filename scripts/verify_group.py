@@ -99,7 +99,8 @@ async def main() -> int:
 
         dsn = (
             f"host={settings.postgres_host} port={settings.postgres_port} "
-            f"user={settings.postgres_user} password={settings.postgres_password} "
+            f"user={settings.postgres_user} "
+            f"password={settings.postgres_password.get_secret_value()} "
             f"dbname={settings.postgres_db}"
         )
         with psycopg.connect(dsn, autocommit=True) as conn:

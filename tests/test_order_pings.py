@@ -633,7 +633,7 @@ async def test_the_claim_is_committed_before_telegram_is_called(
     settings = committed_world["settings"]
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
     observed: list[str] = []
@@ -782,7 +782,7 @@ def committed_world(settings: Settings):  # type: ignore[no-untyped-def]
 
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
     with psycopg.connect(dsn, autocommit=True) as conn:

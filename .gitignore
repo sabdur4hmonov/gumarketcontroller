@@ -1,4 +1,7 @@
 .env
+# Every env file, whatever it is called (pre-deployment audit, pass 6).
+.env.*
+!.env.example
 .venv/
 venv/
 __pycache__/

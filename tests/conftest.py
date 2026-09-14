@@ -37,7 +37,7 @@ def settings() -> Settings:
 def _admin_dsn(settings: Settings) -> str:
     return (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname=postgres"
     )
 

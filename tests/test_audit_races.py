@@ -71,7 +71,7 @@ def committed(settings: Settings):  # type: ignore[no-untyped-def]
 
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
     with psycopg.connect(dsn, autocommit=True) as conn:

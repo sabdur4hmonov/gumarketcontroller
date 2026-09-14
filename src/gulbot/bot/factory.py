@@ -54,7 +54,7 @@ TELEGRAM_REQUEST_TIMEOUT = 15
 
 def build_bot() -> Bot:
     return Bot(
-        token=get_settings().bot_token,
+        token=get_settings().bot_token.get_secret_value(),
         session=AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )

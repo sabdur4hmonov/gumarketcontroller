@@ -186,7 +186,7 @@ def committed_world(settings) -> Iterator[dict]:  # type: ignore[no-untyped-def]
     """Committed, because `_send_due_reminders` opens its own connection."""
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
 

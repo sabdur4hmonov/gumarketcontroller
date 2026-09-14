@@ -60,7 +60,7 @@ def _purge(conn: psycopg.Connection) -> None:
 def committed_shop(settings: Settings, tmp_path: Path) -> Iterator[dict]:
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
     with psycopg.connect(dsn, autocommit=True) as conn:

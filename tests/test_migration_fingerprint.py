@@ -164,7 +164,7 @@ def test_the_fingerprint_is_not_a_table(settings: Settings) -> None:
     """
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
-        f"user={settings.postgres_user} password={settings.postgres_password} "
+        f"user={settings.postgres_user} password={settings.postgres_password.get_secret_value()} "
         f"dbname={settings.postgres_test_db}"
     )
     with psycopg.connect(dsn, autocommit=True) as conn:

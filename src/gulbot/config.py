@@ -9,6 +9,7 @@ from __future__ import annotations
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Uzbekistan is UTC+5 with no DST, but we resolve it through zoneinfo rather
@@ -22,7 +23,13 @@ class Settings(BaseSettings):
     postgres_host: str = "localhost"
     postgres_port: int = 5433
     postgres_user: str = "gulbot"
-    postgres_password: str = "gulbot"
+    # SECRETS ARE SecretStr. Found in the pre-deployment audit, pass 6: pydantic's
+    # repr of Settings printed every field, and pytest prints that repr in
+    # any failing assertion that touches a Settings object -- which put the
+    # real bot token into test output. SecretStr masks repr, str, f-strings,
+    # %-formatting and model_dump(); `.get_secret_value()` is the only way
+    # out, so every place that reads the value is greppable.
+    postgres_password: SecretStr = SecretStr("gulbot")
     postgres_db: str = "gulbot"
     postgres_test_db: str = "gulbot_test"
 
@@ -33,7 +40,7 @@ class Settings(BaseSettings):
     redis_db_fsm: int = 2
     redis_db_test: int = 15
 
-    bot_token: str = ""
+    bot_token: SecretStr = SecretStr("")
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
     log_level: str = "INFO"
@@ -41,7 +48,7 @@ class Settings(BaseSettings):
     def database_url(self, *, database: str | None = None, driver: str = "asyncpg") -> str:
         name = database or self.postgres_db
         return (
-            f"postgresql+{driver}://{self.postgres_user}:{self.postgres_password}"
+            f"postgresql+{driver}://{self.postgres_user}:{self.postgres_password.get_secret_value()}"
             f"@{self.postgres_host}:{self.postgres_port}/{name}"
         )
 

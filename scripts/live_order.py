@@ -54,7 +54,7 @@ def dsn() -> str:
     s = get_settings()
     return (
         f"host={s.postgres_host} port={s.postgres_port} user={s.postgres_user} "
-        f"password={s.postgres_password} dbname={s.postgres_db}"
+        f"password={s.postgres_password.get_secret_value()} dbname={s.postgres_db}"
     )
 
 
