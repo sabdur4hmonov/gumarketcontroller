@@ -25,18 +25,39 @@ A process with the wrong config dies at startup with
 `ProductionConfigError: REFUSING TO START`, followed by the name of every
 problem. That is the guard working. Fix the environment; do not work around it.
 
+### STOP. Check `ENVIRONMENT` with your own eyes before starting anything.
+
 **The guard cannot protect a process that never sets `ENVIRONMENT=production`.**
-Without that variable, a process is "local" and runs on dev defaults by design.
-So the first check after starting each process (bot, worker, beat) is its
-environment:
+Without it, the process is "local" and runs on dev defaults, silently, by
+design. No code can catch this, so a person has to. Do it at every deploy,
+before every start.
 
-```
-python -c "from gulbot.config import get_settings; print(get_settings().environment)"
-```
+1. In the shell session that will launch the bot, the worker and beat, run:
 
-Run it with that process's environment. It must print `production`. The bot
-also logs `environment=production` on its `starting as @...` line: check that
-the bot name on that line is the production bot.
+   ```
+   echo "$ENVIRONMENT"
+   ```
+
+2. It must print exactly:
+
+   ```
+   production
+   ```
+
+   If it prints a blank line, or anything else, **stop**. Start nothing. Set
+   the variable, then go back to step 1.
+
+3. Do this check in **that same shell session**. Not in another terminal, and
+   not assumed from a script that "already set it" earlier.
+
+4. Only then start the processes, from that session.
+
+If a service manager (systemd, supervisor) starts the processes instead of this
+shell, the `echo` proves nothing about them. Check the environment in the
+service's unit or config file.
+
+After start, the bot logs `environment=production` on its `starting as @...`
+line. Check that the bot name on that line is the production bot.
 
 Do not copy a dev `.env` onto the server. The guard refuses a `.env`-supplied
 token or database, but a `.env` can still supply the settings it does not
