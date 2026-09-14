@@ -347,6 +347,27 @@ operator yet. Deferred with CP14's monitoring work.
 owner-facing UI. A small deferred follow-up, not a blocker: the values have
 sensible defaults and no shop has asked to change them yet.
 
+**Per-person permission on the order card.** Deliberately not built;
+recorded so it is a decision rather than a rediscovery. Today **any member of
+the shop's group can confirm or reject any order.** Permission is by CHAT, not
+by person: `routers/admin_orders.py` checks that a tap came from one of the
+chats `ping_targets` sent the card to, and never asks who tapped. That is
+correct for a shop whose group is exactly its staff, and wrong the day a shop
+adds a courier, a supplier or a relative who should see orders without deciding
+them. Found and written down in the pre-deployment audit, pass 4.
+
+A per-admin allowlist would need, roughly:
+
+* a list of who may decide -- `shops.admin_telegram_ids` alongside the existing
+  `owner_telegram_ids`, or a small `shop_admins` table if roles are expected;
+* the check in `confirm`, `ask_for_a_reason` and `enter_reason` against
+  `callback.from_user.id` / `message.from_user.id`, with a clear refusal to a
+  member who is not on it (answered as an alert, so the group is not spammed);
+* a way for the owner to manage that list without psql -- the same gap as the
+  shop settings flow above, and the reason this is not a one-line change;
+* a decision on what the owner-fallback path means when there is no group (the
+  owners' own DMs are already the only chats allowed, so it is safe as is).
+
 The occasion edit flow, deferred at CP3, was reinstated in CP3.5: once recipient
 chaining exists the sub-flow is reused rather than duplicated, so it costs two
 states instead of six.

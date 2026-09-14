@@ -79,6 +79,7 @@ from gulbot.services.orders import (
     load_slot_policy,
     materialize_order_pings,
 )
+from gulbot.services.recipients import get_recipient
 from gulbot.utils.render import escape, format_date_long, format_price
 from gulbot.utils.text import sanitize_label
 
@@ -140,6 +141,24 @@ async def start_order(
 
     # Captured now so the confirmation screen and the fallback snapshot show
     # what the customer actually chose, even if the indexer edits the post.
+    # THE RECIPIENT ID IS WHATEVER THE CLIENT SENT. Telegram does not check that
+    # a callback matches a button the bot rendered, and `orders.recipient_id`'s
+    # foreign key is scoped to the SHOP, not the customer -- so an unchecked id
+    # let a crafted order button link this order to a person on another
+    # customer's private list. Found in the pre-deployment audit's callback
+    # sweep. Looked up through the customer-scoped `get_recipient`, and dropped
+    # unless it is one of this customer's own, still-active people.
+    recipient_id: int | None = None
+    if data.recipient_id:
+        owned = await get_recipient(
+            session,
+            shop_id=customer.shop_id,
+            customer_id=customer.id,
+            recipient_id=data.recipient_id,
+        )
+        if owned is not None and owned.active:
+            recipient_id = owned.id
+
     await state.update_data(
         product_id=product.id,
         product_name=product.name,
@@ -152,7 +171,7 @@ async def start_order(
         # Zero from the browse screen, where no occasion is behind the
         # choice. This is what finally writes `orders.recipient_id`, which
         # has been NULL on every order since CP10a because nothing set it.
-        recipient_id=data.recipient_id or None,
+        recipient_id=recipient_id,
     )
     await _show_dates(target, state, session, customer.shop_id, lang)
 
