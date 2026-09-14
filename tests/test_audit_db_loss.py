@@ -21,7 +21,7 @@ import time
 
 import pytest
 from sqlalchemy import text
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, async_sessionmaker
 from tests.test_dispatcher import (
     NOW,
@@ -83,24 +83,50 @@ async def test_losing_the_database_after_a_send_loses_nothing_and_waits_before_r
     assert len(late.calls) == 1, "an abandoned claim was never retried"
 
 
-async def test_nothing_bounds_a_statement_that_never_returns() -> None:
-    """MEASUREMENT. With the application's own engine, a statement that takes
-    longer than we are willing to wait is still running when we stop waiting --
-    Postgres statement_timeout is 0 and nothing in the engine sets one. In a
-    solo Celery worker with no task time limit, that is the whole worker."""
-    engine = build_engine(get_settings().postgres_test_db)
-    started = time.monotonic()
-    still_running = False
+async def _show(engine_database: str, setting: str) -> str:
+    engine = build_engine(engine_database)
     try:
         async with engine.connect() as conn:
-            setting = (await conn.execute(text("SHOW statement_timeout"))).scalar_one()
-            try:
-                await asyncio.wait_for(conn.execute(text("SELECT pg_sleep(5)")), timeout=1.5)
-            except TimeoutError:
-                still_running = True
+            return str((await conn.execute(text(f"SHOW {setting}"))).scalar_one())
     finally:
         await engine.dispose()
 
-    print(f"\n  statement_timeout={setting!r}; gave up after {time.monotonic() - started:.1f}s")
-    assert setting == "0", "a statement timeout is now configured; update this finding"
-    assert still_running, "the statement was bounded by something"
+
+async def test_application_connections_carry_a_thirty_second_statement_timeout() -> None:
+    """DEFECT IF THIS FAILS. Measured in pass 5 as '0': a statement that never
+    returned held its worker forever. Asked of a real connection from the
+    application's own engine, not read back from the constant."""
+    assert await _show(get_settings().postgres_test_db, "statement_timeout") == "30s"
+
+
+async def test_idle_in_transaction_timeout_is_left_alone() -> None:
+    """GUARDS THE CAUTION. Several paths hold a transaction open across a
+    Telegram call, and CP6 relies on it. A limit here shorter than the request
+    timeout would kill them mid-send. Deliberately unset; this fails if someone
+    sets it alongside statement_timeout."""
+    setting = await _show(get_settings().postgres_test_db, "idle_in_transaction_session_timeout")
+    assert setting == "0"
+
+
+async def test_a_hung_statement_is_cancelled_by_the_engine_setting(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """DEFECT IF THIS FAILS. The same statement pass 5 measured running past
+    every wait now raises. The timeout is shortened so the suite does not sit
+    for 30 s; the mechanism -- set by the engine at connect, enforced by
+    Postgres -- is the production one."""
+    import gulbot.db.session as session_module
+
+    monkeypatch.setattr(session_module, "STATEMENT_TIMEOUT_MS", 300)
+    engine = build_engine(get_settings().postgres_test_db)
+    started = time.monotonic()
+    try:
+        async with engine.connect() as conn:
+            with pytest.raises(DBAPIError, match="statement timeout"):
+                await asyncio.wait_for(conn.execute(text("SELECT pg_sleep(5)")), timeout=4)
+    finally:
+        await engine.dispose()
+
+    took = time.monotonic() - started
+    print(f"\n  pg_sleep(5) cancelled after {took:.1f}s")
+    assert took < 3

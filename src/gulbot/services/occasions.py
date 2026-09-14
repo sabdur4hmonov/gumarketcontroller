@@ -150,7 +150,7 @@ async def deactivate_occasion(
     if row is None:
         return None
     await discard_pending_reminders(session, occasion_ids=[occasion_id])
-    return row[0]
+    return str(row[0])
 
 
 async def record_store_dates_consent(

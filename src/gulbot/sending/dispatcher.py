@@ -60,7 +60,7 @@ from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
 from gulbot.sending.rate_limit import RateLimiter
-from gulbot.sending.transport import Attachment, SendResult, Transport
+from gulbot.sending.transport import Attachment, CircuitBreaker, SendResult, Transport
 
 log = logging.getLogger("gulbot.sending")
 
@@ -113,6 +113,8 @@ class TickResult:
     cancelled: int = 0
     dead_lettered: int = 0
     rate_limited: int = 0
+    #: Claimed, never attempted, returned untouched because the breaker opened.
+    handed_back: int = 0
     waited_seconds: float = 0.0
     errors: list[str] = field(default_factory=list)
 
@@ -474,7 +476,17 @@ async def run_tick(
 
     # --- phase 2: send, one transaction per group ------------------------
     blocked: set[int] = set()
+    breaker = CircuitBreaker()
     for group in claimed:
+        if breaker.open:
+            # Telegram has stopped answering. Every further send would wait out
+            # the full timeout and fail the same way, so the rest of the batch
+            # goes back exactly as it was and the next tick tries again.
+            await _hand_back(session, group)
+            result.handed_back += 1
+            await session.commit()
+            continue
+
         if group.customer_id in blocked:
             # A 403 earlier in this same batch. Their rows are already
             # cancelled; sending again would just earn another 403.
@@ -508,8 +520,42 @@ async def run_tick(
         if outcome.blocked:
             blocked.add(group.customer_id)
         await session.commit()
+        breaker.record(outcome)
+        if breaker.open and result.handed_back == 0:
+            log.warning(
+                "tick: %d consecutive sends got no answer from Telegram; "
+                "handing the rest of the batch back to the next tick",
+                breaker.consecutive,
+            )
 
     return result
+
+
+async def _hand_back(session: AsyncSession, group: DueGroup) -> None:
+    """Undo phase 1 for a group that was claimed and never sent.
+
+    Both things phase 1 did, reversed: the attempt it counted and the claim it
+    took. The due time is NOT touched -- nothing was tried, so there is nothing
+    to back off from, and the next tick picks it up at once. An outage must not
+    burn a reminder's attempts on sends that never happened, or a long outage
+    would dead-letter rows that were never once put on the wire.
+
+    Deleting the claim is safe for the same reason it is in `_defer_and_release`:
+    `claim_send` only succeeds on a fresh row or an abandoned CLAIMED one, so the
+    row being deleted is the one this tick took, never a resolved record.
+    """
+    await session.execute(
+        update(ScheduledNotification)
+        .where(ScheduledNotification.id.in_([row.id for row in group.rows]))
+        .values(attempts=ScheduledNotification.attempts - 1)
+    )
+    await session.execute(
+        delete(MessageLog).where(
+            MessageLog.customer_id == group.customer_id,
+            MessageLog.template_key == TEMPLATE_REMINDER,
+            MessageLog.transition_key == group.transition_key,
+        )
+    )
 
 
 async def _defer_and_release(session: AsyncSession, group: DueGroup, *, until: datetime) -> None:

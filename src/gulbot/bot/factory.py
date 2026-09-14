@@ -12,6 +12,7 @@ from typing import Final
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.base import BaseStorage
 from aiogram.fsm.storage.redis import RedisStorage
@@ -38,9 +39,23 @@ ALLOWED_UPDATES: Final = [
 ]
 
 
+#: Seconds before a Bot API request is given up on. aiogram's default is 60.
+#:
+#: Found in the pre-deployment audit, pass 5: in a Telegram outage every send
+#: waits out this whole timeout before failing, so it is the unit the worst-case
+#: tick is measured in. Fifteen seconds is far longer than a healthy sendMessage
+#: or sendPhoto by file_id takes, and a quarter of the time lost per outage send.
+#:
+#: Long polling is unaffected: aiogram requests getUpdates with
+#: `session.timeout + polling_timeout`, so the poll still waits its full window.
+#: Downloads are unaffected too: `download_file` carries its own timeout.
+TELEGRAM_REQUEST_TIMEOUT = 15
+
+
 def build_bot() -> Bot:
     return Bot(
         token=get_settings().bot_token,
+        session=AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 

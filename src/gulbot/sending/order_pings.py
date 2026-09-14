@@ -49,7 +49,7 @@ from gulbot.models.order import SENDABLE_PING_STATES, Order, OrderReminder, Ping
 from gulbot.models.shop import Shop
 from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.order_card import ANNOUNCEMENT, OrderCard, render_card
-from gulbot.sending.transport import CAPTION_LIMIT, SendResult, Transport
+from gulbot.sending.transport import CAPTION_LIMIT, CircuitBreaker, SendResult, Transport
 
 log = logging.getLogger("gulbot.sending.orders")
 
@@ -74,6 +74,8 @@ class PingTickResult:
     failed: int = 0
     dead_lettered: int = 0
     undeliverable: int = 0
+    #: Claimed, never attempted, returned untouched because the breaker opened.
+    handed_back: int = 0
     errors: list[str] = field(default_factory=list)
 
 
@@ -237,6 +239,7 @@ async def _deliver(
     text: str,
     ping_number: int,
     reply_markup: InlineKeyboardMarkup | None = None,
+    breaker: CircuitBreaker | None = None,
 ) -> tuple[bool, list[str]]:
     """Send to every target. True if at least one accepted.
 
@@ -275,6 +278,11 @@ async def _deliver(
             )
         else:
             errors.append(_error_of(outcome))
+        if breaker is not None:
+            breaker.record(outcome)
+            if breaker.open:
+                # The remaining owners would each wait out the same timeout.
+                break
     return delivered, errors
 
 
@@ -324,7 +332,16 @@ async def run_order_ping_tick(
     await session.commit()
 
     targets_by_shop: dict[int, list[int]] = {}
+    breaker = CircuitBreaker()
     for ping in live:
+        if breaker.open:
+            # Telegram has stopped answering; see CircuitBreaker. The rest go
+            # back as they were, for the next tick.
+            await _hand_back(session, ping)
+            result.handed_back += 1
+            await session.commit()
+            continue
+
         if ping.shop_id not in targets_by_shop:
             targets_by_shop[ping.shop_id] = await ping_targets(session, shop_id=ping.shop_id)
         targets = targets_by_shop[ping.shop_id]
@@ -377,6 +394,7 @@ async def run_order_ping_tick(
             reply_markup=order_admin_keyboard(lang, card.order_id)
             if ping.ping_number == ANNOUNCEMENT
             else None,
+            breaker=breaker,
         )
 
         if delivered:
@@ -390,5 +408,33 @@ async def run_order_ping_tick(
                 "order ping order=%s ping=%s failed: %s", ping.order_id, ping.ping_number, errors
             )
         await session.commit()
+        if breaker.open and result.handed_back == 0:
+            log.warning(
+                "order pings: %d consecutive sends got no answer from Telegram; "
+                "handing the rest of the batch back to the next tick",
+                breaker.consecutive,
+            )
 
     return result
+
+
+async def _hand_back(session: AsyncSession, ping: OrderReminder) -> None:
+    """Undo the claim on a ping that was never attempted.
+
+    The claim moved it to SENDING and counted an attempt; both are reversed.
+    The state it goes back to is recovered from the attempt count rather than
+    remembered: a ping claimed with no earlier attempt was PENDING, and one with
+    earlier attempts can only have come from FAILED (or a dead worker's SENDING,
+    which is the same thing -- a send whose outcome was never recorded). Both
+    are in SENDABLE_PING_STATES and both are counted as overdue by the health
+    check, so neither choice changes what anything filters or counts.
+    """
+    await session.execute(
+        update(OrderReminder)
+        .where(OrderReminder.id == ping.id)
+        .values(
+            state=PingState.PENDING.value if ping.attempts <= 1 else PingState.FAILED.value,
+            attempts=OrderReminder.attempts - 1,
+            claimed_at=None,
+        )
+    )

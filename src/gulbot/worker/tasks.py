@@ -15,7 +15,19 @@ from gulbot.sending.rate_limit import RateLimiter
 from gulbot.sending.render import render_reminder
 from gulbot.services.indexer import finalize_product
 from gulbot.services.materializer import materialize_shop
-from gulbot.worker.app import app
+from gulbot.worker.app import (
+    ALBUM_HARD_LIMIT,
+    ALBUM_SOFT_LIMIT,
+    HEALTH_HARD_LIMIT,
+    HEALTH_SOFT_LIMIT,
+    MATERIALIZE_HARD_LIMIT,
+    MATERIALIZE_SOFT_LIMIT,
+    SUMMARY_HARD_LIMIT,
+    SUMMARY_SOFT_LIMIT,
+    TICK_HARD_LIMIT,
+    TICK_SOFT_LIMIT,
+    app,
+)
 from gulbot.worker.debounce import AlbumDebouncer
 
 log = logging.getLogger("gulbot.worker")
@@ -46,12 +58,13 @@ async def _send_due_reminders() -> dict[str, int]:
     finally:
         await bot.session.close()
     log.info(
-        "tick: groups=%s sent=%s expired=%s failed=%s cancelled=%s",
+        "tick: groups=%s sent=%s expired=%s failed=%s cancelled=%s handed_back=%s",
         result.groups,
         result.sent,
         result.expired,
         result.failed,
         result.cancelled,
+        result.handed_back,
     )
     return {"groups": result.groups, "sent": result.sent}
 
@@ -77,12 +90,13 @@ async def _send_order_pings() -> dict[str, int]:
     finally:
         await bot.session.close()
     log.info(
-        "order pings: claimed=%s sent=%s failed=%s dead=%s undeliverable=%s",
+        "order pings: claimed=%s sent=%s failed=%s dead=%s undeliverable=%s handed_back=%s",
         result.claimed,
         result.sent,
         result.failed,
         result.dead_lettered,
         result.undeliverable,
+        result.handed_back,
     )
     return {"claimed": result.claimed, "sent": result.sent}
 
@@ -140,31 +154,51 @@ async def _materialize_all_shops() -> dict[str, int]:
     return totals
 
 
-@app.task(name="gulbot.send_due_reminders")
+@app.task(
+    name="gulbot.send_due_reminders",
+    soft_time_limit=TICK_SOFT_LIMIT,
+    time_limit=TICK_HARD_LIMIT,
+)
 def send_due_reminders() -> dict[str, int]:
     return asyncio.run(_send_due_reminders())
 
 
-@app.task(name="gulbot.send_order_pings")
+@app.task(
+    name="gulbot.send_order_pings",
+    soft_time_limit=TICK_SOFT_LIMIT,
+    time_limit=TICK_HARD_LIMIT,
+)
 def send_order_pings() -> dict[str, int]:
     return asyncio.run(_send_order_pings())
 
 
-@app.task(name="gulbot.check_health")
+@app.task(
+    name="gulbot.check_health",
+    soft_time_limit=HEALTH_SOFT_LIMIT,
+    time_limit=HEALTH_HARD_LIMIT,
+)
 def check_health() -> dict[str, int]:
     result = asyncio.run(_for_every_shop("check"))
     log.info("health check: %s", result)
     return result
 
 
-@app.task(name="gulbot.send_daily_summary")
+@app.task(
+    name="gulbot.send_daily_summary",
+    soft_time_limit=SUMMARY_SOFT_LIMIT,
+    time_limit=SUMMARY_HARD_LIMIT,
+)
 def send_daily_summary_task() -> dict[str, int]:
     result = asyncio.run(_for_every_shop("summary"))
     log.info("daily summary: %s", result)
     return result
 
 
-@app.task(name="gulbot.materialize_all_shops")
+@app.task(
+    name="gulbot.materialize_all_shops",
+    soft_time_limit=MATERIALIZE_SOFT_LIMIT,
+    time_limit=MATERIALIZE_HARD_LIMIT,
+)
 def materialize_all_shops() -> dict[str, int]:
     return asyncio.run(_materialize_all_shops())
 
@@ -221,7 +255,11 @@ async def _settle_album(
     return {"action": "done", "outcome": result.outcome.value}
 
 
-@app.task(name="gulbot.finalize_album")
+@app.task(
+    name="gulbot.finalize_album",
+    soft_time_limit=ALBUM_SOFT_LIMIT,
+    time_limit=ALBUM_HARD_LIMIT,
+)
 def finalize_album(shop_id: int, media_group_id: str) -> dict[str, object]:
     result = asyncio.run(_finalize_album(shop_id, media_group_id))
     delay = result.pop("reschedule_in", None)

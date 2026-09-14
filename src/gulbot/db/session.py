@@ -19,10 +19,34 @@ from sqlalchemy.ext.asyncio import (
 
 from gulbot.config import get_settings
 
+#: Milliseconds before Postgres cancels one statement on an application
+#: connection. Postgres's own default is 0: never.
+#:
+#: Found in the pre-deployment audit, pass 5. With no bound, one statement that
+#: never returns -- a lock wait behind a stuck transaction, a runaway query --
+#: holds its worker forever, and the worker runs one task at a time. Thirty
+#: seconds is orders of magnitude above anything the bot or the ticks run, and a
+#: waiter on the per-shop-per-day advisory lock is cancelled by it too.
+#:
+#: `idle_in_transaction_session_timeout` is DELIBERATELY NOT SET. Several paths
+#: hold a transaction open across a Telegram call, correctly, and CP6's claim
+#: design depends on that; a limit below the request timeout would kill those
+#: mid-send and turn them into the duplicates CP6 only accepts for dead workers.
+#:
+#: Migrations do not come through here -- they use the sync driver
+#: (migrations/env.py) -- so a long backfill is not cut off by this.
+STATEMENT_TIMEOUT_MS = 30_000
+
 
 def build_engine(database: str | None = None) -> AsyncEngine:
     settings = get_settings()
-    return create_async_engine(settings.database_url(database=database), future=True)
+    return create_async_engine(
+        settings.database_url(database=database),
+        future=True,
+        # Set per connection at connect time, so every pooled connection has it
+        # and nothing needs to remember a SET.
+        connect_args={"server_settings": {"statement_timeout": str(STATEMENT_TIMEOUT_MS)}},
+    )
 
 
 def build_session_factory(database: str | None = None) -> async_sessionmaker[AsyncSession]:

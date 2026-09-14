@@ -33,6 +33,11 @@ class SendResult:
     retry_after: float | None = None
     #: Set when the customer has blocked the bot (403).
     blocked: bool = False
+    #: Set when Telegram never answered at all -- a timeout or a connection
+    #: error, not a refusal. The only kind of failure the circuit breaker
+    #: counts, because it is the only kind that says Telegram is unreachable
+    #: rather than that one message or one chat has a problem.
+    network: bool = False
 
     @classmethod
     def sent(cls, message_id: int) -> SendResult:
@@ -49,6 +54,45 @@ class SendResult:
     @classmethod
     def failed(cls, error_code: str) -> SendResult:
         return cls(ok=False, error_code=error_code)
+
+    @classmethod
+    def unreachable(cls, error_code: str) -> SendResult:
+        return cls(ok=False, error_code=error_code, network=True)
+
+
+#: Consecutive network failures after which a tick stops sending.
+BREAKER_THRESHOLD = 3
+
+
+class CircuitBreaker:
+    """Stop a tick that is sending into a Telegram outage.
+
+    Found in the pre-deployment audit, pass 5. In an outage nothing answers,
+    so every send waits out the full request timeout before failing. A tick
+    attempts every claimed row one after another, so a hundred due rows cost a
+    hundred timeouts -- and the worker runs one task at a time, so everything
+    queued behind that tick, the health check included, waits for all of it.
+
+    THREE CONSECUTIVE NETWORK FAILURES, and only those. A 403, a 429 or a 400
+    is Telegram answering, which proves it is up; it resets the count exactly
+    as a success does. Counting them would let three customers who blocked the
+    bot stop the reminders of everyone after them.
+
+    Per tick, never shared: a tick that trips stops, and the next tick starts
+    with a closed breaker and tries again. That is the whole recovery path --
+    no half-open state, no timers, because the beat already is one.
+    """
+
+    def __init__(self, threshold: int = BREAKER_THRESHOLD) -> None:
+        self.threshold = threshold
+        self.consecutive = 0
+
+    def record(self, outcome: SendResult) -> None:
+        self.consecutive = self.consecutive + 1 if outcome.network else 0
+
+    @property
+    def open(self) -> bool:
+        return self.consecutive >= self.threshold
 
 
 #: Telegram's limit for a photo caption. A reminder longer than this cannot be

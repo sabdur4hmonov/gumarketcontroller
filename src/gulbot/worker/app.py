@@ -23,6 +23,33 @@ from gulbot.config import get_settings
 
 settings = get_settings()
 
+# --- time bounds, from the pre-deployment audit's pass 5 -------------------
+#
+# EXPIRY. A periodic task that has not STARTED by the time the next one is due
+# is pointless: the next one does the same work with fresher data. Without an
+# expiry, a worker stuck behind a long tick comes back to a queue of stale ticks
+# and runs every one. Just under the interval, so at most one is ever waiting.
+TICK_EXPIRES_SECONDS = 55
+HEALTH_EXPIRES_SECONDS = 290
+
+# TIME LIMITS, per task (see worker/tasks.py). Soft raises SoftTimeLimitExceeded
+# inside the task; hard kills the process a little later if the soft one was
+# swallowed. ENFORCED ONLY BY THE PREFORK POOL -- the VPS's. The Windows solo
+# pool ignores them entirely; see docs/DEPLOY.md.
+#
+# A tick killed by its limit mid-send leaves its remaining claims CLAIMED, and
+# they are retaken after CLAIM_TIMEOUT: the same outcome, and the same accepted
+# duplicate, as a worker that died. Nothing is lost.
+#
+# Sizes. With the circuit breaker a Telegram outage costs a tick about
+# BREAKER_THRESHOLD x TELEGRAM_REQUEST_TIMEOUT = 45 s; a healthy tick of a full
+# batch takes seconds. Four minutes is only reached by something neither bounds.
+TICK_SOFT_LIMIT, TICK_HARD_LIMIT = 240, 300
+HEALTH_SOFT_LIMIT, HEALTH_HARD_LIMIT = 60, 90
+SUMMARY_SOFT_LIMIT, SUMMARY_HARD_LIMIT = 120, 150
+MATERIALIZE_SOFT_LIMIT, MATERIALIZE_HARD_LIMIT = 1500, 1800
+ALBUM_SOFT_LIMIT, ALBUM_HARD_LIMIT = 60, 90
+
 app = Celery(
     "gulbot",
     broker=settings.redis_url(settings.redis_db_broker),
@@ -39,6 +66,7 @@ app.conf.update(
         "send-due-reminders": {
             "task": "gulbot.send_due_reminders",
             "schedule": 60.0,
+            "options": {"expires": TICK_EXPIRES_SECONDS},
         },
         # CP10b. A SEPARATE task from the reminder tick, not a branch inside it:
         # the two outboxes fail independently, and one wedged on a Telegram
@@ -46,6 +74,7 @@ app.conf.update(
         "send-order-pings": {
             "task": "gulbot.send_order_pings",
             "schedule": 60.0,
+            "options": {"expires": TICK_EXPIRES_SECONDS},
         },
         # CP11.5. Every five minutes, not every minute: a stall is defined
         # as fifteen minutes of silence, so checking twelve times inside
@@ -53,6 +82,7 @@ app.conf.update(
         "health-check": {
             "task": "gulbot.check_health",
             "schedule": 300.0,
+            "options": {"expires": HEALTH_EXPIRES_SECONDS},
         },
         # 21:00 Asia/Tashkent: after the 20:00 send window closes, so the
         # day's figures are final rather than half-counted.

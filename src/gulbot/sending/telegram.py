@@ -16,6 +16,7 @@ from aiogram import Bot
 from aiogram.exceptions import (
     TelegramAPIError,
     TelegramForbiddenError,
+    TelegramNetworkError,
     TelegramRetryAfter,
 )
 from aiogram.types import InlineKeyboardMarkup, Message
@@ -102,6 +103,9 @@ class TelegramTransport:
         except TelegramForbiddenError:
             log.info("blocked by chat=%s", chat_id)
             return SendResult.forbidden()
+        except TelegramNetworkError as exc:
+            log.warning("copy got no answer for chat=%s: %s", chat_id, type(exc).__name__)
+            return SendResult.unreachable(type(exc).__name__)
         except TelegramAPIError as exc:
             log.warning("copy failed for chat=%s: %s", chat_id, type(exc).__name__)
             return SendResult.failed(type(exc).__name__)
@@ -124,6 +128,12 @@ class TelegramTransport:
             # The customer blocked the bot. Not an error to retry.
             log.info("blocked by chat=%s", chat_id)
             return SendResult.forbidden()
+        except TelegramNetworkError as exc:
+            # Nothing answered: a timeout or a connection error. BEFORE the
+            # generic branch, because it is a subclass of TelegramAPIError. Still
+            # a plain failure to the row; the flag is what the breaker counts.
+            log.warning("send got no answer for chat=%s: %s", chat_id, type(exc).__name__)
+            return SendResult.unreachable(type(exc).__name__)
         except TelegramAPIError as exc:
             log.warning("send failed for chat=%s: %s", chat_id, type(exc).__name__)
             return SendResult.failed(type(exc).__name__)

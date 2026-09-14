@@ -167,6 +167,10 @@ celery -A gulbot.worker.app beat --loglevel=info
 `--pool=solo` because prefork does not work on Windows (see above). Beat runs
 the send tick every minute and the materializer nightly at 03:00 Tashkent.
 
+**The solo pool ignores task time limits.** Every task has them, and only
+prefork enforces them, so the VPS must never run solo. See `docs/DEPLOY.md`,
+which also covers the container recreate that log rotation needs.
+
 A solo pool in ONE process cannot race with itself, which is why
 `tests/test_concurrency.py` starts two separate worker PROCESSES and asserts
 their PIDs differ.

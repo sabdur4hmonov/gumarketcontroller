@@ -368,6 +368,33 @@ A per-admin allowlist would need, roughly:
 * a decision on what the owner-fallback path means when there is no group (the
   owners' own DMs are already the only chats allowed, so it is safe as is).
 
+**An external dead-man's switch for beat.** Deliberately not built; **needed
+before a real production launch beyond the pilot, not before the pilot
+itself.** If the beat process dies, nothing enqueues a tick, and nothing says
+so. The health check cannot catch it, for two reasons:
+
+* it is itself a beat task, so it stops with beat;
+* it alerts through Telegram, so it is also blind during a Telegram outage.
+
+No code change inside the bot fixes either one. The shape is a monitor outside
+the deployment: each tick pings a URL, and the monitor pages someone when the
+pings stop. That needs a conversation, not a commit: which service, what
+interval, and who gets paged. Found in the pre-deployment audit, pass 5. Until
+then, see docs/DEPLOY.md for the pilot's manual check.
+
+**The health check on its own queue.** Deliberately not built. The worker runs
+one task at a time, so the five-minute health check waits behind whatever tick
+is running. Pass 5 measured an outage tick at up to 100 minutes. That is what
+made this matter, and the bound the fix put on a tick removes most of it:
+
+* the circuit breaker ends an outage tick after about 45 s;
+* a 240 s soft time limit catches anything else.
+
+A dedicated queue with its own worker would make the health check independent
+of the ticks entirely. That is real infrastructure — a second worker process,
+routing, one more thing to deploy and watch — for a benefit that only bites at
+volumes the pilot will not reach soon. Revisit with the dead-man's switch above.
+
 The occasion edit flow, deferred at CP3, was reinstated in CP3.5: once recipient
 chaining exists the sub-flow is reused rather than duplicated, so it costs two
 states instead of six.
