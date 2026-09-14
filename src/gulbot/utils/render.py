@@ -8,6 +8,7 @@ one escaped representation, at the only place it matters.
 from __future__ import annotations
 
 import html
+import re
 
 from gulbot.i18n import t
 from gulbot.models.occasion import RecipientType
@@ -15,6 +16,16 @@ from gulbot.models.occasion import RecipientType
 
 def escape(value: str) -> str:
     return html.escape(value, quote=False)
+
+
+_TAGS = re.compile(r"<[^>]+>")
+
+
+def visible_length(markup: str) -> int:
+    """How long Telegram considers an HTML message: tags removed, entities
+    decoded. Telegram's caption and text limits count THIS, not the source,
+    so any length check against those limits must too."""
+    return len(html.unescape(_TAGS.sub("", markup)))
 
 
 def addressed_label(label: str, recipient_type: str, lang: str) -> str:

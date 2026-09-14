@@ -44,6 +44,7 @@ from gulbot.i18n import t
 from gulbot.models.order import OrderStatus
 from gulbot.sending.order_pings import ping_targets
 from gulbot.sending.telegram import TelegramTransport
+from gulbot.sending.transport import CAPTION_LIMIT
 from gulbot.services.order_notify import notify_customer_of_outcome
 from gulbot.services.order_status import (
     REJECTION_REASON_MAX_LENGTH,
@@ -51,7 +52,7 @@ from gulbot.services.order_status import (
     confirm_order,
     reject_order,
 )
-from gulbot.utils.render import escape
+from gulbot.utils.render import escape, visible_length
 
 log = logging.getLogger("gulbot.bot.admin_orders")
 
@@ -79,6 +80,7 @@ async def _stamp_card(
     chat_id: int,
     message_id: int,
     body: str,
+    card_html: str,
     is_photo: bool,
     bot: object,
 ) -> bool:
@@ -95,7 +97,22 @@ async def _stamp_card(
     edit must not look like a failed action.
     """
     try:
-        if is_photo:
+        if is_photo and visible_length(body) > CAPTION_LIMIT:
+            # TOO LONG TO BE THE CAPTION. A worst-case card is 822 visible
+            # characters and a maximum rejection reason takes it past 1024,
+            # where Telegram refuses the edit -- which used to leave the card
+            # with both live buttons and no outcome. Drop the buttons on their
+            # own, then post the outcome as a REPLY to the card so it still
+            # reads as belonging to that order. Nothing is truncated.
+            await bot.edit_message_reply_markup(  # type: ignore[attr-defined]
+                chat_id=chat_id, message_id=message_id, reply_markup=None
+            )
+            await bot.send_message(  # type: ignore[attr-defined]
+                chat_id=chat_id,
+                text=body[len(card_html) :].lstrip("\n"),
+                reply_to_message_id=message_id,
+            )
+        elif is_photo:
             await bot.edit_message_caption(  # type: ignore[attr-defined]
                 chat_id=chat_id, message_id=message_id, caption=body, reply_markup=None
             )
@@ -205,6 +222,7 @@ async def confirm(
         chat_id=message.chat.id,
         message_id=message.message_id,
         body=body,
+        card_html=message.html_text,
         is_photo=bool(message.photo),
         bot=callback.bot,
     )
@@ -304,6 +322,7 @@ async def enter_reason(
         chat_id=int(data["card_chat_id"]),
         message_id=int(data["card_message_id"]),
         body=body,
+        card_html=str(data.get("card_html", "")),
         is_photo=bool(data.get("card_is_photo")),
         bot=message.bot,
     )

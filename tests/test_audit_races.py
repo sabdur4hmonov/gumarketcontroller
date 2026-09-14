@@ -809,6 +809,9 @@ async def test_the_resume_flag_cannot_leak_into_the_next_order(committed: dict) 
         )
         assert (await context.get_data()).get("resume_at_confirm") is False
 
+        # A real date, as the flow would have stored one: `pick_hour` now refuses
+        # an hour with no date behind it, which is the crafted-callback fix.
+        await context.update_data(delivery_date=DELIVERY.isoformat())
         await context.set_state(PlaceOrder.choosing_hour)
         recorder.calls.clear()
         await dispatcher.feed_update(bot, hour_tap(user_id=880_000, hour=15, update_id=13))

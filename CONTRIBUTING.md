@@ -187,6 +187,39 @@ LOOKED like a real regression.
 Address the revision by name, or look up its `down_revision` through
 `ScriptDirectory`, so the test keeps meaning what it said when it was written.
 
+## Changing what a state VALUE means is a non-local change
+
+Same shape as the autogenerate list above: **a change that is locally correct
+and has invisible consequences somewhere else.** The value keeps its name, so
+nothing that filters on it looks affected.
+
+> **When a fix changes what a status or state VALUE means -- not adding a new
+> transition, not adding a new check, but changing what an existing value
+> implies -- grep for every place that value is filtered, compared, counted or
+> assumed, and review each one before the change is considered done.**
+
+The pre-deployment audit made `NotificationState.FAILED` retryable. Before, a
+failed reminder was terminal; after, it is still a schedule. Every line of that
+fix was correct and mutation-proved, and it still left three places assuming
+the old meaning:
+
+| Place | Assumed | Consequence | Found |
+|---|---|---|---|
+| `select_due_rows` | only PENDING is sendable | the original defect: a failed reminder was never retried | audit pass 1 |
+| `block_customer` | only PENDING is still live | a customer who blocked the bot after a failed attempt burned into `dead_letter`, and the shop was told sending had FAILED | audit pass 3 |
+| `RECONCILABLE_STATES` | FAILED is history | the nightly prune skipped a failed reminder for a deleted person, and the tick retried it | audit pass 3 |
+
+The last two were found only because pass 3 happened to walk those chains --
+not because anything pointed at them. The fix for the third is the structural
+one: `RECONCILABLE_STATES = SENDABLE_STATES`, one definition instead of two
+tuples kept in step by hand.
+
+**How to do the sweep:** grep for the enum member AND its string literal
+(`NotificationState.FAILED`, `"failed"`, `'failed'`), and for every tuple or
+set that groups states. Read each hit and write down, in the commit, what it
+assumes. A group of states defined in two places is the thing most likely to
+drift; prefer defining one in terms of the other.
+
 ## Enumerations are `text` + `CHECK`, not Postgres `ENUM`
 
 Native enums cannot be extended inside a normal transactional migration without

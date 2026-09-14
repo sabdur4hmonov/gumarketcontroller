@@ -166,7 +166,21 @@ async def pick_date(
     now_local = datetime.now(TASHKENT)
     chosen = now_local.date() + timedelta(days=offset)
 
-    hours = available_hours(policy, chosen, now_local)
+    # THE OFFER, RE-DERIVED. Telegram does not check that a callback's data
+    # matches a button it rendered, so `offset` is whatever the client sent:
+    # the pre-deployment audit booked a date five days in the past and one 400
+    # days out. `available_dates` is the function that built the picker, so a
+    # date it would not have offered is refused here for the same reasons --
+    # past, beyond the horizon, closed, after the same-day cutoff, or full.
+    full = await dates_at_capacity(
+        session,
+        shop_id=customer.shop_id,
+        horizon_start=now_local.date(),
+        horizon_end=now_local.date() + timedelta(days=policy.horizon_days),
+    )
+    offered = chosen in available_dates(policy, now_local, full_dates=full)
+
+    hours = available_hours(policy, chosen, now_local) if offered else []
     target = _target(callback)
     if not hours:
         # The picker is rebuilt rather than trusted: minutes may have passed
@@ -179,9 +193,37 @@ async def pick_date(
     await target.answer(t("order.choose_hour", lang), reply_markup=order_hour_keyboard(lang, hours))
 
 
-async def pick_hour(callback: CallbackQuery, state: FSMContext, lang: str) -> None:
+async def pick_hour(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
     await callback.answer()
     hour = OrderHourCB.unpack(callback.data or "").hour
+    target = _target(callback)
+
+    # Same as the date: the hour is whatever the client sent. Refused unless
+    # `available_hours` -- the function that built this keyboard -- would have
+    # offered it for the chosen day, BEFORE it is stored and before the resume
+    # shortcut below can carry it straight to the confirmation screen.
+    data = await state.get_data()
+    if not data.get("delivery_date"):
+        await _show_dates(target, state, session, customer.shop_id, lang)
+        return
+    day = datetime.fromisoformat(str(data["delivery_date"])).date()
+    policy = await load_slot_policy(session, shop_id=customer.shop_id)
+    offered = available_hours(policy, day, datetime.now(TASHKENT))
+    if time(hour) not in offered if 0 <= hour <= 23 else True:
+        if not offered:
+            await _show_dates(target, state, session, customer.shop_id, lang)
+            return
+        await target.answer(
+            t("order.choose_hour", lang), reply_markup=order_hour_keyboard(lang, offered)
+        )
+        return
+
     await state.update_data(delivery_hour=hour)
 
     # RESUMING. The customer answered everything, then the date filled under
@@ -190,11 +232,11 @@ async def pick_hour(callback: CallbackQuery, state: FSMContext, lang: str) -> No
     # punishing them for someone else's timing.
     if (await state.get_data()).get("resume_at_confirm"):
         await state.update_data(resume_at_confirm=False)
-        await _show_confirmation(_target(callback), state, lang)
+        await _show_confirmation(target, state, lang)
         return
 
     await state.set_state(PlaceOrder.choosing_location)
-    await _target(callback).answer(
+    await target.answer(
         t("order.choose_location", lang), reply_markup=order_location_keyboard(lang)
     )
 
@@ -448,6 +490,10 @@ async def submit_order(
     # straight from the new hour back to the confirmation screen instead of
     # asking for an address they already typed.
     if not await claim_delivery_slot(session, shop_id=customer.shop_id, day=day):
+        # Release the lock BEFORE talking to Telegram. It is the commit that
+        # releases it, and every other customer ordering from this shop for this
+        # day is waiting on it -- for as long as this Telegram call takes.
+        await session.commit()
         await target.answer(
             t("order.date_filled", lang, date=format_date_long(day.day, day.month, None, lang))
         )
@@ -477,6 +523,18 @@ async def submit_order(
         delivery_at_utc = datetime.combine(day, hour, tzinfo=TASHKENT).astimezone(UTC)
         await materialize_order_pings(session, order=order, delivery_at_utc=delivery_at_utc)
         await announce_order(session, order=order)
+
+    # THE LOCK TAKEN BY `claim_delivery_slot` IS RELEASED HERE. Everything below
+    # talks to Telegram, and each call may take up to aiogram's 60-second
+    # default; holding a per-shop-per-day lock across that would make every
+    # other customer ordering for this day wait on one slow response. Measured
+    # in the pre-deployment audit: a holder idle in its transaction blocks the
+    # next submit with no bound, because lock_timeout and
+    # idle_in_transaction_session_timeout are both disabled.
+    #
+    # Also the durability boundary: the order, its pings and its announcement
+    # are committed before the customer is told the order was placed.
+    await session.commit()
 
     await state.clear()
     # The loser of a double-tap is told the same thing: from the customer's
