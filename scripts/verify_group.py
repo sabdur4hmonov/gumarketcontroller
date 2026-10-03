@@ -9,9 +9,15 @@ only the second one matters.
 So this does not ask Telegram what rights the bot has; it SENDS something and
 reports what came back.
 
-    python scripts/verify_group.py                 # discover, verify, and wire
-    python scripts/verify_group.py --chat-id -100…  # skip discovery
-    python scripts/verify_group.py --dry-run       # verify only, write nothing
+    python scripts/verify_group.py --shop-id 1                  # discover, verify, wire
+    python scripts/verify_group.py --shop-id 1 --chat-id -100…  # skip discovery
+    python scripts/verify_group.py --shop-id 1 --dry-run        # verify only, write nothing
+
+`--shop-id` IS REQUIRED, and a run without it stops before Telegram or the
+database is touched. C4 of AUDIT_MULTI_TENANT.md: this script used to run its
+UPDATE with no WHERE clause, which against a database of many shops would
+point EVERY shop's order cards at this one group, with no record of where they
+went before. An id that matches no shop is an error, not a zero-row update.
 
 DISCOVERY. Telegram gives bots no way to list their chats, so the id has to
 arrive in an update. Send any message in the group (or re-add the bot) and it
@@ -33,8 +39,12 @@ sys.path.insert(0, str(REPO_ROOT / "src"))
 
 import psycopg  # noqa: E402
 
-from gulbot.bot.factory import build_bot  # noqa: E402
+from gulbot.bot.chat_checks import check_group  # noqa: E402
+from gulbot.bot.registry import BotRegistry, registry_for  # noqa: E402
 from gulbot.config import get_settings  # noqa: E402
+from gulbot.db.session import task_session_factory  # noqa: E402
+from gulbot.i18n import t  # noqa: E402
+from gulbot.sending.transport import ShopBotUnavailable  # noqa: E402
 
 GROUP_TYPES = ("group", "supergroup")
 
@@ -54,15 +64,54 @@ async def discover(bot) -> list[tuple[int, str, str]]:  # type: ignore[no-untype
     return list(found.values())
 
 
-async def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--shop-id",
+        type=int,
+        required=True,
+        help="the ONE shop to wire to this group (shops.id)",
+    )
     parser.add_argument("--chat-id", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
-    args = parser.parse_args()
+    return parser
+
+
+def wire_group(conn: psycopg.Connection, *, shop_id: int, chat_id: int) -> str:
+    """Point exactly one shop at `chat_id`. Returns that shop's name.
+
+    Raises LookupError, having written nothing, if no shop has that id.
+    """
+    row = conn.execute(
+        "UPDATE shops SET group_chat_id = %s WHERE id = %s RETURNING name",
+        (chat_id, shop_id),
+    ).fetchone()
+    if row is None:
+        raise LookupError(f"no shop with id={shop_id}; group_chat_id was not written")
+    return str(row[0])
+
+
+async def shop_bots(shop_id: int) -> BotRegistry:
+    """A registry holding THIS shop's bot: its stored token, or the logged
+    legacy fallback. Proving that some other bot can post in the group would
+    prove nothing about the bot that will actually send the order cards."""
+    async with task_session_factory() as factory, factory() as session:
+        return await registry_for(session, shop_ids=[shop_id])
+
+
+async def main() -> int:
+    # Parsed FIRST: a missing --shop-id exits here, before any network or
+    # database access.
+    args = build_parser().parse_args()
 
     settings = get_settings()
-    bot = build_bot()
+    registry = await shop_bots(args.shop_id)
     try:
+        try:
+            bot = registry.bot_for(args.shop_id)
+        except ShopBotUnavailable as missing:
+            print(f"NOT VERIFIED: {missing}")
+            return 3
         me = await bot.get_me()
         print(f"bot: @{me.username} (id={me.id})")
 
@@ -83,15 +132,16 @@ async def main() -> int:
                 return 2
             chat_id = groups[0][0]
 
-        chat = await bot.get_chat(chat_id)
-        print(f"\ntarget: {chat.title!r} (chat_id={chat_id}, type={chat.type})")
-
-        # THE actual test. Not get_chat_member -- a permissions read can succeed
+        # THE check, shared with shop-owner onboarding (gulbot/bot/chat_checks.py)
+        # so there is one definition of "this bot can work in this group": an
+        # administrator, AND a real post -- a permissions read can succeed
         # while a send fails, and the send is what the ping tick does.
-        sent = await bot.send_message(
-            chat_id, "Gulbot: yetkazib berish xabarnomalari shu yerga keladi. ✅"
-        )
-        print(f"POSTED OK: message_id={sent.message_id}")
+        result = await check_group(bot, chat_id, test_text=t("owner.group_test_message"))
+        if not result.ok:
+            print(f"\nNOT VERIFIED: chat_id={chat_id}: {result.problem}")
+            return 3
+        print(f"\ntarget: {result.title!r} (chat_id={chat_id})")
+        print("POSTED OK: the bot is an administrator and can post there")
 
         if args.dry_run:
             print("--dry-run: shops.group_chat_id not written")
@@ -103,15 +153,16 @@ async def main() -> int:
             f"password={settings.postgres_password.get_secret_value()} "
             f"dbname={settings.postgres_db}"
         )
-        with psycopg.connect(dsn, autocommit=True) as conn:
-            rows = conn.execute(
-                "UPDATE shops SET group_chat_id = %s RETURNING id, name", (chat_id,)
-            ).fetchall()
-        for shop_id, name in rows:
-            print(f"wired shop {shop_id} ({name}) -> group_chat_id={chat_id}")
+        try:
+            with psycopg.connect(dsn, autocommit=True) as conn:
+                name = wire_group(conn, shop_id=args.shop_id, chat_id=chat_id)
+        except LookupError as missing:
+            print(f"\nNOT WIRED: {missing}")
+            return 3
+        print(f"wired shop {args.shop_id} ({name}) -> group_chat_id={chat_id}")
         return 0
     finally:
-        await bot.session.close()
+        await registry.close()
 
 
 if __name__ == "__main__":
