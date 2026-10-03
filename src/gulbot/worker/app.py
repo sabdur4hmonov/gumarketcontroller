@@ -49,6 +49,9 @@ HEALTH_SOFT_LIMIT, HEALTH_HARD_LIMIT = 60, 90
 SUMMARY_SOFT_LIMIT, SUMMARY_HARD_LIMIT = 120, 150
 MATERIALIZE_SOFT_LIMIT, MATERIALIZE_HARD_LIMIT = 1500, 1800
 ALBUM_SOFT_LIMIT, ALBUM_HARD_LIMIT = 60, 90
+# One Telegram message, or one UPDATE over expired pages.
+PAGE_NOTIFY_SOFT_LIMIT, PAGE_NOTIFY_HARD_LIMIT = 60, 90
+PAGE_SCRUB_SOFT_LIMIT, PAGE_SCRUB_HARD_LIMIT = 300, 360
 
 app = Celery(
     "gulbot",
@@ -89,6 +92,12 @@ app.conf.update(
         "daily-summary": {
             "task": "gulbot.send_daily_summary",
             "schedule": crontab(hour=21, minute=0),
+        },
+        # Expired Ha/Yo'q pages and taklifnomas lose what was typed into
+        # them, exactly as a deleted one does. After the materializer.
+        "scrub-expired-pages": {
+            "task": "gulbot.scrub_expired_pages",
+            "schedule": crontab(hour=3, minute=30),
         },
         "materialize-nightly": {
             "task": "gulbot.materialize_all_shops",

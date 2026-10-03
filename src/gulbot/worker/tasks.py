@@ -25,6 +25,10 @@ from gulbot.worker.app import (
     HEALTH_SOFT_LIMIT,
     MATERIALIZE_HARD_LIMIT,
     MATERIALIZE_SOFT_LIMIT,
+    PAGE_NOTIFY_HARD_LIMIT,
+    PAGE_NOTIFY_SOFT_LIMIT,
+    PAGE_SCRUB_HARD_LIMIT,
+    PAGE_SCRUB_SOFT_LIMIT,
     SUMMARY_HARD_LIMIT,
     SUMMARY_SOFT_LIMIT,
     TICK_HARD_LIMIT,
@@ -272,3 +276,52 @@ def finalize_album(shop_id: int, media_group_id: str) -> dict[str, object]:
             countdown=float(delay),  # type: ignore[arg-type]
         )
     return result
+
+
+# --- Ha/Yo'q pages and taklifnomas -------------------------------------------
+
+
+async def _notify_page_answer(page_id: int) -> str:
+    from gulbot.sending.page_notify import notify_page_answer as notify
+
+    async with task_session_factory() as factory:
+        return await notify(page_id, session_factory=factory)
+
+
+def _notify_retry() -> tuple[type[Exception], ...]:
+    from gulbot.sending.page_notify import NotifyRetry
+
+    return (NotifyRetry,)
+
+
+@app.task(
+    name="gulbot.notify_page_answer",
+    soft_time_limit=PAGE_NOTIFY_SOFT_LIMIT,
+    time_limit=PAGE_NOTIFY_HARD_LIMIT,
+    autoretry_for=_notify_retry(),
+    retry_backoff=60,
+    max_retries=3,
+)
+def notify_page_answer(page_id: int) -> str:
+    """Queued by the page server on a page's FIRST Ha. The claim in the
+    database, not this task, is what makes the message go out at most once."""
+    return asyncio.run(_notify_page_answer(page_id))
+
+
+async def _scrub_expired_pages() -> int:
+    from gulbot.services.share_pages import scrub_expired
+
+    async with task_session_factory() as factory, factory() as session:
+        scrubbed = await scrub_expired(session)
+        await session.commit()
+    log.info("share pages: scrubbed %s expired page(s)", scrubbed)
+    return scrubbed
+
+
+@app.task(
+    name="gulbot.scrub_expired_pages",
+    soft_time_limit=PAGE_SCRUB_SOFT_LIMIT,
+    time_limit=PAGE_SCRUB_HARD_LIMIT,
+)
+def scrub_expired_pages() -> int:
+    return asyncio.run(_scrub_expired_pages())

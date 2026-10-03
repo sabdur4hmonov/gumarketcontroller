@@ -139,3 +139,35 @@ class ShopOnboarding(StatesGroup):
     waiting_channel = State()
     waiting_group = State()
     sharing_phone = State()
+
+
+class YesNoPage(StatesGroup):
+    """Making a Ha/Yo'q page. One text step: the customer's own question."""
+
+    choosing_lang = State()
+    choosing_question = State()
+    entering_question = State()
+    choosing_template = State()
+    choosing_notify = State()
+    confirming = State()
+
+
+class InvitePage(StatesGroup):
+    """Making a taklifnoma. Text only for the names, the venue and the
+    optional message; the date and time are pickers, the map pin is
+    Telegram's own location share."""
+
+    choosing_event = State()
+    choosing_lang = State()
+    entering_name_1 = State()
+    entering_name_2 = State()
+    choosing_month = State()
+    choosing_day = State()
+    choosing_hour = State()
+    choosing_minute = State()
+    entering_venue = State()
+    sending_location = State()
+    entering_message = State()
+    choosing_rsvp = State()
+    choosing_template = State()
+    confirming = State()

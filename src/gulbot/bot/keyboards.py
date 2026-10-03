@@ -74,6 +74,9 @@ def main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
         [
             [t("btn.menu.browse", lang)],
             [t("btn.menu.occasions", lang)],
+            # Ha/Yo'q pages and taklifnomas: each page carries this shop's
+            # link back to this bot, so it earns its row.
+            [t("btn.menu.pages", lang)],
             [t("btn.menu.settings", lang), t("btn.menu.help", lang)],
         ]
     )

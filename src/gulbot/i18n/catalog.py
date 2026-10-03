@@ -976,6 +976,225 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Чтобы подключить новый магазин, отправьте /start.",
     },
     "btn.owner.pick_group": {"uz": "👥 Guruhni tanlash", "ru": "👥 Выбрать группу"},
+    # --- Ha/Yo'q pages and taklifnomas -------------------------------------
+    "btn.menu.pages": {"uz": "💌 Taklifnoma · Ha/Yo'q", "ru": "💌 Приглашения · Да/Нет"},
+    "pages.menu": {
+        "uz": (
+            "Nima yaratamiz?\n\n"
+            "💍 <b>Ha/Yo'q sahifa</b> — bitta savol, «Yo'q» tugmasi esa qochib ketadi 😄\n"
+            "💌 <b>Taklifnoma</b> — to'y, tug'ilgan kun va boshqa tadbirlar uchun chiroyli "
+            "havola.\n\nTayyor havolani Telegram orqali yuborasiz."
+        ),
+        "ru": (
+            "Что создаём?\n\n"
+            "💍 <b>Страница «Да/Нет»</b> — один вопрос, а кнопка «Нет» убегает 😄\n"
+            "💌 <b>Приглашение</b> — красивая ссылка на свадьбу, день рождения и другие "
+            "события.\n\nГотовую ссылку отправляете через Telegram."
+        ),
+    },
+    "ibtn.pages.yesno": {"uz": "💍 Ha/Yo'q sahifa", "ru": "💍 Страница «Да/Нет»"},
+    "ibtn.pages.invite": {"uz": "💌 Taklifnoma", "ru": "💌 Приглашение"},
+    "ibtn.pages.mine": {"uz": "📂 Mening sahifalarim", "ru": "📂 Мои страницы"},
+    "pages.unavailable": {
+        "uz": "Bu xizmat hali ishga tushmagan. Tez orada!",
+        "ru": "Эта функция ещё не запущена. Скоро!",
+    },
+    "pages.choose_lang": {
+        "uz": "Sahifa qaysi tilda bo'lsin?",
+        "ru": "На каком языке будет страница?",
+    },
+    "pages.choose_question": {
+        "uz": "Qaysi savolni beramiz?",
+        "ru": "Какой вопрос задаём?",
+    },
+    "ibtn.pages.custom_question": {"uz": "✏️ O'zim yozaman", "ru": "✏️ Напишу свой"},
+    "pages.enter_question": {
+        "uz": "Savolingizni yozing ({max} belgigacha).",
+        "ru": "Напишите свой вопрос (до {max} символов).",
+    },
+    "pages.text_empty": {
+        "uz": "Matnni yozing — tugma emas. Qaytadan urinib ko'ring.",
+        "ru": "Напишите текст — не кнопку. Попробуйте ещё раз.",
+    },
+    "pages.text_trimmed": {
+        "uz": "Matn {max} belgigacha qisqartirildi.",
+        "ru": "Текст сокращён до {max} символов.",
+    },
+    "pages.choose_template": {
+        "uz": "Dizaynni tanlang. Hammasini oldindan ko'rish:\n{gallery}",
+        "ru": "Выберите дизайн. Посмотреть все заранее:\n{gallery}",
+    },
+    "pages.ask_notify": {
+        "uz": "«Ha» deb javob berishsa, sizga xabar beraymi?",
+        "ru": "Сообщить вам, когда ответят «Да»?",
+    },
+    "ibtn.pages.notify_yes": {"uz": "🔔 Ha, xabar bering", "ru": "🔔 Да, сообщите"},
+    "ibtn.pages.notify_no": {"uz": "🔕 Shart emas", "ru": "🔕 Не нужно"},
+    "pages.confirm_yesno": {
+        "uz": (
+            "Tekshiring:\n\n❓ <b>{question}</b>\n🌐 Til: {lang_name}\n🎨 Dizayn: {template}\n"
+            "🔔 Xabar berish: {notify}\n\nYaratamizmi?"
+        ),
+        "ru": (
+            "Проверьте:\n\n❓ <b>{question}</b>\n🌐 Язык: {lang_name}\n🎨 Дизайн: {template}\n"
+            "🔔 Уведомить: {notify}\n\nСоздаём?"
+        ),
+    },
+    "ibtn.pages.create": {"uz": "✅ Yaratish", "ru": "✅ Создать"},
+    "ibtn.pages.cancel": {"uz": "❌ Bekor qilish", "ru": "❌ Отмена"},
+    "pages.created": {
+        "uz": (
+            "Tayyor! 🎉 Mana havola:\n\n{url}\n\n"
+            "Uni Telegram'da kimga xohlasangiz yuboring. Sahifa {expires} gacha ochiq turadi."
+        ),
+        "ru": (
+            "Готово! 🎉 Вот ссылка:\n\n{url}\n\n"
+            "Отправьте её в Telegram кому хотите. Страница открыта до {expires}."
+        ),
+    },
+    "ibtn.pages.open": {"uz": "🔗 Ochish", "ru": "🔗 Открыть"},
+    "ibtn.pages.share": {"uz": "📤 Ulashish", "ru": "📤 Поделиться"},
+    "pages.limit_daily": {
+        "uz": "Bugun {n} ta sahifa yaratdingiz — bu kunlik chegara. Ertaga yana urinib ko'ring.",
+        "ru": "Сегодня вы создали {n} страниц — это дневной лимит. Попробуйте завтра.",
+    },
+    "pages.limit_live": {
+        "uz": "Sizda {n} ta faol sahifa bor. Yangisi uchun eskisini o'chiring.",
+        "ru": "У вас {n} активных страниц. Удалите старую, чтобы создать новую.",
+    },
+    "pages.cancelled": {"uz": "Bekor qilindi.", "ru": "Отменено."},
+    "pages.choose_event": {"uz": "Qanday tadbir?", "ru": "Какое мероприятие?"},
+    "ibtn.event.wedding": {"uz": "💍 To'y", "ru": "💍 Свадьба"},
+    "ibtn.event.nikoh": {"uz": "🤍 Nikoh to'yi", "ru": "🤍 Никах"},
+    "ibtn.event.fotiha": {"uz": "💐 Fotiha to'yi", "ru": "💐 Фатиха-туй"},
+    "ibtn.event.birthday": {"uz": "🎂 Tug'ilgan kun", "ru": "🎂 День рождения"},
+    "ibtn.event.beshik": {"uz": "👶 Beshik to'yi", "ru": "👶 Бешик-туй"},
+    "ibtn.event.sunnat": {"uz": "🎊 Sunnat to'yi", "ru": "🎊 Суннат-туй"},
+    "ibtn.event.anniversary": {"uz": "🥂 Yubiley", "ru": "🥂 Юбилей"},
+    "ibtn.event.graduation": {"uz": "🎓 Bitiruv kechasi", "ru": "🎓 Выпускной"},
+    "ibtn.event.corporate": {"uz": "🏢 Korporativ", "ru": "🏢 Корпоратив"},
+    "ibtn.event.other": {"uz": "✨ Boshqa tadbir", "ru": "✨ Другое событие"},
+    "pages.enter_couple_1": {
+        "uz": "Kuyovning ismini yozing ({max} belgigacha).",
+        "ru": "Напишите имя жениха (до {max} символов).",
+    },
+    "pages.enter_couple_2": {
+        "uz": "Endi kelinning ismini yozing.",
+        "ru": "Теперь имя невесты.",
+    },
+    "pages.enter_name_single": {
+        "uz": "Kim uchun tadbir? Ismini yozing — masalan, «Malika» yoki «Aliyevlar oilasi».",
+        "ru": "Для кого праздник? Напишите имя — например, «Малика» или «Семья Алиевых».",
+    },
+    "pages.choose_month": {"uz": "Tadbir qaysi oyda?", "ru": "В каком месяце?"},
+    "pages.choose_day": {"uz": "Qaysi kuni?", "ru": "Какого числа?"},
+    "pages.choose_hour": {"uz": "Soat nechada boshlanadi?", "ru": "Во сколько начало?"},
+    "pages.choose_minute": {"uz": "Aniq vaqt:", "ru": "Точное время:"},
+    "pages.enter_venue": {
+        "uz": "Manzilni yozing: to'yxona, shahar, ko'cha ({max} belgigacha).",
+        "ru": "Напишите место: зал, город, улица (до {max} символов).",
+    },
+    "pages.ask_location": {
+        "uz": (
+            "Joyni xaritada ko'rsatamizmi? 📎 → «Joylashuv» orqali kerakli nuqtani yuboring "
+            "yoki o'tkazib yuboring."
+        ),
+        "ru": (
+            "Показать место на карте? Отправьте нужную точку через 📎 → «Геопозиция» "
+            "или пропустите."
+        ),
+    },
+    "ibtn.pages.skip": {"uz": "⏭ O'tkazib yuborish", "ru": "⏭ Пропустить"},
+    "pages.location_saved": {"uz": "📍 Joy saqlandi.", "ru": "📍 Место сохранено."},
+    "pages.enter_message": {
+        "uz": (
+            "Mehmonlarga o'z so'zingizni yozasizmi? ({max} belgigacha) "
+            "Yozmasangiz, tayyor chiroyli matn qo'yiladi."
+        ),
+        "ru": (
+            "Напишете гостям своё обращение? (до {max} символов) "
+            "Если нет — подставим готовый текст."
+        ),
+    },
+    "pages.ask_rsvp": {
+        "uz": (
+            "Mehmonlar «Kelaman / Kela olmayman» deb javob bera olsinmi? "
+            "Javoblar soni shu yerda, «Mening sahifalarim»da ko'rinadi."
+        ),
+        "ru": (
+            "Дать гостям ответить «Приду / Не смогу»? "
+            "Число ответов будет видно здесь, в «Мои страницы»."
+        ),
+    },
+    "ibtn.pages.rsvp_yes": {"uz": "✅ Ha", "ru": "✅ Да"},
+    "ibtn.pages.rsvp_no": {"uz": "Kerak emas", "ru": "Не нужно"},
+    "pages.confirm_invite": {
+        "uz": (
+            "Tekshiring:\n\n{event}: <b>{names}</b>\n📅 {date}, {time}\n📍 {venue}{pin}\n"
+            "💬 {message}\n✅ Javoblar (RSVP): {rsvp}\n🌐 Til: {lang_name}\n🎨 Dizayn: {template}"
+            "\n\nYaratamizmi?"
+        ),
+        "ru": (
+            "Проверьте:\n\n{event}: <b>{names}</b>\n📅 {date}, {time}\n📍 {venue}{pin}\n"
+            "💬 {message}\n✅ Ответы (RSVP): {rsvp}\n🌐 Язык: {lang_name}\n🎨 Дизайн: {template}"
+            "\n\nСоздаём?"
+        ),
+    },
+    "pages.word_yes": {"uz": "ha", "ru": "да"},
+    "pages.word_no": {"uz": "yo'q", "ru": "нет"},
+    "pages.word_pin": {"uz": " (xaritada)", "ru": " (на карте)"},
+    "pages.word_default_text": {"uz": "tayyor matn", "ru": "готовый текст"},
+    "pages.mine_empty": {
+        "uz": "Sizda hali sahifa yo'q. Yangisini yarating:",
+        "ru": "У вас пока нет страниц. Создайте новую:",
+    },
+    "pages.mine_title": {"uz": "Sahifalaringiz:", "ru": "Ваши страницы:"},
+    "pages.detail_yesno": {
+        "uz": (
+            "💍 <b>{question}</b>\n\n🔗 {url}\n👀 Ochishlar: {views}\n🌸 Do'kon havolasi "
+            "bosilgan: {clicks}\n{answer}\n⏳ {expires} gacha"
+        ),
+        "ru": (
+            "💍 <b>{question}</b>\n\n🔗 {url}\n👀 Открытий: {views}\n🌸 Переходов в магазин: "
+            "{clicks}\n{answer}\n⏳ до {expires}"
+        ),
+    },
+    "pages.answer_none": {"uz": "⏳ Hali javob yo'q", "ru": "⏳ Ответа пока нет"},
+    "pages.answer_yes": {"uz": "✅ Javob: «Ha»! ({when})", "ru": "✅ Ответ: «Да»! ({when})"},
+    "pages.detail_invite": {
+        "uz": (
+            "💌 <b>{names}</b> — {event}\n📅 {date}\n\n🔗 {url}\n👀 Ochishlar: {views}\n"
+            "🌸 Do'kon havolasi bosilgan: {clicks}\n{rsvp}\n⏳ {expires} gacha"
+        ),
+        "ru": (
+            "💌 <b>{names}</b> — {event}\n📅 {date}\n\n🔗 {url}\n👀 Открытий: {views}\n"
+            "🌸 Переходов в магазин: {clicks}\n{rsvp}\n⏳ до {expires}"
+        ),
+    },
+    "pages.rsvp_counts": {
+        "uz": "✅ Kelaman: {coming} (jami {guests} kishi)\n❌ Kela olmayman: {not_coming}",
+        "ru": "✅ Придут: {coming} (всего {guests} чел.)\n❌ Не смогут: {not_coming}",
+    },
+    "pages.rsvp_off": {"uz": "RSVP o'chirilgan", "ru": "RSVP выключен"},
+    "ibtn.pages.delete": {"uz": "🗑 O'chirish", "ru": "🗑 Удалить"},
+    "ibtn.pages.really_delete": {"uz": "🗑 Ha, o'chirilsin", "ru": "🗑 Да, удалить"},
+    "ibtn.pages.back_list": {"uz": "⬅️ Ro'yxatga", "ru": "⬅️ К списку"},
+    "pages.confirm_delete": {
+        "uz": "Sahifa o'chirilsinmi? Havola boshqa ochilmaydi, yozilgan matnlar o'chiriladi.",
+        "ru": "Удалить страницу? Ссылка перестанет открываться, а текст будет стёрт.",
+    },
+    "pages.deleted": {"uz": "O'chirildi.", "ru": "Удалено."},
+    "pages.gone": {"uz": "Bu sahifa topilmadi.", "ru": "Страница не найдена."},
+    "pages.notify_yes": {
+        "uz": (
+            "🎉 Javob keldi! «{question}» savolingizga <b>«Ha»</b> deb javob berishdi 💖\n\n"
+            "Bu kunni gullar bilan nishonlang 🌸"
+        ),
+        "ru": (
+            "🎉 Есть ответ! На вопрос «{question}» ответили <b>«Да»</b> 💖\n\n"
+            "Отметьте этот день цветами 🌸"
+        ),
+    },
 }
 
 BUTTON_KEYS: Final = tuple(k for k in CATALOG if k.startswith("btn."))

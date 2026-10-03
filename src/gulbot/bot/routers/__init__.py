@@ -21,6 +21,7 @@ from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
+from gulbot.bot.routers.share_pages import build_share_pages_router
 from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
 
 
@@ -60,6 +61,10 @@ def build_routers() -> tuple[Router, ...]:
         # CP10. Its own callback prefixes and its own states, so it neither
         # shadows nor is shadowed by the occasions flow.
         build_orders_router(),
+        # Ha/Yo'q pages and taklifnomas. Five text-waiting states, each a
+        # state-scoped catch_all, so after nav and onboarding like every
+        # other flow; its menu entry is StateFilter(None).
+        build_share_pages_router(),
         build_menu_router(),
         build_fallback_router(),
     )

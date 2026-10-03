@@ -312,6 +312,127 @@ class OnboardBrandingCB(CallbackData, prefix="obrand"):
         return [cls(answer=a).pack() for a in ("yes", "no")]
 
 
+# --- Ha/Yo'q pages and taklifnomas --------------------------------------------
+#
+# Every value below is re-checked by bot/routers/share_pages.py against the set
+# its keyboard was built from; a crafted payload reaches nothing it could not
+# have reached by tapping.
+
+
+class PageMenuCB(CallbackData, prefix="pgmenu"):
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("yesno", "invite", "mine")]
+
+
+class PageLangCB(CallbackData, prefix="pglang"):
+    lang: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(lang=lang).pack() for lang in ("uz", "uz_cyrl", "ru", "en")]
+
+
+class PageQuestionCB(CallbackData, prefix="pgq"):
+    preset: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(preset=p).pack() for p in ("marry", "date", "custom")]
+
+
+class PageTemplateCB(CallbackData, prefix="pgtpl"):
+    template: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(template=t).pack() for t in ("milliy", "konvert")]
+
+
+class PageChoiceCB(CallbackData, prefix="pgyn"):
+    """A yes/no setting inside a flow: notify the creator, take RSVPs."""
+
+    field: str
+    value: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(field=f, value=v).pack() for f in ("notify", "rsvp") for v in ("yes", "no")]
+
+
+class InviteEventCB(CallbackData, prefix="pgev"):
+    event: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(event=e).pack() for e in ("wedding", "birthday", "other")]
+
+
+class InviteMonthCB(CallbackData, prefix="pgmon"):
+    year: int
+    month: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(year=2027, month=m).pack() for m in (1, 12)]
+
+
+class InviteDayCB(CallbackData, prefix="pgday"):
+    day: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(day=d).pack() for d in (1, 31)]
+
+
+class InviteHourCB(CallbackData, prefix="pghr"):
+    hour: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(hour=h).pack() for h in (7, 23)]
+
+
+class InviteMinuteCB(CallbackData, prefix="pgmin"):
+    minute: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(minute=m).pack() for m in (0, 45)]
+
+
+class PageSkipCB(CallbackData, prefix="pgskip"):
+    step: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(step=s).pack() for s in ("location", "message")]
+
+
+class PageConfirmCB(CallbackData, prefix="pgok"):
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("create", "cancel")]
+
+
+class MyPageCB(CallbackData, prefix="pgmine"):
+    """`page_id` is never trusted: it is looked up with this shop and this
+    customer, so a crafted id finds nothing."""
+
+    action: str
+    page_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(action=a, page_id=1).pack() for a in ("list", "open", "delete", "really_delete")
+        ]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OccasionTypeCB,
     MonthCB,
@@ -339,6 +460,19 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     BrowsePickCB,
     OrderAdminCB,
     OnboardBrandingCB,
+    PageMenuCB,
+    PageLangCB,
+    PageQuestionCB,
+    PageTemplateCB,
+    PageChoiceCB,
+    InviteEventCB,
+    InviteMonthCB,
+    InviteDayCB,
+    InviteHourCB,
+    InviteMinuteCB,
+    PageSkipCB,
+    PageConfirmCB,
+    MyPageCB,
 )
 
 

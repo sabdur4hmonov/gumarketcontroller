@@ -29,6 +29,8 @@ GULBOT_TASKS = {
     "gulbot.send_daily_summary",
     "gulbot.materialize_all_shops",
     "gulbot.finalize_album",
+    "gulbot.notify_page_answer",
+    "gulbot.scrub_expired_pages",
 }
 
 
