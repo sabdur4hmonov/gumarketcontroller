@@ -1,0 +1,685 @@
+"""Ha/Yo'q pages and taklifnomas: creating, finding, answering, deleting.
+
+EVERY CUSTOMER-SIDE READ AND WRITE IS SCOPED BY (shop_id, customer_id). The bot
+passes the shop its dispatcher is bound to and the customer the middleware
+resolved, never a value from a callback. A page id that arrives in a button --
+which a client can craft -- is only ever looked up together with those two, so
+shop A's bot cannot open, count or delete a page of shop B's, or another
+customer's page in the same shop. `tests/test_share_page_tenancy.py`.
+
+THE PUBLIC SIDE IS SCOPED BY THE TOKEN, and only the token. It is 128 random
+bits, it is the whole of the page's address, and it is never derived from an id.
+A referral is the one place both meet: a token arriving in shop A's bot is
+honoured only if the page belongs to shop A.
+
+THE CREATION LIMIT is per customer, taken under an advisory lock so a double tap
+cannot slip two pages past it: CREATE_PER_DAY in any rolling 24 hours, deleted
+pages included (deleting is not a way round it), and LIVE_PER_CUSTOMER at once.
+"""
+
+from __future__ import annotations
+
+import re
+import secrets
+import unicodedata
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
+from typing import Final
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import and_, func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from gulbot.models.customer import Customer
+from gulbot.models.order import Order
+from gulbot.models.share_page import (
+    EVENT_TYPES,
+    GUEST_NAME_MAX,
+    MAX_GUESTS,
+    MESSAGE_MAX,
+    NAME_MAX,
+    PAGE_LANGUAGES,
+    PAGE_TEMPLATES,
+    QUESTION_MAX,
+    QUESTION_PRESETS,
+    VENUE_MAX,
+    PageKind,
+    SharePage,
+    SharePageReferral,
+    SharePageRsvp,
+)
+from gulbot.models.shop import Shop
+
+#: Pages one customer may create in any rolling 24 hours, deleted ones included.
+CREATE_PER_DAY: Final = 5
+#: Live pages one customer may hold at once.
+LIVE_PER_CUSTOMER: Final = 20
+#: A Ha/Yo'q page answers one question; two months is plenty to be asked it.
+YESNO_LIFETIME: Final = timedelta(days=60)
+#: An invitation stays up a fortnight after the event, for the photos-and-thanks
+#: messages that follow one.
+INVITE_GRACE: Final = timedelta(days=14)
+#: How far ahead an event may be. The month picker offers exactly this window.
+INVITE_HORIZON_MONTHS: Final = 12
+#: A crude cap on one page's RSVP rows, so a script cannot fill the table.
+RSVPS_PER_PAGE: Final = 500
+#: Namespaces the advisory lock, so it cannot collide with the order path's
+#: (shop_id, day) locks -- shop ids are small and this is not one.
+_LOCK_NAMESPACE: Final = 0x50474553  # "PGES"
+
+_CONTROL = re.compile(r"[\u0000-\u0008\u000b-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]")
+_SPACES = re.compile(r"[ \t]+")
+
+
+class PageLimitReached(Exception):
+    """The customer has made as many pages as they may for now."""
+
+    def __init__(self, which: str) -> None:
+        super().__init__(which)
+        self.which = which  # "daily" or "live"
+
+
+class InvalidDraft(ValueError):
+    """A draft that did not come from the bot's own pickers."""
+
+
+def clean_text(value: str | None, limit: int, *, multiline: bool = False) -> str | None:
+    """User text as it is stored: trimmed, capped, with control and
+    direction-override characters removed. None when nothing is left.
+
+    Escaping is NOT done here -- it belongs to the output (Jinja's autoescape,
+    or `escape` before Telegram HTML). Stored text is the text that was typed.
+    """
+    if value is None:
+        return None
+    value = unicodedata.normalize("NFC", value)
+    value = _CONTROL.sub("", value.replace("\r\n", "\n").replace("\r", "\n"))
+    if multiline:
+        lines = [_SPACES.sub(" ", line).strip() for line in value.split("\n")]
+        value = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+    else:
+        value = _SPACES.sub(" ", value.replace("\n", " ")).strip()
+    value = value[:limit].rstrip()
+    return value or None
+
+
+def new_token() -> str:
+    """128 random bits, URL-safe: the page's address and its only secret."""
+    return secrets.token_urlsafe(16)
+
+
+@dataclass(frozen=True)
+class YesNoDraft:
+    template: str
+    lang: str
+    question_preset: str
+    question: str
+    notify_creator: bool
+
+
+@dataclass(frozen=True)
+class InviteDraft:
+    template: str
+    lang: str
+    event_type: str
+    name_1: str
+    name_2: str | None
+    event_date: date
+    event_time: time
+    venue: str
+    location: tuple[Decimal, Decimal] | None
+    message: str | None
+    rsvp_enabled: bool
+
+
+def _check_common(template: str, lang: str) -> None:
+    if template not in PAGE_TEMPLATES:
+        raise InvalidDraft(f"unknown template {template!r}")
+    if lang not in PAGE_LANGUAGES:
+        raise InvalidDraft(f"unknown page language {lang!r}")
+
+
+def invite_expiry(event_date: date, tz: ZoneInfo) -> datetime:
+    """The end of the event day, plus the grace period, as an instant."""
+    end_of_day = datetime.combine(event_date, time(23, 59), tzinfo=tz)
+    return (end_of_day + INVITE_GRACE).astimezone(UTC)
+
+
+def event_window(today: date) -> tuple[date, date]:
+    """First and last date an invitation may be for: today, through the same
+    day INVITE_HORIZON_MONTHS on."""
+    year, month = divmod(today.month - 1 + INVITE_HORIZON_MONTHS, 12)
+    last_year, last_month = today.year + year, month + 1
+    day = min(today.day, _days_in(last_year, last_month))
+    return today, date(last_year, last_month, day)
+
+
+def _days_in(year: int, month: int) -> int:
+    nxt = date(year + (month == 12), month % 12 + 1, 1)
+    return (nxt - timedelta(days=1)).day
+
+
+async def _lock_customer(session: AsyncSession, customer_id: int) -> None:
+    await session.execute(
+        text("SELECT pg_advisory_xact_lock(:ns, :customer)"),
+        {"ns": _LOCK_NAMESPACE, "customer": customer_id % 2_147_483_647},
+    )
+
+
+async def check_limits(
+    session: AsyncSession, *, shop_id: int, customer_id: int, now: datetime
+) -> None:
+    """Raise PageLimitReached if one more page would be one too many."""
+    made_today = await session.scalar(
+        select(func.count())
+        .select_from(SharePage)
+        .where(
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.created_at > now - timedelta(hours=24),
+        )
+    )
+    if (made_today or 0) >= CREATE_PER_DAY:
+        raise PageLimitReached("daily")
+    live = await session.scalar(
+        select(func.count())
+        .select_from(SharePage)
+        .where(
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.deleted_at.is_(None),
+            SharePage.expires_at > now,
+        )
+    )
+    if (live or 0) >= LIVE_PER_CUSTOMER:
+        raise PageLimitReached("live")
+
+
+async def create_page(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    bot_username: str | None,
+    draft: YesNoDraft | InviteDraft,
+    now: datetime | None = None,
+) -> SharePage:
+    """Write one page, or raise PageLimitReached / InvalidDraft.
+
+    Call inside the handler's transaction: the limit is checked under a lock
+    that the commit releases, so two taps on Create count as two.
+    """
+    now = now or datetime.now(UTC)
+    _check_common(draft.template, draft.lang)
+    values: dict[str, object] = {
+        "shop_id": shop_id,
+        "customer_id": customer_id,
+        "template": draft.template,
+        "lang": draft.lang,
+        "bot_username": bot_username,
+        # The same clock the limit is checked against, not the server's.
+        "created_at": now,
+    }
+    if isinstance(draft, YesNoDraft):
+        if draft.question_preset not in QUESTION_PRESETS:
+            raise InvalidDraft(f"unknown question preset {draft.question_preset!r}")
+        question = clean_text(draft.question, QUESTION_MAX)
+        if question is None:
+            raise InvalidDraft("empty question")
+        values |= {
+            "kind": PageKind.YESNO.value,
+            "question_preset": draft.question_preset,
+            "question": question,
+            "notify_creator": draft.notify_creator,
+            "expires_at": now + YESNO_LIFETIME,
+        }
+    else:
+        if draft.event_type not in EVENT_TYPES:
+            raise InvalidDraft(f"unknown event type {draft.event_type!r}")
+        name_1 = clean_text(draft.name_1, NAME_MAX)
+        venue = clean_text(draft.venue, VENUE_MAX)
+        if name_1 is None or venue is None:
+            raise InvalidDraft("an invitation needs a name and a venue")
+        tz = await _shop_timezone(session, shop_id)
+        first, last = event_window(now.astimezone(tz).date())
+        if not first <= draft.event_date <= last:
+            raise InvalidDraft("event date outside the window the picker offers")
+        lat, lon = draft.location if draft.location is not None else (None, None)
+        if lat is not None and lon is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise InvalidDraft("location out of range")
+        values |= {
+            "kind": PageKind.INVITE.value,
+            "event_type": draft.event_type,
+            "name_1": name_1,
+            "name_2": clean_text(draft.name_2, NAME_MAX),
+            "event_date": draft.event_date,
+            "event_time": draft.event_time,
+            "venue": venue,
+            "location_lat": lat,
+            "location_lon": lon,
+            "message": clean_text(draft.message, MESSAGE_MAX, multiline=True),
+            "rsvp_enabled": draft.rsvp_enabled,
+            "expires_at": invite_expiry(draft.event_date, tz),
+        }
+
+    await _lock_customer(session, customer_id)
+    await check_limits(session, shop_id=shop_id, customer_id=customer_id, now=now)
+
+    for _attempt in range(3):
+        page = SharePage(token=new_token(), **values)
+        try:
+            async with session.begin_nested():
+                session.add(page)
+                await session.flush()
+        except IntegrityError as clash:
+            # 128 random bits do not collide; this is here so a collision is a
+            # retry rather than a customer-facing error if the impossible happens.
+            if "uq_share_pages_token" not in str(clash.orig):
+                raise
+            continue
+        return page
+    raise RuntimeError("could not mint a unique page token")  # pragma: no cover
+
+
+async def _shop_timezone(session: AsyncSession, shop_id: int) -> ZoneInfo:
+    name = await session.scalar(select(Shop.timezone).where(Shop.id == shop_id))
+    return ZoneInfo(name or "Asia/Tashkent")
+
+
+async def list_pages(
+    session: AsyncSession, *, shop_id: int, customer_id: int, now: datetime | None = None
+) -> list[SharePage]:
+    """The customer's live pages in THIS shop, newest first."""
+    now = now or datetime.now(UTC)
+    rows = await session.scalars(
+        select(SharePage)
+        .where(
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.deleted_at.is_(None),
+            SharePage.expires_at > now,
+        )
+        .order_by(SharePage.created_at.desc(), SharePage.id.desc())
+        .limit(LIVE_PER_CUSTOMER)
+    )
+    return list(rows)
+
+
+async def get_own_page(
+    session: AsyncSession, *, shop_id: int, customer_id: int, page_id: int
+) -> SharePage | None:
+    """One page, only if it is THIS customer's in THIS shop and still live."""
+    return await session.scalar(
+        select(SharePage).where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.deleted_at.is_(None),
+        )
+    )
+
+
+#: Everything a person typed, set to NULL when a page is deleted or expires.
+_SCRUB = {
+    "question": None,
+    "name_1": None,
+    "name_2": None,
+    "venue": None,
+    "location_lat": None,
+    "location_lon": None,
+    "message": None,
+}
+
+
+async def delete_page(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    page_id: int,
+    now: datetime | None = None,
+) -> bool:
+    """Take the page down and scrub what was typed into it. True if it was
+    this customer's live page; False for anything else, which changes nothing."""
+    now = now or datetime.now(UTC)
+    deleted = await session.scalar(
+        update(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.deleted_at.is_(None),
+        )
+        .values(deleted_at=now, **_SCRUB)
+        .returning(SharePage.id)
+    )
+    if deleted is None:
+        return False
+    await session.execute(
+        update(SharePageRsvp)
+        .where(SharePageRsvp.page_id == page_id, SharePageRsvp.shop_id == shop_id)
+        .values(guest_name=None)
+    )
+    return True
+
+
+async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -> int:
+    """Nightly: expired pages lose their text exactly as a deleted one does."""
+    now = now or datetime.now(UTC)
+    ids = list(
+        await session.scalars(
+            update(SharePage)
+            .where(SharePage.deleted_at.is_(None), SharePage.expires_at <= now)
+            .values(deleted_at=now, **_SCRUB)
+            .returning(SharePage.id)
+        )
+    )
+    if ids:
+        await session.execute(
+            update(SharePageRsvp).where(SharePageRsvp.page_id.in_(ids)).values(guest_name=None)
+        )
+    return len(ids)
+
+
+@dataclass(frozen=True)
+class RsvpSummary:
+    coming: int
+    guests: int
+    not_coming: int
+
+
+async def rsvp_summary(session: AsyncSession, *, shop_id: int, page_id: int) -> RsvpSummary:
+    row = (
+        await session.execute(
+            select(
+                func.count().filter(SharePageRsvp.answer == "yes"),
+                func.coalesce(func.sum(SharePageRsvp.guests), 0),
+                func.count().filter(SharePageRsvp.answer == "no"),
+            ).where(SharePageRsvp.page_id == page_id, SharePageRsvp.shop_id == shop_id)
+        )
+    ).one()
+    return RsvpSummary(coming=int(row[0]), guests=int(row[1]), not_coming=int(row[2]))
+
+
+# --- the public side ---------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PublicPage:
+    page: SharePage
+    shop_name: str
+    shop_timezone: str
+    live: bool
+
+
+async def load_public_page(
+    session: AsyncSession, token: str, *, now: datetime | None = None
+) -> PublicPage | None:
+    """The page at this token, with its shop's name. None if no such token.
+
+    `live` is False for a deleted or expired page: the caller shows "gone",
+    and nothing typed into it is rendered.
+    """
+    now = now or datetime.now(UTC)
+    row = (
+        await session.execute(
+            select(SharePage, Shop.name, Shop.timezone)
+            .join(Shop, Shop.id == SharePage.shop_id)
+            .where(SharePage.token == token)
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    page, shop_name, shop_tz = row
+    live = page.deleted_at is None and page.expires_at > now
+    return PublicPage(page=page, shop_name=shop_name, shop_timezone=shop_tz, live=live)
+
+
+async def record_view(session: AsyncSession, *, page_id: int) -> None:
+    await session.execute(
+        update(SharePage).where(SharePage.id == page_id).values(view_count=SharePage.view_count + 1)
+    )
+
+
+async def record_cta(
+    session: AsyncSession, token: str, *, now: datetime | None = None
+) -> tuple[str | None, bool] | None:
+    """Count a tap on the shop's link. Returns (bot_username, live), or None
+    for an unknown token."""
+    now = now or datetime.now(UTC)
+    row = (
+        await session.execute(
+            update(SharePage)
+            .where(SharePage.token == token)
+            .values(cta_click_count=SharePage.cta_click_count + 1)
+            .returning(SharePage.bot_username, SharePage.deleted_at, SharePage.expires_at)
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    username, deleted_at, expires_at = row
+    return username, deleted_at is None and expires_at > now
+
+
+@dataclass(frozen=True)
+class YesOutcome:
+    page_id: int
+    first: bool
+    notify: bool
+
+
+async def answer_yes(
+    session: AsyncSession, token: str, *, now: datetime | None = None
+) -> YesOutcome | None:
+    """Record a Ha. Only the FIRST one sets answered_at -- compare-and-swap on
+    `answered_at IS NULL` -- so `first` is True exactly once per page however
+    often the button is pressed. None for anything that is not a live yesno."""
+    now = now or datetime.now(UTC)
+    live = and_(
+        SharePage.token == token,
+        SharePage.kind == PageKind.YESNO.value,
+        SharePage.deleted_at.is_(None),
+        SharePage.expires_at > now,
+    )
+    row = (
+        await session.execute(
+            update(SharePage)
+            .where(live, SharePage.answered_at.is_(None))
+            .values(answered_at=now)
+            .returning(SharePage.id, SharePage.notify_creator)
+        )
+    ).one_or_none()
+    if row is not None:
+        return YesOutcome(page_id=int(row[0]), first=True, notify=bool(row[1]))
+    page_id = await session.scalar(select(SharePage.id).where(live))
+    if page_id is None:
+        return None
+    return YesOutcome(page_id=int(page_id), first=False, notify=False)
+
+
+class RsvpRefused(Exception):
+    pass
+
+
+async def submit_rsvp(
+    session: AsyncSession,
+    token: str,
+    *,
+    voter_key: str,
+    answer: str,
+    guests: int,
+    guest_name: str | None,
+    now: datetime | None = None,
+) -> None:
+    """One browser's answer, inserted or replaced. RsvpRefused for a page
+    that is not a live invitation with RSVP on, for values outside what the
+    form offers, or once the page has RSVPS_PER_PAGE answers."""
+    now = now or datetime.now(UTC)
+    if answer not in ("yes", "no"):
+        raise RsvpRefused("answer")
+    if answer == "yes" and not 1 <= guests <= MAX_GUESTS:
+        raise RsvpRefused("guests")
+    if answer == "no":
+        guests = 0
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.token == token,
+            SharePage.kind == PageKind.INVITE.value,
+            SharePage.rsvp_enabled.is_(True),
+            SharePage.deleted_at.is_(None),
+            SharePage.expires_at > now,
+        )
+        .with_for_update()
+    )
+    if page is None:
+        raise RsvpRefused("page")
+    existing = await session.scalar(
+        select(SharePageRsvp.id).where(
+            SharePageRsvp.page_id == page.id, SharePageRsvp.voter_key == voter_key
+        )
+    )
+    if existing is None:
+        count = await session.scalar(
+            select(func.count()).select_from(SharePageRsvp).where(SharePageRsvp.page_id == page.id)
+        )
+        if (count or 0) >= RSVPS_PER_PAGE:
+            raise RsvpRefused("full")
+    name = clean_text(guest_name, GUEST_NAME_MAX)
+    statement = insert(SharePageRsvp).values(
+        shop_id=page.shop_id,
+        page_id=page.id,
+        voter_key=voter_key,
+        answer=answer,
+        guests=guests,
+        guest_name=name,
+    )
+    await session.execute(
+        statement.on_conflict_do_update(
+            index_elements=["page_id", "voter_key"],
+            set_={"answer": answer, "guests": guests, "guest_name": name, "updated_at": now},
+        )
+    )
+
+
+async def record_referral(
+    session: AsyncSession, *, shop_id: int, customer_id: int, token: str
+) -> bool:
+    """A customer arrived through a page's link. Honoured ONLY when the page
+    belongs to this shop: a token from shop B's page arriving in shop A's bot
+    is ignored, and says nothing about whether it exists."""
+    page_id = await session.scalar(
+        select(SharePage.id).where(SharePage.token == token, SharePage.shop_id == shop_id)
+    )
+    if page_id is None:
+        return False
+    await session.execute(
+        insert(SharePageReferral)
+        .values(shop_id=shop_id, page_id=page_id, customer_id=customer_id)
+        .on_conflict_do_nothing(index_elements=["page_id", "customer_id"])
+    )
+    return True
+
+
+@dataclass(frozen=True)
+class NotifyTarget:
+    page_id: int
+    shop_id: int
+    telegram_user_id: int
+    lang: str
+    question: str
+
+
+async def claim_notification(session: AsyncSession, *, page_id: int) -> NotifyTarget | None:
+    """Claim the page's single "they said Ha" message. Commit before sending.
+
+    Compare-and-swap on notified_at IS NULL, so however many times this runs --
+    a double tap, a retried task, two workers -- one caller gets the target."""
+    row = (
+        await session.execute(
+            update(SharePage)
+            .where(
+                SharePage.id == page_id,
+                SharePage.notify_creator.is_(True),
+                SharePage.answered_at.is_not(None),
+                SharePage.notified_at.is_(None),
+                SharePage.deleted_at.is_(None),
+            )
+            .values(notified_at=func.now())
+            .returning(SharePage.shop_id, SharePage.customer_id, SharePage.question)
+        )
+    ).one_or_none()
+    if row is None:
+        return None
+    shop_id, customer_id, question = row
+    customer = (
+        await session.execute(
+            select(Customer.telegram_user_id, Customer.lang).where(
+                Customer.id == customer_id, Customer.shop_id == shop_id
+            )
+        )
+    ).one()
+    return NotifyTarget(
+        page_id=page_id,
+        shop_id=int(shop_id),
+        telegram_user_id=int(customer[0]),
+        lang=str(customer[1]),
+        question=question or "",
+    )
+
+
+async def release_notification(session: AsyncSession, *, page_id: int) -> None:
+    """Undo a claim whose send failed for a reason worth retrying."""
+    await session.execute(update(SharePage).where(SharePage.id == page_id).values(notified_at=None))
+
+
+@dataclass(frozen=True)
+class PageStats:
+    pages: int
+    views: int
+    cta_clicks: int
+    referred_customers: int
+    referred_orders: int
+
+
+async def shop_page_stats(session: AsyncSession, *, shop_id: int) -> PageStats:
+    """What the feature has earned one shop: its pages, their views, taps on
+    its link, customers who arrived through them and those customers' orders
+    placed after they arrived."""
+    pages, views, clicks = (
+        await session.execute(
+            select(
+                func.count(),
+                func.coalesce(func.sum(SharePage.view_count), 0),
+                func.coalesce(func.sum(SharePage.cta_click_count), 0),
+            ).where(SharePage.shop_id == shop_id)
+        )
+    ).one()
+    referred = await session.scalar(
+        select(func.count(func.distinct(SharePageReferral.customer_id))).where(
+            SharePageReferral.shop_id == shop_id
+        )
+    )
+    orders = await session.scalar(
+        select(func.count(func.distinct(Order.id)))
+        .select_from(Order)
+        .join(
+            SharePageReferral,
+            and_(
+                SharePageReferral.customer_id == Order.customer_id,
+                SharePageReferral.shop_id == Order.shop_id,
+                Order.created_at >= SharePageReferral.created_at,
+            ),
+        )
+        .where(Order.shop_id == shop_id)
+    )
+    return PageStats(
+        pages=int(pages),
+        views=int(views),
+        cta_clicks=int(clicks),
+        referred_customers=int(referred or 0),
+        referred_orders=int(orders or 0),
+    )

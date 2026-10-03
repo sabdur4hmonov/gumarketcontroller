@@ -120,8 +120,25 @@ def test_the_scheduler_is_the_seam_and_it_is_injected() -> None:
     assert "schedule_finalize" in inspect.signature(build_dispatcher).parameters
 
 
+#: Modules that write a `deleted_at` of their OWN table -- never the products
+#: one. CP16's share_pages has its own column (a deleted page is scrubbed and
+#: kept for the shop's counts). Named, so a third writer is a decision.
+OTHER_TABLES_DELETED_AT_WRITERS = frozenset({"share_pages.py"})
+
+
 def test_nothing_in_this_checkpoint_sets_deleted_at() -> None:
-    """CP9's search should still filter on it defensively; nothing writes it."""
+    """products.deleted_at: CP9's search should still filter on it
+    defensively; nothing writes it.
+
+    The claim is about the PRODUCTS column. It used to be checked as "no
+    `deleted_at =` anywhere", which was true only while products had the one
+    such column in the schema; CP16 added share_pages.deleted_at and the proxy
+    fired on correct code. The module that writes that one is named above and
+    must never name Product.
+    """
     for path in (REPO_ROOT / "src/gulbot").rglob("*.py"):
         source = code_only(path)
-        assert "deleted_at =" not in source, f"{path.name} sets deleted_at"
+        if "deleted_at =" not in source:
+            continue
+        assert path.name in OTHER_TABLES_DELETED_AT_WRITERS, f"{path.name} sets deleted_at"
+        assert "Product" not in source, f"{path.name} sets deleted_at and names Product"
