@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     #: Fernet key(s) for shops.bot_token_encrypted; comma-separated to rotate
     #: (first encrypts, all decrypt). Read only by gulbot.services.shop_tokens.
     shop_token_encryption_key: SecretStr = SecretStr("")
+    #: The PLATFORM bot, where shop owners onboard (bot/routers/shop_onboarding.py).
+    #: Not any shop's bot. Empty = onboarding is off; the process still serves
+    #: every shop it has.
+    platform_bot_token: SecretStr = SecretStr("")
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
     log_level: str = "INFO"

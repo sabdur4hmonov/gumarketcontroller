@@ -121,3 +121,21 @@ class PlaceOrder(StatesGroup):
     #: and nothing is interposed between that tap and the insert.
     entering_phone = State()
     confirming = State()
+
+
+class ShopOnboarding(StatesGroup):
+    """A shop OWNER setting up a shop, on the PLATFORM bot -- never a shop's own.
+
+    One state per step, in order. Three steps wait for free text (the token,
+    the shop name, the owner's typed number); the rest are buttons, a forward,
+    Telegram's chat picker or a shared contact. Nothing is written to the
+    database until the last step: the answers live here, the token as
+    ciphertext, so /start resumes exactly where the owner left off.
+    """
+
+    entering_token = State()
+    choosing_branding = State()
+    entering_shop_name = State()
+    waiting_channel = State()
+    waiting_group = State()
+    sharing_phone = State()

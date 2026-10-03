@@ -8,7 +8,7 @@ empty, with no error anywhere.
 
 from __future__ import annotations
 
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
@@ -21,10 +21,19 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.bot.channel import FinalizeScheduler, build_channel_router
-from gulbot.bot.middlewares import ChatGateMiddleware, CustomerMiddleware, DbSessionMiddleware
-from gulbot.bot.routers import build_routers
+from gulbot.bot.middlewares import (
+    ChatGateMiddleware,
+    CustomerMiddleware,
+    DbSessionMiddleware,
+    OwnerLanguageMiddleware,
+    PrivateOnlyMiddleware,
+)
+from gulbot.bot.routers import build_platform_routers, build_routers
 from gulbot.config import get_settings
 from gulbot.worker.debounce import schedule_album_finalize
+
+if TYPE_CHECKING:
+    from gulbot.bot.routers.shop_onboarding import ShopBotFactory, ShopCreated
 
 ALLOWED_UPDATES: Final = [
     "message",
@@ -73,6 +82,17 @@ def process_token_is_set() -> bool:
     on an empty token somewhere less clear.
     """
     return bool(get_settings().bot_token.get_secret_value())
+
+
+def process_bot_id() -> int | None:
+    """The numeric id of the BOT_TOKEN bot -- the pilot shop's -- or None.
+
+    The public half of the token only. Onboarding refuses to register this bot
+    for a new shop: it already speaks for the pilot.
+    """
+    token = get_settings().bot_token.get_secret_value()
+    head = token.split(":", 1)[0]
+    return int(head) if head.isdigit() else None
 
 
 def build_storage() -> RedisStorage:
@@ -135,5 +155,43 @@ def build_dispatcher(
     dispatcher.include_router(build_channel_router())
 
     for router in build_routers():
+        dispatcher.include_router(router)
+    return dispatcher
+
+
+async def _nothing_to_start(shop_id: int) -> None:
+    return None
+
+
+def build_platform_dispatcher(
+    *,
+    session_factory: async_sessionmaker[AsyncSession],
+    storage: BaseStorage | None = None,
+    shop_bot_factory: ShopBotFactory | None = None,
+    on_shop_created: ShopCreated | None = None,
+) -> Dispatcher:
+    """The PLATFORM bot's dispatcher: shop-owner onboarding.
+
+    Deliberately NOT `build_dispatcher`. That one is bound to a shop and
+    registers everyone who writes to it as that shop's customer; the platform
+    bot belongs to no shop, and the people writing to it are about to own one.
+
+    `shop_bot_factory` builds the NEW shop's bot from its token (production:
+    the registry's factory); `on_shop_created` is told each new shop's id once
+    it is committed, which is how its bot starts polling without a restart.
+    """
+    from gulbot.bot.registry import build_bot_for
+
+    dispatcher = (
+        Dispatcher(storage=storage, fsm_strategy=FSMStrategy.USER_IN_CHAT)
+        if storage is not None
+        else Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
+    )
+    dispatcher.update.outer_middleware(PrivateOnlyMiddleware())
+    dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
+    dispatcher.update.outer_middleware(OwnerLanguageMiddleware())
+    dispatcher["shop_bot_factory"] = shop_bot_factory or build_bot_for
+    dispatcher["on_shop_created"] = on_shop_created or _nothing_to_start
+    for router in build_platform_routers():
         dispatcher.include_router(router)
     return dispatcher

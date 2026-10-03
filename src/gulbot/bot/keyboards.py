@@ -9,6 +9,7 @@ from aiogram.types import (
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
+    KeyboardButtonRequestChat,
     ReplyKeyboardMarkup,
 )
 
@@ -25,6 +26,7 @@ from gulbot.bot.callbacks import (
     OccasionActionCB,
     OccasionKindCB,
     OccasionTypeCB,
+    OnboardBrandingCB,
     OrderAdminCB,
     OrderBackCB,
     OrderConfirmCB,
@@ -677,4 +679,52 @@ def browse_product_keyboard(lang: str, product_id: int) -> InlineKeyboardMarkup:
                 )
             ],
         ]
+    )
+
+
+# --- shop-owner onboarding, on the PLATFORM bot ---------------------------
+
+#: Telegram echoes this back in `chat_shared.request_id`, which is how the
+#: onboarding router knows a shared chat answers ITS question.
+OWNER_GROUP_REQUEST_ID = 1
+
+
+def branding_keyboard(lang: str) -> InlineKeyboardMarkup:
+    """Ha / Yo'q: do they already have a channel and a logo?"""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.yes", lang), callback_data=OnboardBrandingCB(answer="yes").pack()
+                ),
+                InlineKeyboardButton(
+                    text=t("ibtn.no", lang), callback_data=OnboardBrandingCB(answer="no").pack()
+                ),
+            ]
+        ]
+    )
+
+
+def owner_cancel_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    """Every owner step that waits for text keeps Cancel within reach."""
+    return _kb([[t("btn.nav.cancel", lang)]])
+
+
+def pick_group_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    """Telegram's own chat picker, limited to groups.
+
+    It hands back the chat id the owner picked, which is the only reliable way
+    for a PRIVATE conversation to learn a group's id. Deliberately no
+    `bot_is_member` constraint: that would refer to the platform bot showing
+    the button, not the shop's bot, whose membership is what gets checked.
+    """
+    picker = KeyboardButton(
+        text=t("btn.owner.pick_group", lang),
+        request_chat=KeyboardButtonRequestChat(
+            request_id=OWNER_GROUP_REQUEST_ID, chat_is_channel=False
+        ),
+    )
+    return ReplyKeyboardMarkup(
+        keyboard=[[picker], [KeyboardButton(text=t("btn.nav.cancel", lang))]],
+        resize_keyboard=True,
     )

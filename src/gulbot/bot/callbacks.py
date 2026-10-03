@@ -302,6 +302,16 @@ class OrderBackCB(CallbackData, prefix="ordback"):
         return [cls(action="back").pack()]
 
 
+class OnboardBrandingCB(CallbackData, prefix="obrand"):
+    """The shop owner's answer: do they already have a channel and a logo?"""
+
+    answer: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(answer=a).pack() for a in ("yes", "no")]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     OccasionTypeCB,
     MonthCB,
@@ -328,6 +338,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     BrowsePageCB,
     BrowsePickCB,
     OrderAdminCB,
+    OnboardBrandingCB,
 )
 
 

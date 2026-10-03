@@ -21,6 +21,7 @@ from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
+from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
 
 
 def build_routers() -> tuple[Router, ...]:
@@ -64,4 +65,13 @@ def build_routers() -> tuple[Router, ...]:
     )
 
 
-__all__ = ["build_routers"]
+def build_platform_routers() -> tuple[Router, ...]:
+    """The PLATFORM bot's routers: shop-owner onboarding, and nothing else.
+
+    Never mixed into `build_routers()`: a shop's bot serves its customers, and
+    the platform bot serves people who are about to own a shop.
+    """
+    return (build_shop_onboarding_router(),)
+
+
+__all__ = ["build_platform_routers", "build_routers"]

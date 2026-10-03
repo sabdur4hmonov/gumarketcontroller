@@ -193,3 +193,42 @@ class CustomerMiddleware(BaseMiddleware):
             data["lang"] = customer.lang
         data.setdefault("shop_id", self.shop_id)
         return await handler(event, data)
+
+
+class PrivateOnlyMiddleware(BaseMiddleware):
+    """The PLATFORM bot talks to shop owners in private, and nowhere else.
+
+    Its conversation is one person setting up a shop: there is no group
+    exception to make, unlike a shop's own bot and its order cards.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        chat: Chat | None = data.get("event_chat")
+        if chat is not None and chat.type != "private":
+            return None
+        return await handler(event, data)
+
+
+class OwnerLanguageMiddleware(BaseMiddleware):
+    """`lang` for the platform bot, from the owner's own Telegram language.
+
+    Shop owners are not customers, so there is no customer row to read a
+    language from -- and asking first would put a question in front of the one
+    the owner came to answer.
+    """
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        user: User | None = data.get("event_from_user")
+        code = (user.language_code or "") if user is not None else ""
+        data["lang"] = "ru" if code.lower().startswith("ru") else DEFAULT_LANGUAGE
+        return await handler(event, data)

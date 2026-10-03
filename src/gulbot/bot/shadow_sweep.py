@@ -231,15 +231,22 @@ def render_report(violations: list[Violation]) -> str:
 
 
 async def run() -> int:
-    from gulbot.bot.factory import build_dispatcher
+    from gulbot.bot.factory import build_dispatcher, build_platform_dispatcher
 
     # The sweep only evaluates filters, so no database is touched; the factory
-    # still builds the dispatcher exactly as production does, including the
-    # router registration order that is the whole point.
-    dispatcher = build_dispatcher(session_factory=None, shop_id=0)  # type: ignore[arg-type]
-    violations = await sweep(dispatcher)
-    print(render_report(violations))
-    return 1 if violations else 0
+    # still builds each dispatcher exactly as production does, including the
+    # router registration order that is the whole point. BOTH of them: a
+    # shop's customer-facing bot, and the platform bot shop owners onboard on.
+    dispatchers = {
+        "shop": build_dispatcher(session_factory=None, shop_id=0),  # type: ignore[arg-type]
+        "platform": build_platform_dispatcher(session_factory=None),  # type: ignore[arg-type]
+    }
+    failed = False
+    for name, dispatcher in dispatchers.items():
+        violations = await sweep(dispatcher)
+        print(f"[{name}] {render_report(violations)}")
+        failed = failed or bool(violations)
+    return 1 if failed else 0
 
 
 def main() -> None:

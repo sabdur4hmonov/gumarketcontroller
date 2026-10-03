@@ -659,6 +659,323 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "btn.nav.back": {"uz": "⬅️ Orqaga", "ru": "⬅️ Назад"},
     "btn.nav.cancel": {"uz": "✖️ Bekor qilish", "ru": "✖️ Отмена"},
     "btn.menu.occasions": {"uz": "📅 Sanalarim", "ru": "📅 Мои даты"},
+    # --- shop-owner onboarding, on the PLATFORM bot ------------------------
+    "owner.welcome": {
+        "uz": (
+            "🌸 Assalomu alaykum! Keling, do‘koningizni Gulbotga ulaymiz — bir necha "
+            "daqiqa oladi.\n\n"
+            "<b>1-qadam. O‘z botingizni yarating</b>\n"
+            "1. Telegramda @BotFather ni oching.\n"
+            "2. /newbot buyrug‘ini yuboring.\n"
+            "3. Botga nom bering — mijozlaringiz ko‘radigan nom, masalan: <i>Lola Gullari</i>.\n"
+            "4. Username tanlang — u <code>bot</code> bilan tugashi kerak, "
+            "masalan: <code>lola_gullari_bot</code>.\n"
+            "5. BotFather sizga <b>token</b> beradi — "
+            "<code>123456789:AA...</code> ko‘rinishidagi uzun qator.\n\n"
+            "O‘sha tokenni nusxalab, shu yerga yuboring.\n"
+            "🔐 Token — botingizning kaliti, uni hech kimga bermang. Biz uni shifrlab "
+            "saqlaymiz va xabaringizni o‘chirib yuboramiz."
+        ),
+        "ru": (
+            "🌸 Здравствуйте! Давайте подключим ваш магазин к Gulbot — это займёт пару "
+            "минут.\n\n"
+            "<b>Шаг 1. Создайте своего бота</b>\n"
+            "1. Откройте в Telegram @BotFather.\n"
+            "2. Отправьте команду /newbot.\n"
+            "3. Дайте боту имя — его увидят ваши клиенты, например: <i>Lola Gullari</i>.\n"
+            "4. Выберите username — он должен заканчиваться на <code>bot</code>, "
+            "например: <code>lola_gullari_bot</code>.\n"
+            "5. BotFather пришлёт <b>токен</b> — длинную строку вида "
+            "<code>123456789:AA...</code>.\n\n"
+            "Скопируйте токен и отправьте его сюда.\n"
+            "🔐 Токен — это ключ от вашего бота, никому его не передавайте. Мы храним его "
+            "в зашифрованном виде и удалим ваше сообщение."
+        ),
+    },
+    "owner.token_invalid": {
+        "uz": (
+            "Bu bot tokeniga o‘xshamaydi. Token <code>123456789:AA...</code> ko‘rinishida "
+            "bo‘ladi: raqamlar, ikki nuqta, keyin uzun harf-raqamlar qatori. @BotFather dagi "
+            "xabardan to‘liq nusxalab yuboring."
+        ),
+        "ru": (
+            "Это не похоже на токен бота. Токен выглядит как <code>123456789:AA...</code>: "
+            "цифры, двоеточие и длинная строка букв и цифр. Скопируйте его целиком из "
+            "сообщения @BotFather."
+        ),
+    },
+    "owner.token_taken": {
+        "uz": (
+            "Bu bot allaqachon boshqa do‘konga ulangan. Har bir do‘kon uchun alohida bot "
+            "kerak — @BotFather da /newbot bilan yangisini yarating va uning tokenini yuboring."
+        ),
+        "ru": (
+            "Этот бот уже подключён к другому магазину. Каждому магазину нужен свой бот — "
+            "создайте новый через /newbot в @BotFather и отправьте его токен."
+        ),
+    },
+    "owner.token_saved": {
+        "uz": (
+            "✅ Token qabul qilindi va shifrlab saqlandi. Xavfsizlik uchun xabaringizni o‘chirdim."
+        ),
+        "ru": (
+            "✅ Токен принят и сохранён в зашифрованном виде. Для безопасности я удалил "
+            "ваше сообщение."
+        ),
+    },
+    "owner.token_rejected": {
+        "uz": (
+            "Telegram bu tokenni qabul qilmadi — u eskirgan yoki noto‘g‘ri nusxalangan "
+            "bo‘lishi mumkin. @BotFather dan tokenni qaytadan nusxalab yuboring."
+        ),
+        "ru": (
+            "Telegram не принял этот токен — возможно, он устарел или скопирован с ошибкой. "
+            "Скопируйте токен из @BotFather заново и отправьте сюда."
+        ),
+    },
+    "owner.not_configured": {
+        "uz": (
+            "⚠️ Hozircha yangi do‘kon ulab bo‘lmaydi — platforma sozlanmagan. Keyinroq "
+            "urinib ko‘ring."
+        ),
+        "ru": "⚠️ Сейчас подключить магазин нельзя — платформа не настроена. Попробуйте позже.",
+    },
+    "owner.branding_ask": {
+        "uz": "<b>2-qadam. Brend</b>\nSizda allaqachon Telegram kanal va do‘kon logotipi bormi?",
+        "ru": "<b>Шаг 2. Бренд</b>\nУ вас уже есть Telegram-канал и логотип магазина?",
+    },
+    "owner.name_ask": {
+        "uz": "Do‘koningiz nomini yozing — mijozlar uni shunday ko‘radi.",
+        "ru": "Напишите название магазина — так его увидят клиенты.",
+    },
+    "owner.name_invalid": {
+        "uz": "Nom 1 dan 200 belgigacha bo‘lishi kerak. Qaytadan yozing.",
+        "ru": "Название должно быть от 1 до 200 символов. Напишите ещё раз.",
+    },
+    "owner.logo_enhance": {
+        "uz": (
+            "Logotipingizni yanada chiroyli qilish uchun uni ChatGPT (yoki boshqa AI rasm "
+            "vositasi)ga yuklang va shu so‘rovni yuboring:\n\n"
+            '<code>Here is the logo of my flower shop "{name}". Keep its design, colors '
+            "and lettering, but make it cleaner and sharper: crisp vector-style edges, "
+            "balanced spacing, legible even at 64x64 px. Give me a square version for a "
+            "Telegram channel avatar and a version on a transparent background.</code>"
+        ),
+        "ru": (
+            "Чтобы улучшить логотип, загрузите его в ChatGPT (или другой AI-генератор "
+            "изображений) и отправьте этот запрос:\n\n"
+            '<code>Here is the logo of my flower shop "{name}". Keep its design, colors '
+            "and lettering, but make it cleaner and sharper: crisp vector-style edges, "
+            "balanced spacing, legible even at 64x64 px. Give me a square version for a "
+            "Telegram channel avatar and a version on a transparent background.</code>"
+        ),
+    },
+    "owner.logo_generate": {
+        "uz": (
+            "Logotip yaratish uchun shu so‘rovni ChatGPT (yoki boshqa AI rasm vositasi)ga "
+            "yuboring:\n\n"
+            '<code>Design a logo for a flower shop called "{name}". Style: modern, elegant '
+            "and minimal, with a single flower or petal motif and soft, fresh colors. The "
+            'name "{name}" must be spelled exactly and be clearly legible. Square '
+            "composition that still reads at 64x64 px as a Telegram channel avatar; plain "
+            "background, plus a version on a transparent background.</code>\n\n"
+            "Kanalingiz hali yo‘q bo‘lsa, Telegramda yangi kanal oching va shu logotipni "
+            "qo‘ying."
+        ),
+        "ru": (
+            "Чтобы создать логотип, отправьте этот запрос в ChatGPT (или другой "
+            "AI-генератор изображений):\n\n"
+            '<code>Design a logo for a flower shop called "{name}". Style: modern, elegant '
+            "and minimal, with a single flower or petal motif and soft, fresh colors. The "
+            'name "{name}" must be spelled exactly and be clearly legible. Square '
+            "composition that still reads at 64x64 px as a Telegram channel avatar; plain "
+            "background, plus a version on a transparent background.</code>\n\n"
+            "Если канала ещё нет, создайте новый канал в Telegram и поставьте этот логотип."
+        ),
+    },
+    "owner.channel_ask": {
+        "uz": (
+            "<b>3-qadam. Kanal</b>\n"
+            "1. Kanalingizni oching → Boshqaruv → Administratorlar → Administrator qo‘shish.\n"
+            "2. Hozir yaratgan botingizni toping va uni <b>administrator</b> qiling.\n"
+            "3. Keyin shu yerga kanal usernameni (masalan <code>@lola_gullari</code>) "
+            "yuboring yoki kanaldagi istalgan postni shu yerga forward qiling."
+        ),
+        "ru": (
+            "<b>Шаг 3. Канал</b>\n"
+            "1. Откройте канал → Управление → Администраторы → Добавить администратора.\n"
+            "2. Найдите только что созданного бота и сделайте его <b>администратором</b>.\n"
+            "3. Затем отправьте сюда username канала (например <code>@lola_gullari</code>) "
+            "или перешлите сюда любой пост из канала."
+        ),
+    },
+    "owner.channel_unreadable": {
+        "uz": (
+            "Kanalni aniqlay olmadim. Kanal usernameni <code>@</code> bilan yuboring "
+            "(masalan <code>@lola_gullari</code>) yoki kanaldan bir postni forward qiling."
+        ),
+        "ru": (
+            "Не удалось определить канал. Отправьте username канала с <code>@</code> "
+            "(например <code>@lola_gullari</code>) или перешлите пост из канала."
+        ),
+    },
+    "owner.channel_not_found": {
+        "uz": (
+            "Botingiz bu kanalni ko‘ra olmayapti. Username to‘g‘riligini tekshiring, botni "
+            "kanalga administrator qilib qo‘shing va qayta yuboring."
+        ),
+        "ru": (
+            "Ваш бот не видит этот канал. Проверьте username, добавьте бота в канал "
+            "администратором и отправьте ещё раз."
+        ),
+    },
+    "owner.channel_not_admin": {
+        "uz": (
+            "Botingiz kanalda administrator emas. Uni administrator qiling — aks holda yangi "
+            "postlarni ko‘rmaydi — va qayta yuboring."
+        ),
+        "ru": (
+            "Ваш бот не администратор канала. Сделайте его администратором — иначе он не "
+            "увидит новые посты — и отправьте ещё раз."
+        ),
+    },
+    "owner.channel_wrong_type": {
+        "uz": "Bu kanal emas. Mahsulotlaringiz joylanadigan Telegram <b>kanal</b>ni yuboring.",
+        "ru": "Это не канал. Отправьте Telegram-<b>канал</b>, где будут ваши товары.",
+    },
+    "owner.telegram_unreachable": {
+        "uz": "Telegram hozir javob bermayapti. Bir daqiqadan so‘ng qayta yuboring.",
+        "ru": "Telegram сейчас не отвечает. Отправьте ещё раз через минуту.",
+    },
+    "owner.channel_ok": {
+        "uz": "✅ Kanal ulandi: <b>{title}</b>",
+        "ru": "✅ Канал подключён: <b>{title}</b>",
+    },
+    "owner.posting_guide": {
+        "uz": (
+            "<b>Mahsulotni qanday joylash kerak</b>\n"
+            "Kanaldagi post mahsulotga aylanadi, agar:\n"
+            "• postda <b>rasm</b> bo‘lsa — faqat matnli postlar mahsulot bo‘lmaydi;\n"
+            "• izohda kamida bitta <b>heshteg</b> bo‘lsa: <code>#atirgul</code>, "
+            "<code>#buket</code>. Heshtegsiz post qo‘shilmaydi, faqat raqamdan iborat teg "
+            "(<code>#450000</code>) heshteg hisoblanmaydi.\n"
+            "Izohning <b>birinchi qatori</b> — mahsulot nomi. <b>Narx</b>ni "
+            "<code>so‘m</code> (yoki <code>сум</code>, <code>UZS</code>) bilan yoki "
+            "<code>Narxi:</code> dan keyin yozing — shunda bot uni aniq biladi; yorliqsiz "
+            "raqam taxmin sifatida ko‘rsatiladi, «Narxi kelishiladi» esa narxsiz qoladi.\n\n"
+            "Namuna:\n<code>Qizil atirgul buketi 51 ta\n"
+            "Narxi: 450 000 so'm\n#atirgul #buket</code>\n\n"
+            "• Albom (bir nechta rasm) — bitta mahsulot; izohni albomdagi rasmlardan biriga "
+            "yozing.\n"
+            "• Postni tahrirlasangiz, mahsulot yangilanadi; barcha heshteglarni o‘chirsangiz, "
+            "mahsulot yashiriladi.\n"
+            "• Bot faqat administrator bo‘lganidan <b>keyingi</b> postlarni ko‘radi."
+        ),
+        "ru": (
+            "<b>Как публиковать товары</b>\n"
+            "Пост в канале становится товаром, если:\n"
+            "• в посте есть <b>фото</b> — текстовые посты товаром не становятся;\n"
+            "• в подписи есть хотя бы один <b>хэштег</b>: <code>#atirgul</code>, "
+            "<code>#buket</code>. Пост без хэштега не добавляется, а тег из одних цифр "
+            "(<code>#450000</code>) хэштегом не считается.\n"
+            "<b>Первая строка</b> подписи — название товара. <b>Цену</b> пишите с "
+            "<code>so‘m</code> (или <code>сум</code>, <code>UZS</code>) или после "
+            "<code>Narxi:</code> — тогда бот поймёт её точно; число без подписи "
+            "показывается как примерное, а «Narxi kelishiladi» — без цены.\n\n"
+            "Пример:\n<code>Qizil atirgul buketi 51 ta\n"
+            "Narxi: 450 000 so'm\n#atirgul #buket</code>\n\n"
+            "• Альбом (несколько фото) — один товар; подпись добавьте к любому фото альбома.\n"
+            "• Если отредактировать пост, товар обновится; если удалить все хэштеги, товар "
+            "скроется.\n"
+            "• Бот видит только посты, опубликованные <b>после</b> того, как он стал "
+            "администратором."
+        ),
+    },
+    "owner.group_ask": {
+        "uz": (
+            "<b>4-qadam. Buyurtmalar guruhi</b>\n"
+            "Yangi buyurtmalar shu guruhga keladi.\n"
+            "1. Telegram guruhingizga botingizni qo‘shing va uni <b>administrator</b> "
+            "qiling.\n"
+            "2. Keyin pastdagi «Guruhni tanlash» tugmasini bosib, o‘sha guruhni tanlang."
+        ),
+        "ru": (
+            "<b>Шаг 4. Группа для заказов</b>\n"
+            "Новые заказы будут приходить в эту группу.\n"
+            "1. Добавьте бота в свою Telegram-группу и сделайте его <b>администратором</b>.\n"
+            "2. Затем нажмите кнопку «Выбрать группу» ниже и выберите эту группу."
+        ),
+    },
+    "owner.group_test_message": {
+        "uz": "✅ Gulbot: bu do‘konning yangi buyurtmalari shu guruhga keladi.",
+        "ru": "✅ Gulbot: новые заказы этого магазина будут приходить в эту группу.",
+    },
+    "owner.group_not_found": {
+        "uz": (
+            "Botingiz bu guruhda yo‘q. Uni guruhga qo‘shib, administrator qiling va qayta tanlang."
+        ),
+        "ru": (
+            "Вашего бота нет в этой группе. Добавьте его, сделайте администратором и "
+            "выберите снова."
+        ),
+    },
+    "owner.group_not_admin": {
+        "uz": "Botingiz guruhda administrator emas. Uni administrator qiling va qayta tanlang.",
+        "ru": "Ваш бот не администратор группы. Сделайте его администратором и выберите снова.",
+    },
+    "owner.group_cannot_post": {
+        "uz": (
+            "Botingiz guruhga xabar yoza olmadi. Guruh sozlamalarida botga xabar yuborishga "
+            "ruxsat bering va qayta tanlang."
+        ),
+        "ru": (
+            "Ваш бот не смог написать в группу. Разрешите ему отправлять сообщения в "
+            "настройках группы и выберите снова."
+        ),
+    },
+    "owner.group_wrong_type": {
+        "uz": "Bu guruh emas. Buyurtmalar keladigan Telegram <b>guruh</b>ni tanlang.",
+        "ru": "Это не группа. Выберите Telegram-<b>группу</b> для заказов.",
+    },
+    "owner.group_ok": {
+        "uz": "✅ Guruh ulandi: <b>{title}</b>",
+        "ru": "✅ Группа подключена: <b>{title}</b>",
+    },
+    "owner.phone_ask": {
+        "uz": (
+            "<b>5-qadam. Telefon raqamingiz</b>\n"
+            "Siz bilan bog‘lanishimiz uchun raqamingizni yuboring — tugma orqali yoki yozib."
+        ),
+        "ru": (
+            "<b>Шаг 5. Ваш номер телефона</b>\n"
+            "Отправьте номер, чтобы мы могли с вами связаться — кнопкой или вручную."
+        ),
+    },
+    "owner.done": {
+        "uz": (
+            "🎉 Tayyor! <b>{name}</b> do‘koni ulandi.\n"
+            "Botingiz ishlayapti: mijozlar unga yoza oladi, kanaldagi yangi postlar "
+            "katalogga qo‘shiladi, buyurtmalar esa guruhingizga keladi."
+        ),
+        "ru": (
+            "🎉 Готово! Магазин <b>{name}</b> подключён.\n"
+            "Ваш бот работает: клиенты могут ему писать, новые посты канала попадают в "
+            "каталог, а заказы приходят в вашу группу."
+        ),
+    },
+    "owner.cancelled": {
+        "uz": "Bekor qilindi, hech narsa saqlanmadi. Qaytadan boshlash uchun /start yuboring.",
+        "ru": "Отменено, ничего не сохранено. Чтобы начать заново, отправьте /start.",
+    },
+    "owner.resume": {
+        "uz": "Davom etamiz — to‘xtagan joyingizdan:",
+        "ru": "Продолжаем с того места, где вы остановились:",
+    },
+    "owner.idle": {
+        "uz": "Yangi do‘kon ulash uchun /start yuboring.",
+        "ru": "Чтобы подключить новый магазин, отправьте /start.",
+    },
+    "btn.owner.pick_group": {"uz": "👥 Guruhni tanlash", "ru": "👥 Выбрать группу"},
 }
 
 BUTTON_KEYS: Final = tuple(k for k in CATALOG if k.startswith("btn."))
