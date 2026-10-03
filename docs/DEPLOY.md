@@ -63,6 +63,29 @@ Do not copy a dev `.env` onto the server. The guard refuses a `.env`-supplied
 token or database, but a `.env` can still supply the settings it does not
 check, such as ports and Redis.
 
+## 0b. Per-shop bot tokens and the platform bot
+
+Since CP-MT every shop speaks through its own bot. Its token is stored in
+`shops.bot_token_encrypted`, encrypted with a key that is only ever an
+environment variable:
+
+```
+SHOP_TOKEN_ENCRYPTION_KEY=<Fernet key; generate with the command in .env.example>
+PLATFORM_BOT_TOKEN=<the onboarding bot's token; leave unset to run without onboarding>
+```
+
+- **Back the key up with the database credentials, never inside the
+  database.** Lose it and every stored shop token is unreadable: each shop
+  would have to hand over its token again.
+- **Rotating the key.** Set `SHOP_TOKEN_ENCRYPTION_KEY=<new>,<old>`. The first
+  key encrypts and every listed key decrypts. Drop the old key only once
+  every token has been re-stored.
+- **The platform bot.** With `PLATFORM_BOT_TOKEN` set, the bot process
+  refuses to start without a usable encryption key. The platform bot must be
+  a bot of its own, never a shop's bot and never `BOT_TOKEN`'s.
+- **The pilot shop** may keep using `BOT_TOKEN`, and the bot logs a WARNING
+  every time it does. Store its own token to retire the fallback.
+
 ## 1. Before stopping anything
 
 - **Migrations at head, checked, not assumed.** Compare the database with the

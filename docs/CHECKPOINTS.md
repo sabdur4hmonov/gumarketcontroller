@@ -25,6 +25,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP9.5 | Ranking fix: resolve the STORED tag, not the preset | done |
 | CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
 | CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
+| CP-MT | Multi-tenant: per-shop bot tokens, per-shop send paths, owner onboarding, one process for every shop | done, 4 commits; open items in `docs/AUDIT_MULTI_TENANT.md` |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -275,6 +276,36 @@ not have known because the send path did not exist yet: `claimed_at` (a claim
 needs a clock) and 'sending' in the state CHECK (the claim needs a state to move
 to). Autogenerate detected the column and NEITHER constraint -- it compares
 CHECKs by name.
+
+## What CP-MT guarantees
+
+Gulbot went from one shop to many. The audit that planned it is
+`docs/AUDIT_MULTI_TENANT.md`, and its status box says which findings are
+closed.
+
+**A row is sent by its own shop's bot, never by another shop's.** The reminder
+tick, the order-ping tick and the health/summary alerts all take
+`transport_for(shop_id)`. The registry (`bot/registry.py`) resolves each shop
+to its own stored token. The single shop that existed before this keeps a
+logged fallback to `BOT_TOKEN`.
+
+**A token is stored only as Fernet ciphertext.** A CHECK refuses anything
+else. The key is `SHOP_TOKEN_ENCRYPTION_KEY`, which is only ever an
+environment variable.
+
+**Two shops' bots never share conversation state.** Every FSM key carries the
+bot id. This was reproduced against real Redis before it was fixed.
+
+**One process serves every shop**, and a shop added through the platform bot
+starts polling without a restart. One bot is never polled for two shops.
+
+Still open from the audit, recorded rather than forgotten:
+
+- **H3:** the indexer does not compare a post's chat with `shops.channel_id`.
+- **H4:** the rate limiter is one 28 msg/s budget per process, not per bot.
+- **H5, partly:** a shop with no usable bot no longer trips the breaker, but
+  the breaker is still one per tick across shops.
+- **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
 
 ## Briefs already agreed for future checkpoints
 
