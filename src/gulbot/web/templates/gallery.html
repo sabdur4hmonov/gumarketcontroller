@@ -1,0 +1,14 @@
+{% extends "_base.html" %}
+{%- from "_ornaments.html" import ornament -%}
+{% block card %}
+<article class="card">
+  {{ ornament(v.theme) }}
+  <p class="eyebrow">{{ v.gallery_kind }}</p>
+  <h1 class="display">{{ v.gallery_title }}</h1>
+  <div class="links">
+    {%- for item in v.entries %}
+    <a class="chip" href="{{ item.href }}">{{ item.name }}</a>
+    {%- endfor %}
+  </div>
+</article>
+{% endblock %}

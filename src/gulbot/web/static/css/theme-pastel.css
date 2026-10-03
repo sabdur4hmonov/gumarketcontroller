@@ -1,0 +1,33 @@
+/* Pastel -- lavender, mint and peach in soft blobs; everything rounded. */
+:root {
+  --bg: #f1edfb;
+  --bg-image:
+    radial-gradient(circle at 10% 15%, #dff5ec 0, transparent 34%),
+    radial-gradient(circle at 92% 30%, #ffe5d6 0, transparent 32%),
+    radial-gradient(circle at 30% 92%, #e3dcfa 0, transparent 36%),
+    radial-gradient(circle at 85% 88%, #dff5ec 0, transparent 28%);
+  --card: rgba(255, 255, 255, 0.84);
+  --ink: #3a3456;
+  --ink-soft: #5c567a;
+  --muted: #9a93b8;
+  --accent: #8f7fe0;
+  --accent-ink: #ffffff;
+  --accent-2: #7fd1b3;
+  --line: rgba(155, 140, 230, 0.3);
+  --cell-bg: #f6f3ff;
+  --display-ink: #6a5bc4;
+  --radius: 34px;
+  --shadow: 0 20px 50px rgba(120, 100, 200, 0.18);
+  --font-display: "Comfortaa", "Nunito", Arial, sans-serif;
+  --font-display-uzc: "Nunito", Arial, sans-serif;
+  --font-body: "Nunito", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(28px, 8.4vw, 40px);
+}
+
+.btn-yes {
+  background: linear-gradient(135deg, #8f7fe0, #f2a5c0);
+}
+
+.names {
+  font-size: clamp(32px, 9.6vw, 46px);
+}

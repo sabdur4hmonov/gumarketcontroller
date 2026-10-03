@@ -1,0 +1,9 @@
+{% extends "_base.html" %}
+{%- from "_ornaments.html" import ornament -%}
+{% block card %}
+<article class="card gone">
+  {{ ornament(v.theme) }}
+  <h1 class="display">{{ v.s.gone_title }}</h1>
+  <p class="lead">{{ v.s.gone_text }}</p>
+</article>
+{% endblock %}

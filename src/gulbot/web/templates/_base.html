@@ -1,0 +1,42 @@
+{#- Every page. Jinja autoescapes ALL of it: user text reaches the HTML only
+    through {{ }}, never through |safe. tests/test_web_pages.py proves it with
+    a hostile payload in every field. -#}
+{%- from "_ornaments.html" import heart -%}
+<!doctype html>
+<html lang="{{ v.html_lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="referrer" content="no-referrer">
+<meta name="format-detection" content="telephone=no">
+<meta name="theme-color" content="{{ v.theme_color }}">
+<title>{{ v.title }}</title>
+<meta property="og:title" content="{{ v.og_title }}">
+<meta property="og:description" content="{{ v.og_description }}">
+<meta property="og:type" content="website">
+<link rel="stylesheet" href="{{ static('css/fonts.css') }}">
+<link rel="stylesheet" href="{{ static('css/base.css') }}">
+<link rel="stylesheet" href="{{ static('css/theme-' ~ v.theme ~ '.css') }}">
+<noscript><link rel="stylesheet" href="{{ static('css/noscript.css') }}"></noscript>
+<script src="{{ static('js/page.js') }}" defer></script>
+</head>
+<body class="theme-{{ v.theme }}{% if v.theme == 'konvert' %} has-envelope{% endif %}">
+{%- if v.theme == "konvert" %}
+<div class="envelope" id="envelope">
+  <div class="env">
+    <div class="env-flap"></div>
+    <button type="button" class="seal" id="seal" aria-label="{{ v.s.open }}">{% if v.seal_letter %}{{ v.seal_letter }}{% else %}{{ heart() }}{% endif %}</button>
+    <p class="seal-hint">{{ v.s.open }}</p>
+  </div>
+</div>
+{%- endif %}
+{%- if v.theme == "romantik" %}
+<div class="floaters" aria-hidden="true">{{ heart() }}{{ heart() }}{{ heart() }}{{ heart() }}{{ heart() }}</div>
+{%- endif %}
+<main class="stage">
+{% block card %}{% endblock %}
+{% include "_shop.html" %}
+</main>
+</body>
+</html>

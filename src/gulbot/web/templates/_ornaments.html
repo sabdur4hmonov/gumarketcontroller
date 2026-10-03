@@ -1,0 +1,80 @@
+{#- Decorations, one set per theme. Every drawing here was made for this
+    project from plain geometry -- squares, arcs, ellipses -- and is not traced
+    from any existing artwork. Colour comes from CSS (currentColor and the
+    .o2 class), so a theme recolours them without touching this file. -#}
+
+{% macro ornament(theme, bottom=False) -%}
+<svg class="ornament{% if bottom %} ornament--bottom{% endif %}" viewBox="0 0 160 44" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+{%- if theme == "milliy" %}
+  <g transform="translate(80 22)">
+    <rect x="-11" y="-11" width="22" height="22"/>
+    <rect x="-11" y="-11" width="22" height="22" transform="rotate(45)"/>
+    <circle r="5"/>
+    <circle r="1.8" fill="currentColor" stroke="none"/>
+  </g>
+  <path d="M63 22c-7 0-10-6-17-6s-10 7-17 6-7-7-13-6"/>
+  <path d="M97 22c7 0 10-6 17-6s10 7 17 6 7-7 13-6"/>
+  <path class="o2" d="M46 15c-2-5 2-9 7-8-1 4-4 7-7 8zM114 15c2-5-2-9-7-8 1 4 4 7 7 8z" stroke="none"/>
+  <circle cx="10" cy="17" r="2" fill="currentColor" stroke="none"/>
+  <circle cx="150" cy="17" r="2" fill="currentColor" stroke="none"/>
+{%- elif theme == "atlas" %}
+  <path d="M80 4l9 9-4 4 9 9-9 9 4 4-9 9-9-9 4-4-9-9 9-9-4-4z" fill="currentColor" stroke="none" transform="translate(0 -4) scale(1 .9)"/>
+  <path class="o2" d="M80 14l5 6-5 6-5-6z" stroke="none"/>
+  <path d="M52 22l7-7 7 7-7 7zM94 22l7-7 7 7-7 7z" fill="currentColor" stroke="none" opacity=".75"/>
+  <path class="o2" d="M28 22l5-5 5 5-5 5zM122 22l5-5 5 5-5 5z" stroke="none"/>
+{%- elif theme == "minimal" %}
+  <path d="M34 22h38M88 22h38"/>
+  <circle cx="80" cy="22" r="3.2"/>
+{%- elif theme == "bog" %}
+  <path d="M14 30C44 30 58 16 80 16s36 14 66 14"/>
+  <path d="M40 27c2-7 9-10 15-9-2 6-9 9-15 9zM56 21c-1-7 4-12 10-12 0 6-4 11-10 12zM120 27c-2-7-9-10-15-9 2 6 9 9 15 9zM104 21c1-7-4-12-10-12 0 6 4 11 10 12z" fill="currentColor" stroke="none" opacity=".55"/>
+  <g transform="translate(80 15)">
+    <circle cx="0" cy="-6" r="4.2"/><circle cx="5.7" cy="-1.9" r="4.2"/><circle cx="3.5" cy="4.9" r="4.2"/><circle cx="-3.5" cy="4.9" r="4.2"/><circle cx="-5.7" cy="-1.9" r="4.2"/>
+    <circle r="2.2" class="o2" stroke="none"/>
+  </g>
+{%- elif theme == "romantik" %}
+  <path d="M70 34s-13-8-15-16c-2-6 2-12 8-12 4 0 6 2 7 5 1-3 3-5 7-5 6 0 10 6 8 12" />
+  <path d="M90 36s13-8 15-16c2-6-2-12-8-12-4 0-6 2-7 5" />
+  <path d="M30 22h18M112 22h18" opacity=".6"/>
+  <circle cx="24" cy="22" r="1.8" fill="currentColor" stroke="none"/><circle cx="136" cy="22" r="1.8" fill="currentColor" stroke="none"/>
+{%- elif theme == "oltin" %}
+  <g transform="translate(80 22)">
+    <path d="M0-14L4-4 14 0 4 4 0 14-4 4-14 0-4-4z" fill="currentColor" stroke="none"/>
+    <circle r="18" opacity=".7"/>
+  </g>
+  <path d="M10 22h44M106 22h44"/>
+  <path d="M54 18l4 4-4 4M106 18l-4 4 4 4"/>
+  <path d="M24 22l-4-4M24 22l-4 4M136 22l4-4M136 22l4 4" opacity=".7"/>
+{%- elif theme == "quvnoq" %}
+  <path d="M10 26l8-8 8 8 8-8 8 8 8-8 8 8" stroke-width="2.4"/>
+  <path d="M94 26l8-8 8 8 8-8 8 8 8-8 8 8" stroke-width="2.4" class="o2s"/>
+  <path d="M80 6l3.5 9.5L93 19l-9.5 3.5L80 32l-3.5-9.5L67 19l9.5-3.5z" fill="currentColor" stroke="none"/>
+{%- elif theme == "tungi" %}
+  <path d="M86 10a13 13 0 1 0 0 24a16 16 0 0 1 0-24z" fill="currentColor" stroke="none"/>
+  <path d="M58 15l1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5 4-1.5zM106 25l1.2 3 3 1.2-3 1.2-1.2 3-1.2-3-3-1.2 3-1.2z" fill="currentColor" stroke="none"/>
+  <path d="M14 22h32M114 22h32" opacity=".6"/>
+{%- elif theme == "pastel" %}
+  <path d="M62 30h36a8 8 0 0 0 0-16 11 11 0 0 0-21-2 8 8 0 0 0-15 18z" fill="currentColor" stroke="none" opacity=".35"/>
+  <path d="M62 30h36a8 8 0 0 0 0-16 11 11 0 0 0-21-2 8 8 0 0 0-15 18z"/>
+  <path class="o2s" d="M36 14v8M32 18h8M124 24v8M120 28h8"/>
+  <circle cx="22" cy="24" r="2" class="o2" stroke="none"/><circle cx="140" cy="16" r="2" class="o2" stroke="none"/>
+{%- else %}
+  <path d="M80 22c-10-12-26-12-26-2s16 8 26 2c10 6 26 8 26-2s-16-10-26 2z"/>
+  <path d="M80 22l-8 14M80 22l8 14"/>
+  <path d="M20 22h26M114 22h26" opacity=".6"/>
+{%- endif %}
+</svg>
+{%- endmacro %}
+
+{% macro heart(cls="") -%}
+<svg class="{{ cls }}" viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.4 2.9 4.5 6.6 4.5c2.2 0 3.6 1.2 5.4 3.2 1.8-2 3.2-3.2 5.4-3.2 3.7 0 5.7 3.9 4.2 7.3C19.5 16.4 12 21 12 21z"/></svg>
+{%- endmacro %}
+
+{% macro icon(name) -%}
+<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+{%- if name == "pin" %}<path d="M12 21s-7-6.3-7-11.5A7 7 0 0 1 19 9.5C19 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>
+{%- elif name == "calendar" %}<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/>
+{%- elif name == "flower" %}<circle cx="12" cy="8" r="3"/><path d="M12 11v10M12 16c-3 0-5-2-5-4 3 0 5 1.5 5 4zM12 18c3 0 5-2 5-4-3 0-5 1.5-5 4z"/><path d="M9 6.5a3 3 0 1 1 6 0"/>
+{%- endif %}
+</svg>
+{%- endmacro %}

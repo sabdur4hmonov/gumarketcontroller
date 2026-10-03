@@ -1,0 +1,20 @@
+{% extends "_base.html" %}
+{%- from "_ornaments.html" import ornament, heart -%}
+{% block card %}
+<article class="card">
+  {{ ornament(v.theme) }}
+  <div id="ask">
+    <p class="eyebrow">{{ v.s.eyebrow }}</p>
+    <h1 class="display">{{ v.question }}</h1>
+  </div>
+  <div class="answers" id="answers">
+    <button type="button" class="btn btn-yes" id="yes" data-post="{{ v.yes_url }}">{{ v.s.yes }}</button>
+    <button type="button" class="btn btn-no" id="no" data-lines="{{ v.no_lines_json }}">{{ v.s.no }}</button>
+  </div>
+  <section class="celebrate" id="celebrate" hidden aria-live="polite">
+    {{ heart("heart") }}
+    <h2 class="display">{{ v.s.yay }}</h2>
+    <p class="lead">{{ v.celebration }}</p>
+  </section>
+</article>
+{% endblock %}

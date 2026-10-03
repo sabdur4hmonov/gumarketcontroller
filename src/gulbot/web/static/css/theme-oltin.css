@@ -1,0 +1,65 @@
+/* Oltin -- deep emerald, foil-like gold gradients and an arched frame. */
+:root {
+  --bg: #0d2420;
+  --bg-image:
+    radial-gradient(ellipse at 50% -10%, rgba(212, 175, 55, 0.22) 0, transparent 55%),
+    linear-gradient(180deg, #0f2b26 0%, #091a17 100%);
+  --card: #0f2a25;
+  --card-border: 1px solid rgba(212, 175, 55, 0.65);
+  --ink: #f3ead2;
+  --ink-soft: #d9cba5;
+  --muted: #b39b62;
+  --accent: #d4af37;
+  --accent-ink: #1a1405;
+  --accent-2: #f5e6a8;
+  --line: rgba(212, 175, 55, 0.35);
+  --cell-bg: rgba(212, 175, 55, 0.08);
+  --no-ink: #d9cba5;
+  --display-ink: #f1d77f;
+  --radius: 180px 180px 10px 10px;
+  --shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  --font-display: "Forum", Georgia, serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --shop-ink: #d9cba5;
+}
+
+.card {
+  padding-top: 70px;
+}
+
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 10px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 170px 170px 6px 6px;
+  pointer-events: none;
+}
+
+.display,
+.names {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  background: linear-gradient(100deg, #b8892f 0%, #f5e6a8 45%, #d4af37 60%, #9c7424 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.names .amp {
+  -webkit-text-fill-color: #d4af37;
+  color: #d4af37;
+}
+
+.eyebrow,
+.when-side,
+.when-month {
+  letter-spacing: 0.24em;
+}
+
+.btn-yes,
+.cta,
+.seg input:checked + label {
+  background: linear-gradient(100deg, #b8892f, #f5e6a8 50%, #c99a2e);
+  color: #1a1405;
+}

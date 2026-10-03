@@ -1,0 +1,50 @@
+/* Konvert -- the page arrives sealed. Tap the wax seal, the flap turns over
+ * and the letter rises out: cream paper and a handwritten heading. */
+:root {
+  --bg: #efe4d2;
+  --bg-image:
+    repeating-linear-gradient(45deg, rgba(120, 90, 50, 0.04) 0 2px, transparent 2px 8px),
+    linear-gradient(180deg, #f2e8d7, #e6d6bb);
+  --card: #fffdf7;
+  --ink: #3b2a1e;
+  --ink-soft: #5e4a3a;
+  --muted: #9c8670;
+  --accent: #8a1d2a;
+  --accent-ink: #fff7ea;
+  --accent-2: #c79a5b;
+  --line: rgba(138, 29, 42, 0.2);
+  --cell-bg: #f7f0e3;
+  --display-ink: #6d1622;
+  --radius: 4px;
+  --shadow:
+    0 1px 0 #e9dcc5,
+    0 22px 50px rgba(80, 50, 20, 0.2);
+  --font-display: "Bad Script", cursive;
+  --font-body: "Lora", Georgia, serif;
+  --env-paper: #ead9bb;
+  --env-flap: #dcc49c;
+  --env-fold: rgba(110, 80, 40, 0.1);
+  --seal: #7d1420;
+  --seal-hi: #c8414c;
+  --display-size: clamp(32px, 9.5vw, 46px);
+}
+
+.display,
+.names {
+  font-weight: 400;
+}
+
+/* faint ruled lines, as on writing paper */
+.card {
+  background-image: linear-gradient(transparent 31px, rgba(138, 29, 42, 0.06) 32px);
+  background-size: 100% 32px;
+}
+
+/* The handwritten numerals have long descenders; give the date room. */
+.when-day {
+  line-height: 1.15;
+}
+
+.when-month {
+  margin-top: 16px;
+}

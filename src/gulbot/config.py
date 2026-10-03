@@ -50,6 +50,16 @@ class Settings(BaseSettings):
     #: Not any shop's bot. Empty = onboarding is off; the process still serves
     #: every shop it has.
     platform_bot_token: SecretStr = SecretStr("")
+    #: Where the public Ha/Yo'q and taklifnoma pages are served, as an ORIGIN
+    #: (scheme://host[:port], no path). The bot builds every link on it. In
+    #: production the bot offers pages only once this is https -- see
+    #: gulbot.web.links and docs/DEPLOY.md, "Public pages".
+    public_base_url: str = "http://127.0.0.1:8088"
+    web_host: str = "127.0.0.1"
+    web_port: int = 8088
+    #: Behind a reverse proxy, read the client address from X-Forwarded-For
+    #: (rate limits). Never on when the service faces the internet directly.
+    web_trust_proxy: bool = False
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
     log_level: str = "INFO"

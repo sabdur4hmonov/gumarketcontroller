@@ -1,0 +1,41 @@
+/* Romantik -- blush to rose, a script heading and slow floating hearts. */
+:root {
+  --bg: #fde6ea;
+  --bg-image:
+    radial-gradient(circle at 15% 20%, rgba(255, 255, 255, 0.7) 0, transparent 30%),
+    radial-gradient(circle at 85% 85%, rgba(232, 116, 150, 0.35) 0, transparent 40%),
+    linear-gradient(160deg, #fde6ea 0%, #f9cdd8 100%);
+  --card: rgba(255, 255, 255, 0.86);
+  --ink: #4a1d2c;
+  --ink-soft: #6e3a4a;
+  --muted: #b07384;
+  --accent: #d6336c;
+  --accent-ink: #ffffff;
+  --accent-2: #f3a1b8;
+  --line: rgba(214, 51, 108, 0.25);
+  --cell-bg: rgba(253, 230, 234, 0.8);
+  --no-bg: #ffffff;
+  --display-ink: #b0245a;
+  --radius: 28px;
+  --shadow: 0 24px 60px rgba(176, 36, 90, 0.2);
+  --font-display: "Great Vibes", "Bad Script", cursive;
+  --font-display-uzc: "Bad Script", cursive;
+  --font-body: "Lora", Georgia, serif;
+  --display-size: clamp(40px, 12vw, 58px);
+}
+
+.display,
+.names {
+  font-weight: 400;
+}
+
+/* Bad Script stands in for the script face in Uzbek Cyrillic (Great Vibes has
+ * no Қ Ғ Ҳ). It runs wider, so it is set a little smaller -- relative to the
+ * display size, not to the body text. */
+:lang(uz-Cyrl) .display {
+  font-size: calc(var(--display-size) * 0.8);
+}
+
+:lang(uz-Cyrl) .names {
+  font-size: clamp(32px, 9.4vw, 46px);
+}

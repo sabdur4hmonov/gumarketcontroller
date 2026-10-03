@@ -1,0 +1,53 @@
+/* Atlas -- abstract ikat ("abr") bands in indigo, rose and saffron, built
+ * only from gradients. The band edges are softened the way a resist dye
+ * bleeds; nothing here reproduces a real textile. */
+:root {
+  --bg: #1f2f6b;
+  --bg-image:
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0 18px,
+      rgba(255, 255, 255, 0.92) 22px 30px,
+      rgba(255, 255, 255, 0) 34px 52px,
+      rgba(214, 68, 104, 0.95) 56px 68px,
+      rgba(214, 68, 104, 0) 72px 88px,
+      rgba(242, 182, 50, 0.95) 92px 100px,
+      rgba(242, 182, 50, 0) 104px 120px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(31, 47, 107, 0) 0 30px,
+      rgba(31, 47, 107, 0.55) 34px 46px,
+      rgba(31, 47, 107, 0) 50px 80px
+    );
+  --card: #ffffff;
+  --ink: #18214a;
+  --ink-soft: #3c4677;
+  --muted: #7a82a8;
+  --accent: #d64468;
+  --accent-ink: #ffffff;
+  --accent-2: #f2b632;
+  --line: rgba(31, 47, 107, 0.18);
+  --cell-bg: #f1f3fb;
+  --display-ink: #1f2f6b;
+  --radius: 26px;
+  --shadow: 0 24px 60px rgba(8, 14, 40, 0.45);
+  --font-display: "Unbounded", "Segoe UI", Arial, sans-serif;
+  --font-display-uzc: "Nunito", "Segoe UI", Arial, sans-serif;
+  --font-body: "Nunito", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(26px, 7.6vw, 36px);
+  --shop-ink: #ffffff;
+}
+
+.names {
+  font-size: clamp(30px, 9vw, 44px);
+}
+
+.card {
+  border-top: 10px solid #f2b632;
+}
+
+.shop-brand,
+.fine {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}

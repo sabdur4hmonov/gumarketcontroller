@@ -17,6 +17,9 @@ dependencies = [
     "structlog>=24.4",
     # Fernet, for per-shop bot tokens encrypted at rest (services/shop_tokens.py).
     "cryptography>=44,<51",
+    # The public Ha/Yo'q and taklifnoma pages (gulbot.web). Autoescaping
+    # templates, so user text cannot become markup.
+    "jinja2>=3.1,<4",
     # Windows ships no IANA tz database. This arrives transitively today via
     # kombu/psycopg/tzlocal, which is not a guarantee -- zoneinfo("Asia/Tashkent")
     # is load-bearing for the whole scheduler, so it is pinned directly.
@@ -39,6 +42,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+# The public pages' templates, CSS, script, fonts and font licenses.
+gulbot = ["web/templates/*.html", "web/static/*/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

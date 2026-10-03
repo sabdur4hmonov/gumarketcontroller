@@ -1,0 +1,44 @@
+/* Bog' -- sage and blush, an arch-shaped card, and stems in our own line art
+ * climbing the background. */
+:root {
+  --bg: #e7eee4;
+  --bg-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='220' viewBox='0 0 160 220'%3E%3Cg fill='none' stroke='%237f9a78' stroke-opacity='.35' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M30 220C34 170 22 130 40 80S70 20 64 0'/%3E%3Cpath d='M36 150c-14-6-22-18-22-30 12 2 20 12 22 30zM40 112c12-10 26-12 34-8-8 10-20 12-34 8zM46 70c-10-10-12-22-8-32 8 8 10 20 8 32z'/%3E%3Cpath d='M130 220c-6-40 8-60 0-100'/%3E%3Cpath d='M128 170c10-8 22-8 28-4-8 8-18 8-28 4zM126 140c-10-6-16-16-14-26 8 6 14 14 14 26z'/%3E%3C/g%3E%3C/svg%3E"),
+    radial-gradient(circle at 80% 10%, #f6e1dc 0, transparent 45%);
+  --card: #fbfaf6;
+  --ink: #2c3a2b;
+  --ink-soft: #4e5e4c;
+  --muted: #84957f;
+  --accent: #c0757a;
+  --accent-ink: #ffffff;
+  --accent-2: #7f9a78;
+  --line: rgba(127, 154, 120, 0.35);
+  --cell-bg: #eef3ec;
+  --display-ink: #3d5a3a;
+  --radius: 200px 200px 22px 22px;
+  --shadow: 0 20px 48px rgba(60, 80, 55, 0.18);
+  --font-display: "Great Vibes", "Bad Script", cursive;
+  --font-display-uzc: "Bad Script", cursive;
+  --font-body: "Lora", Georgia, serif;
+  --display-size: clamp(40px, 12vw, 56px);
+}
+
+.card {
+  padding-top: 64px;
+}
+
+.display,
+.names {
+  font-weight: 400;
+}
+
+/* Bad Script stands in for the script face in Uzbek Cyrillic (Great Vibes has
+ * no Қ Ғ Ҳ). It runs wider, so it is set a little smaller -- relative to the
+ * display size, not to the body text. */
+:lang(uz-Cyrl) .display {
+  font-size: calc(var(--display-size) * 0.8);
+}
+
+:lang(uz-Cyrl) .names {
+  font-size: clamp(32px, 9.4vw, 46px);
+}

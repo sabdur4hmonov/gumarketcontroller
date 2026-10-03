@@ -1,0 +1,11 @@
+{%- from "_ornaments.html" import icon -%}
+<footer class="shop">
+  <div class="shop-brand">
+    <span class="mono" aria-hidden="true">{{ v.shop.initial }}</span>
+    <span>{{ v.shop.name }}</span>
+  </div>
+  {%- if v.cta_url %}
+  <a class="cta" href="{{ v.cta_url }}" rel="noopener noreferrer">{{ icon("flower") }}<span>{{ v.s.cta }}</span></a>
+  {%- endif %}
+  <p class="fine">{{ v.made_with }}</p>
+</footer>

@@ -1,0 +1,55 @@
+/* Quvnoq -- loud, poster-like, scalloped edges and confetti dots. */
+:root {
+  --bg: #ffe9f2;
+  --bg-image:
+    radial-gradient(circle, #ff4f8b 0 3px, transparent 4px) 0 0 / 46px 46px,
+    radial-gradient(circle, #ff9f1c 0 3px, transparent 4px) 23px 23px / 46px 46px,
+    radial-gradient(circle, #7b2cbf 0 2px, transparent 3px) 11px 34px / 46px 46px;
+  --card: #ffffff;
+  --ink: #2b1240;
+  --ink-soft: #4d2b66;
+  --muted: #8a6aa3;
+  --accent: #ff4f8b;
+  --accent-ink: #ffffff;
+  --accent-2: #ff9f1c;
+  --line: rgba(123, 44, 191, 0.25);
+  --cell-bg: #fff3e0;
+  --display-ink: #7b2cbf;
+  --cta-bg: #7b2cbf;
+  --cta-ink: #ffffff;
+  --radius: 18px;
+  --shadow: none;
+  --font-display: "Unbounded", "Segoe UI", Arial, sans-serif;
+  --font-display-uzc: "Nunito", "Segoe UI", Arial, sans-serif;
+  --font-body: "Nunito", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(26px, 7.8vw, 38px);
+}
+
+/* Scallops cut into the top and bottom edge with a radial-gradient mask. */
+.card {
+  padding-top: 44px;
+  padding-bottom: 42px;
+  -webkit-mask:
+    radial-gradient(circle 9px at 50% 0, transparent 98%, #000) top / 26px 51% repeat-x,
+    radial-gradient(circle 9px at 50% 100%, transparent 98%, #000) bottom / 26px 51% repeat-x;
+  mask:
+    radial-gradient(circle 9px at 50% 0, transparent 98%, #000) top / 26px 51% repeat-x,
+    radial-gradient(circle 9px at 50% 100%, transparent 98%, #000) bottom / 26px 51% repeat-x;
+}
+
+.btn-yes {
+  background: #ff4f8b;
+  box-shadow: 4px 4px 0 #2b1240;
+}
+
+.btn-no {
+  border: 2px solid #2b1240;
+}
+
+.cta {
+  box-shadow: 4px 4px 0 #2b1240;
+}
+
+.names {
+  font-size: clamp(30px, 9vw, 46px);
+}

@@ -1,0 +1,53 @@
+/* Tungi -- a night sky: navy gradient, scattered stars, a crescent, thin gold
+ * rules and a soft glow behind the card. */
+:root {
+  --bg: #0b1026;
+  --bg-image:
+    radial-gradient(1.5px 1.5px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 32% 72%, #fff 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 58% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 78% 44%, #fff 50%, transparent 51%),
+    radial-gradient(2px 2px at 90% 82%, #f6e7c1 50%, transparent 51%),
+    radial-gradient(1px 1px at 22% 90%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 60%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 44% 38%, #fff 50%, transparent 51%),
+    radial-gradient(ellipse at 50% 0%, #26306b 0%, transparent 60%),
+    linear-gradient(180deg, #121a3f 0%, #070b1c 100%);
+  --card: rgba(17, 24, 58, 0.88);
+  --card-border: 1px solid rgba(201, 169, 110, 0.45);
+  --ink: #eef0fb;
+  --ink-soft: #c5cae6;
+  --muted: #8e96c4;
+  --accent: #c9a96e;
+  --accent-ink: #0b1026;
+  --accent-2: #f6e7c1;
+  --line: rgba(201, 169, 110, 0.35);
+  --cell-bg: rgba(255, 255, 255, 0.05);
+  --no-ink: #c5cae6;
+  --display-ink: #f6e7c1;
+  --radius: 20px;
+  --shadow: 0 0 80px rgba(118, 132, 255, 0.25);
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --shop-ink: #c5cae6;
+}
+
+/* the crescent: a disc whose shadow is the moon */
+body::before {
+  content: "";
+  position: fixed;
+  top: 5%;
+  right: 10%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: -12px 7px 0 0 #f6e7c1;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.field input,
+.seg label,
+.stepper button {
+  background: rgba(255, 255, 255, 0.06);
+}

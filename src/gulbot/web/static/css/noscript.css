@@ -1,0 +1,9 @@
+/* Without JavaScript the envelope cannot be opened, so it is never shown and
+ * nothing waits behind it. */
+.envelope {
+  display: none;
+}
+
+.has-envelope .stage {
+  animation: none;
+}

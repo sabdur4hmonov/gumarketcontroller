@@ -1,0 +1,31 @@
+/* Minimal -- paper white, near-black ink, one terracotta accent and a lot of
+ * empty space. The type does the work. */
+:root {
+  --bg: #f4f1ec;
+  --card: #fdfcfa;
+  --ink: #1d1c1a;
+  --ink-soft: #4b4945;
+  --muted: #8f8a82;
+  --accent: #b5694a;
+  --accent-ink: #ffffff;
+  --accent-2: #1d1c1a;
+  --line: rgba(29, 28, 26, 0.16);
+  --cell-bg: #f4f1ec;
+  --no-ink: #4b4945;
+  --cta-bg: #1d1c1a;
+  --cta-ink: #fdfcfa;
+  --radius: 2px;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
+  --font-display: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(34px, 10vw, 50px);
+}
+
+.card {
+  padding-top: 48px;
+  padding-bottom: 44px;
+}
+
+.eyebrow {
+  color: var(--accent);
+}

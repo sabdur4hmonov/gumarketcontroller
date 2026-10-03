@@ -1,0 +1,67 @@
+{% extends "_base.html" %}
+{%- from "_ornaments.html" import ornament, icon -%}
+{% block card %}
+<article class="card">
+  {{ ornament(v.theme) }}
+  <p class="eyebrow">{{ v.event_label }}</p>
+  <h1 class="names">{{ v.name_1 }}{% if v.name_2 %}<span class="amp">&amp;</span>{{ v.name_2 }}{% endif %}</h1>
+  <p class="lead">{{ v.message }}</p>
+
+  <div class="divider" aria-hidden="true"><span></span></div>
+
+  <div class="when">
+    <div class="when-side">{{ v.weekday }}</div>
+    <div class="when-day">{{ v.day }}</div>
+    <div class="when-side">{{ v.time }}</div>
+  </div>
+  <div class="when-month">{{ v.month_year }}</div>
+
+  <div class="countdown" id="countdown" data-at="{{ v.iso }}" hidden>
+    <div class="cd-cell"><span class="cd-num" data-unit="d">0</span><span class="cd-lbl">{{ v.s.days }}</span></div>
+    <div class="cd-cell"><span class="cd-num" data-unit="h">00</span><span class="cd-lbl">{{ v.s.hours }}</span></div>
+    <div class="cd-cell"><span class="cd-num" data-unit="m">00</span><span class="cd-lbl">{{ v.s.minutes }}</span></div>
+    <div class="cd-cell"><span class="cd-num" data-unit="s">00</span><span class="cd-lbl">{{ v.s.seconds }}</span></div>
+  </div>
+
+  <div class="divider" aria-hidden="true"><span></span></div>
+
+  <div class="venue">
+    <span class="venue-label">{{ v.s.venue }}</span>
+    <span class="venue-text">{{ v.venue }}</span>
+    <div class="links">
+      {%- if v.map %}
+      <a class="chip" href="{{ v.map.google }}" target="_blank" rel="noopener noreferrer">{{ icon("pin") }}Google Maps</a>
+      <a class="chip" href="{{ v.map.yandex }}" target="_blank" rel="noopener noreferrer">{{ icon("pin") }}Yandex</a>
+      {%- endif %}
+      <a class="chip" href="{{ v.ics_url }}">{{ icon("calendar") }}{{ v.s.calendar }}</a>
+    </div>
+  </div>
+
+  {%- if v.rsvp %}
+  <section class="rsvp" aria-labelledby="rsvp-title">
+    <h2 id="rsvp-title">{{ v.s.rsvp_title }}</h2>
+    <form id="rsvp-form" data-post="{{ v.rsvp_url }}" data-thanks-yes="{{ v.s.rsvp_thanks_yes }}" data-thanks-no="{{ v.s.rsvp_thanks_no }}" data-failed="{{ v.s.rsvp_failed }}" novalidate>
+      <div class="seg" role="radiogroup" aria-labelledby="rsvp-title">
+        <input type="radio" id="rsvp-yes" name="answer" value="yes"><label for="rsvp-yes">{{ v.s.rsvp_yes }}</label>
+        <input type="radio" id="rsvp-no" name="answer" value="no"><label for="rsvp-no">{{ v.s.rsvp_no }}</label>
+      </div>
+      <div class="guests" id="rsvp-guests" hidden>
+        <span class="field">{{ v.s.rsvp_guests }}</span>
+        <div class="stepper">
+          <button type="button" id="rsvp-minus" aria-label="-1">&minus;</button>
+          <output id="rsvp-count" aria-live="polite">1</output>
+          <button type="button" id="rsvp-plus" aria-label="+1">+</button>
+        </div>
+      </div>
+      <label class="field">{{ v.s.rsvp_name }}<input id="rsvp-name" name="name" maxlength="60" autocomplete="name"></label>
+      <p class="form-error" id="rsvp-error" hidden>{{ v.s.rsvp_pick }}</p>
+      <button class="btn btn-yes" type="submit">{{ v.s.rsvp_send }}</button>
+    </form>
+    <p class="rsvp-done" id="rsvp-done" hidden></p>
+    <noscript><p class="fine">{{ v.s.rsvp_noscript }}</p></noscript>
+  </section>
+  {%- endif %}
+
+  {{ ornament(v.theme, bottom=True) }}
+</article>
+{% endblock %}
