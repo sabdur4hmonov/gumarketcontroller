@@ -159,26 +159,37 @@ async def _build_group(
 
 async def _render(
     customer_id: int, occasion_id: int, offset_days: int
-) -> tuple[str, Attachment | None, int]:
-    """Everything that only READS: build the group, render, attach a bouquet."""
+) -> tuple[str, Attachment | None, int, int]:
+    """Everything that only READS: build the group, render, attach a bouquet.
+
+    Returns (text, attachment, chat_id, shop_id).
+    """
     async with task_session_factory() as factory, factory() as session:
         group = await _build_group(
             session, customer_id=customer_id, occasion_id=occasion_id, offset_days=offset_days
         )
         attachment = await attach_bouquet(session, group, render=render_reminder)
-    return render_reminder(group), attachment, group.telegram_user_id
+    return render_reminder(group), attachment, group.telegram_user_id, group.shop_id
 
 
-async def _deliver(chat_id: int, text: str, attachment: Attachment | None) -> None:
+async def _deliver(shop_id: int, chat_id: int, text: str, attachment: Attachment | None) -> None:
     """The one part that talks to Telegram. No confirmation prompt in here --
     `input()` is blocking, and this coroutine must not block the event loop."""
-    # Built exactly the way the real tick builds it (worker/tasks.py), and
-    # never cached across a call -- see build_bot's own docstring for why.
-    from gulbot.bot.factory import build_bot
+    # The customer's OWN shop's bot, resolved exactly the way the real tick
+    # resolves it (worker/tasks.py) -- its stored token, or the logged legacy
+    # fallback -- and never cached across a call; see gulbot.bot.registry.
+    from gulbot.bot.registry import registry_for
     from gulbot.sending.telegram import TelegramTransport
+    from gulbot.sending.transport import ShopBotUnavailable
 
-    bot = build_bot()
+    async with task_session_factory() as factory, factory() as session:
+        registry = await registry_for(session, shop_ids=[shop_id])
     try:
+        try:
+            bot = registry.bot_for(shop_id)
+        except ShopBotUnavailable as missing:
+            print(f"NOT sent: {missing}")
+            sys.exit(1)
         transport = TelegramTransport(bot)
         if attachment is None:
             result = await transport.send_text(chat_id=chat_id, text=text)
@@ -190,7 +201,7 @@ async def _deliver(chat_id: int, text: str, attachment: Attachment | None) -> No
                 reply_markup=attachment.reply_markup,
             )
     finally:
-        await bot.session.close()
+        await registry.close()
 
     if result.ok:
         print(f"sent. message_id={result.message_id}")
@@ -250,7 +261,7 @@ def main(argv: list[str] | None = None) -> None:
         asyncio.run(_list(args.shop_id, args.customer_id))
         return
 
-    text, attachment, chat_id = asyncio.run(
+    text, attachment, chat_id, shop_id = asyncio.run(
         _render(args.customer_id, args.occasion_id, args.offset_days)
     )
 
@@ -274,7 +285,7 @@ def main(argv: list[str] | None = None) -> None:
         print("cancelled.")
         return
 
-    asyncio.run(_deliver(chat_id, text, attachment))
+    asyncio.run(_deliver(shop_id, chat_id, text, attachment))
 
 
 if __name__ == "__main__":

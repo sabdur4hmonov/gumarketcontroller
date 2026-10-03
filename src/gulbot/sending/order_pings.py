@@ -49,7 +49,15 @@ from gulbot.models.order import SENDABLE_PING_STATES, Order, OrderReminder, Ping
 from gulbot.models.shop import Shop
 from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.order_card import ANNOUNCEMENT, OrderCard, render_card
-from gulbot.sending.transport import CAPTION_LIMIT, CircuitBreaker, SendResult, Transport
+from gulbot.sending.transport import (
+    CAPTION_LIMIT,
+    CircuitBreaker,
+    SendResult,
+    ShopBotUnavailable,
+    Transport,
+    TransportFor,
+    per_shop,
+)
 
 log = logging.getLogger("gulbot.sending.orders")
 
@@ -295,13 +303,22 @@ def _error_of(outcome: SendResult) -> str:
 async def run_order_ping_tick(
     session: AsyncSession,
     *,
-    transport: Transport,
     now_utc: datetime,
+    transport: Transport | None = None,
+    transport_for: TransportFor | None = None,
     limit: int = BATCH_SIZE,
     only_order_id: int | None = None,
     lang: str = "uz",
 ) -> PingTickResult:
-    """One beat of the shop-facing outbox."""
+    """One beat of the shop-facing outbox.
+
+    Each ping goes out through ITS shop's bot -- `transport_for(ping.shop_id)`
+    -- to that shop's own targets (C2 of AUDIT_MULTI_TENANT.md). The chat was
+    always resolved per shop; the BOT was not, so a card carrying one shop's
+    customer phone and address could be sent by another shop's bot. See
+    `per_shop` for the two ways in; checked before anything is claimed.
+    """
+    transport_for = per_shop(transport, transport_for)
     result = PingTickResult()
 
     pings = await claim_due_pings(
@@ -371,6 +388,28 @@ async def run_order_ping_tick(
             await session.commit()
             continue
 
+        try:
+            shop_transport = transport_for(ping.shop_id)
+        except ShopBotUnavailable as missing:
+            # The same finished-order-in-an-unfinished-setup as above, one layer
+            # down: there is somewhere to send, and no bot to send it with. The
+            # same treatment -- loud, failed, retried, parked at the cap -- and
+            # every other shop's pings still go out. Not recorded to the
+            # breaker: it says nothing about whether Telegram is answering.
+            log.error(
+                "ORDER %s CANNOT REACH SHOP %s: %s. ping=%s attempt=%s",
+                ping.order_id,
+                ping.shop_id,
+                missing,
+                ping.ping_number,
+                ping.attempts,
+            )
+            await _resolve(session, ping, state=PingState.FAILED, now_utc=now_utc)
+            result.undeliverable += 1
+            result.failed += 1
+            await session.commit()
+            continue
+
         text = render_card(
             card,
             ping_number=ping.ping_number,
@@ -386,7 +425,7 @@ async def run_order_ping_tick(
         # answers still gets the pings, which say the delivery is coming --
         # that is the nudge, and it does not need a second button.
         delivered, errors = await _deliver(
-            transport,
+            shop_transport,
             targets=targets,
             card=card,
             text=text,

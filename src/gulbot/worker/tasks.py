@@ -5,14 +5,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
+from gulbot.bot.registry import BotRegistry, registry_for
 from gulbot.db.session import task_session_factory
 from gulbot.models.shop import Shop
 from gulbot.sending.dispatcher import run_tick
 from gulbot.sending.rate_limit import RateLimiter
 from gulbot.sending.render import render_reminder
+from gulbot.sending.transport import TransportFor
 from gulbot.services.indexer import finalize_product
 from gulbot.services.materializer import materialize_shop
 from gulbot.worker.app import (
@@ -30,23 +33,35 @@ from gulbot.worker.app import (
 )
 from gulbot.worker.debounce import AlbumDebouncer
 
+if TYPE_CHECKING:
+    from gulbot.sending.alerts import Job
+
 log = logging.getLogger("gulbot.worker")
+
+
+def _transports(registry: BotRegistry) -> TransportFor:
+    """shop_id -> a transport over that shop's bot. C1/C2 of the audit: the
+    outbox spans every shop, so the worker must never hand a tick one bot."""
+    from gulbot.sending.telegram import TelegramTransport
+
+    return lambda shop_id: TelegramTransport(registry.bot_for(shop_id))
 
 
 async def _send_due_reminders() -> dict[str, int]:
     from functools import partial
 
-    from gulbot.bot.factory import build_bot
     from gulbot.sending.attach import attach_bouquet
-    from gulbot.sending.telegram import TelegramTransport
 
-    bot = build_bot()
     limiter = RateLimiter(clock=lambda: asyncio.get_event_loop().time())
-    try:
-        async with task_session_factory() as factory, factory() as session:
+    async with task_session_factory() as factory, factory() as session:
+        # Each shop's own stored token (or the logged legacy fallback), loaded
+        # once per call. Closed in the `finally`, exactly as the single bot
+        # was: the registry caches bots for THIS call only.
+        registry = await registry_for(session)
+        try:
             result = await run_tick(
                 session,
-                transport=TelegramTransport(bot),
+                transport_for=_transports(registry),
                 render=render_reminder,
                 now_utc=datetime.now(UTC),
                 limiter=limiter,
@@ -55,8 +70,8 @@ async def _send_due_reminders() -> dict[str, int]:
                 attach=partial(attach_bouquet, session, render=render_reminder),
             )
             await session.commit()
-    finally:
-        await bot.session.close()
+        finally:
+            await registry.close()
     log.info(
         "tick: groups=%s sent=%s expired=%s failed=%s cancelled=%s handed_back=%s",
         result.groups,
@@ -72,23 +87,22 @@ async def _send_due_reminders() -> dict[str, int]:
 async def _send_order_pings() -> dict[str, int]:
     """The shop-facing outbox. Same lifetime discipline as the reminder tick.
 
-    The bot is built here and its session closed in a `finally` -- `build_bot()`
-    is uncached for exactly this reason. An aiohttp session that outlived the
-    call would hand the NEXT task a client bound to a closed event loop, which
-    is the defect CP8 spent a live run finding.
+    The bots are built here and their sessions closed in a `finally` --
+    `build_bot()` is uncached for exactly this reason. An aiohttp session that
+    outlived the call would hand the NEXT task a client bound to a closed event
+    loop, which is the defect CP8 spent a live run finding. The registry keeps
+    that rule: it caches bots within this call and closes them all at its end.
     """
-    from gulbot.bot.factory import build_bot
     from gulbot.sending.order_pings import run_order_ping_tick
-    from gulbot.sending.telegram import TelegramTransport
 
-    bot = build_bot()
-    try:
-        async with task_session_factory() as factory, factory() as session:
+    async with task_session_factory() as factory, factory() as session:
+        registry = await registry_for(session)
+        try:
             result = await run_order_ping_tick(
-                session, transport=TelegramTransport(bot), now_utc=datetime.now(UTC)
+                session, transport_for=_transports(registry), now_utc=datetime.now(UTC)
             )
-    finally:
-        await bot.session.close()
+        finally:
+            await registry.close()
     log.info(
         "order pings: claimed=%s sent=%s failed=%s dead=%s undeliverable=%s handed_back=%s",
         result.claimed,
@@ -101,43 +115,29 @@ async def _send_order_pings() -> dict[str, int]:
     return {"claimed": result.claimed, "sent": result.sent}
 
 
-async def _for_every_shop(job: str) -> dict[str, int]:
+async def _for_every_shop(job: Job) -> dict[str, int]:
     """Run one health job for every shop. Shared by both CP11.5 tasks.
 
-    v1 has exactly one shop, so this is a loop over one row -- written as a
-    loop anyway because both jobs are shop-scoped in every query, and a
-    second shop should not need this file edited.
+    Each shop's alert goes through ITS OWN bot -- see
+    `alerts.announce_for_every_shop`, where the loop now lives. This used to
+    build one global Bot for every shop's alerts, the last send path that did.
 
-    The bot is built here and closed in a `finally`, the same lifetime rule
-    as every other sending task: `build_bot()` is uncached, so the client
-    belongs to this call's event loop and dies with it.
+    The registry is built here and closed in a `finally`, the same lifetime
+    rule as every other sending task: `build_bot()` is uncached, so the
+    clients belong to this call's event loop and die with it.
     """
-    from gulbot.bot.factory import build_bot
-    from gulbot.sending.alerts import check_and_alert, send_daily_summary
-    from gulbot.sending.telegram import TelegramTransport
+    from gulbot.sending import alerts
 
-    counts = {"shops": 0, "announced": 0}
-    bot = build_bot()
-    try:
-        transport = TelegramTransport(bot)
-        now = datetime.now(UTC)
-        async with task_session_factory() as factory, factory() as session:
-            shop_ids = list(await session.scalars(select(Shop.id)))
-            for shop_id in shop_ids:
-                counts["shops"] += 1
-                if job == "summary":
-                    if await send_daily_summary(
-                        session, transport=transport, shop_id=shop_id, now_utc=now
-                    ):
-                        counts["announced"] += 1
-                else:
-                    announced = await check_and_alert(
-                        session, transport=transport, shop_id=shop_id, now_utc=now
-                    )
-                    counts["announced"] += len(announced)
+    now = datetime.now(UTC)
+    async with task_session_factory() as factory, factory() as session:
+        registry = await registry_for(session)
+        try:
+            counts = await alerts.announce_for_every_shop(
+                session, job=job, transport_for=_transports(registry), now_utc=now
+            )
             await session.commit()
-    finally:
-        await bot.session.close()
+        finally:
+            await registry.close()
     return counts
 
 

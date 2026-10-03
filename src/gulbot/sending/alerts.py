@@ -13,10 +13,13 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import Literal
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.i18n import t
+from gulbot.models.shop import Shop
 from gulbot.sending.health import (
     STALL_AFTER,
     DailyTotals,
@@ -26,7 +29,7 @@ from gulbot.sending.health import (
     read_health,
 )
 from gulbot.sending.order_pings import ping_targets
-from gulbot.sending.transport import Transport
+from gulbot.sending.transport import ShopBotUnavailable, Transport, TransportFor
 
 log = logging.getLogger("gulbot.health")
 
@@ -142,3 +145,47 @@ async def check_and_alert(
             announced.append(kind)
             log.warning("health alert %s announced for shop %s", kind, shop_id)
     return announced
+
+
+Job = Literal["check", "summary"]
+
+
+async def announce_for_every_shop(
+    session: AsyncSession,
+    *,
+    job: Job,
+    transport_for: TransportFor,
+    now_utc: datetime,
+) -> dict[str, int]:
+    """Run one health job for every shop, each through ITS OWN shop's bot.
+
+    The per-shop loop used to live in the Celery task and send every shop's
+    alert through one global Bot -- the defect C1/C2 fixed for reminders and
+    order pings, in the last send path that still had it. Moved here so it can
+    be tested against a real database.
+
+    A shop with no usable bot is skipped with one clear ERROR line and counted
+    as `unreachable`; every other shop is still told. Nobody else can be told
+    on its behalf -- its alert has no other honest route.
+    """
+    counts = {"shops": 0, "announced": 0, "unreachable": 0}
+    shop_ids = list(await session.scalars(select(Shop.id).order_by(Shop.id)))
+    for shop_id in shop_ids:
+        counts["shops"] += 1
+        try:
+            transport = transport_for(shop_id)
+        except ShopBotUnavailable as missing:
+            log.error("health %s NOT SENT: %s", job, missing)
+            counts["unreachable"] += 1
+            continue
+        if job == "summary":
+            if await send_daily_summary(
+                session, transport=transport, shop_id=shop_id, now_utc=now_utc
+            ):
+                counts["announced"] += 1
+        else:
+            announced = await check_and_alert(
+                session, transport=transport, shop_id=shop_id, now_utc=now_utc
+            )
+            counts["announced"] += len(announced)
+    return counts

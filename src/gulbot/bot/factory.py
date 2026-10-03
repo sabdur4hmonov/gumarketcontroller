@@ -52,12 +52,27 @@ ALLOWED_UPDATES: Final = [
 TELEGRAM_REQUEST_TIMEOUT = 15
 
 
-def build_bot() -> Bot:
+def build_bot(token: str | None = None) -> Bot:
+    """A new Bot. `token` None means the process's BOT_TOKEN.
+
+    Uncached on purpose; see worker/tasks.py. A token is passed only by
+    `gulbot.bot.registry`, which picks one per shop.
+    """
     return Bot(
-        token=get_settings().bot_token.get_secret_value(),
+        token=token if token is not None else get_settings().bot_token.get_secret_value(),
         session=AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT),
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
+
+
+def process_token_is_set() -> bool:
+    """Whether `build_bot()` with no token has a BOT_TOKEN to build from.
+
+    Beside `build_bot` so the two always read the same settings -- the
+    registry asks this before falling back, rather than letting aiogram fail
+    on an empty token somewhere less clear.
+    """
+    return bool(get_settings().bot_token.get_secret_value())
 
 
 def build_storage() -> RedisStorage:

@@ -22,7 +22,12 @@ from gulbot.models import *  # noqa: F401,F403  (import side effect: register ta
 config = context.config
 
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: the default (True) switches off every
+    # logger already imported -- here, all of gulbot's, since the models import
+    # the app. Any process that ran migrations in-process, the test suite
+    # included, then logged nothing at all, and a "no secret in the logs" test
+    # passed only because there were no logs. tests/test_shop_tokens.py.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

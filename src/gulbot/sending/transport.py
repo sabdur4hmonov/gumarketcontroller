@@ -14,6 +14,7 @@ not learn what a product is; composing one is `sending/attach.py`'s job.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -150,3 +151,44 @@ class Transport(Protocol):
         message_id: int,
         reply_markup: InlineKeyboardMarkup | None = None,
     ) -> SendResult: ...
+
+
+class ShopBotUnavailable(LookupError):
+    """There is no bot that may speak for this shop.
+
+    Raised by whatever resolves `transport_for(shop_id)` -- no stored token and
+    no fallback, a token that cannot be decrypted, one aiogram rejects -- and
+    caught by every send path, which fails THAT shop's row, logs this one
+    sentence, and carries on with every other shop. `reason` says what to fix
+    and never carries a token, a ciphertext or a key.
+    """
+
+    def __init__(self, shop_id: int, reason: str) -> None:
+        super().__init__(f"shop {shop_id} has no usable bot: {reason}")
+        self.shop_id = shop_id
+        self.reason = reason
+
+
+#: shop_id -> the Transport that speaks as THAT shop's bot.
+#:
+#: C1/C2 of AUDIT_MULTI_TENANT.md. Both ticks drain an outbox that spans every
+#: shop, and used to push all of it through one Bot. They now resolve a
+#: transport per row, from the row's own shop_id.
+TransportFor = Callable[[int], Transport]
+
+
+def per_shop(transport: Transport | None, transport_for: TransportFor | None) -> TransportFor:
+    """The ticks' one way in. Exactly one of the two, never a guess.
+
+    `transport_for` is what the worker passes: a transport per shop.
+    `transport` alone means every shop in the batch uses that one -- right for
+    tests and for the order router's immediate flush (one order, so one shop),
+    wrong for a worker draining every shop, which is why the worker no longer
+    passes it.
+    """
+    if (transport is None) == (transport_for is None):
+        raise TypeError("pass exactly one of transport= or transport_for=")
+    if transport_for is not None:
+        return transport_for
+    single = transport
+    return lambda shop_id: single  # type: ignore[return-value]

@@ -60,9 +60,20 @@ from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
 from gulbot.sending.rate_limit import RateLimiter
-from gulbot.sending.transport import Attachment, CircuitBreaker, SendResult, Transport
+from gulbot.sending.transport import (
+    Attachment,
+    CircuitBreaker,
+    SendResult,
+    ShopBotUnavailable,
+    Transport,
+    TransportFor,
+    per_shop,
+)
 
 log = logging.getLogger("gulbot.sending")
+
+#: error_code for a group whose shop has no usable bot. See ShopBotUnavailable.
+NO_BOT_TOKEN = "no_bot_token"
 
 #: Turns a due group into message text. Injected so the dispatcher never
 #: needs to know how a reminder is worded.
@@ -425,15 +436,23 @@ async def block_customer(session: AsyncSession, group: DueGroup) -> None:
 async def run_tick(
     session: AsyncSession,
     *,
-    transport: Transport,
     render: Renderer,
     now_utc: datetime,
+    transport: Transport | None = None,
+    transport_for: TransportFor | None = None,
     limit: int = BATCH_SIZE,
     channel: str = "telegram",
     limiter: RateLimiter | None = None,
     attach: Attacher | None = None,
 ) -> TickResult:
-    """One beat. Returns what it did, for logging and for tests."""
+    """One beat. Returns what it did, for logging and for tests.
+
+    The batch spans every shop, so each group is sent through the transport of
+    ITS shop -- `transport_for(group.shop_id)` -- never one shared bot (C1 of
+    AUDIT_MULTI_TENANT.md). See `per_shop` for the two ways in. Checked before
+    anything is claimed, so a bad call locks no rows.
+    """
+    transport_for = per_shop(transport, transport_for)
     result = TickResult()
 
     # --- phase 1: decide and claim, then commit --------------------------
@@ -501,6 +520,23 @@ async def run_tick(
             await session.commit()
             continue
 
+        # The customer's own shop's bot. It is also the only bot that can use
+        # the attachment's file id: Telegram file ids are per bot.
+        try:
+            shop_transport = transport_for(group.shop_id)
+        except ShopBotUnavailable as missing:
+            # One shop's setup problem, not the tick's: fail THIS group through
+            # the ordinary retry ladder (so it parks after MAX_SEND_ATTEMPTS
+            # and the health check counts it) and carry on with every other
+            # shop. Not recorded to the breaker -- a missing bot says nothing
+            # about whether Telegram is answering.
+            log.error("reminder for customer %s NOT SENT: %s", group.customer_id, missing)
+            await _apply_outcome(
+                session, group, SendResult.failed(NO_BOT_TOKEN), now_utc=now_utc, result=result
+            )
+            await session.commit()
+            continue
+
         if limiter is not None:
             result.waited_seconds += await limiter.acquire(group.telegram_user_id)
 
@@ -508,9 +544,11 @@ async def run_tick(
         # rather than as a second message, so the group is still atomic.
         attachment = await attach(group) if attach is not None else None
         if attachment is None:
-            outcome = await transport.send_text(chat_id=group.telegram_user_id, text=render(group))
+            outcome = await shop_transport.send_text(
+                chat_id=group.telegram_user_id, text=render(group)
+            )
         else:
-            outcome = await transport.send_photo(
+            outcome = await shop_transport.send_photo(
                 chat_id=group.telegram_user_id,
                 file_id=attachment.file_id,
                 caption=attachment.caption,

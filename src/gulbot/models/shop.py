@@ -10,7 +10,17 @@ from __future__ import annotations
 from datetime import time
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, Integer, SmallInteger, String, Time, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Integer,
+    SmallInteger,
+    String,
+    Text,
+    Time,
+    text,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -50,6 +60,28 @@ class Shop(IdMixin, TimestampMixin, Base):
     group_chat_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
     owner_telegram_ids: Mapped[list[int]] = mapped_column(
         ARRAY(BigInteger), nullable=False, server_default=text("'{}'::bigint[]")
+    )
+
+    # This shop's own bot, as Fernet CIPHERTEXT -- never the token itself. Read
+    # and written only through gulbot.services.shop_tokens. Nullable: a shop
+    # exists before its owner has handed over a token.
+    bot_token_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # True ONLY for the single shop that existed before per-shop tokens: it may
+    # keep speaking through the process BOT_TOKEN until it stores its own. Set
+    # by that migration and by nothing else; a registry logs every use of it.
+    uses_process_bot_token: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    # The bot's numeric id: the PUBLIC half of its token. UNIQUE -- no two shops
+    # may hold one bot (two long-polls of it make Telegram answer 409 to both).
+    # Written with the token, by gulbot.services.shop_tokens.
+    bot_telegram_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, unique=True)
+
+    # The owner's own number, recorded at onboarding. Verified means Telegram's
+    # contact button vouched it is the sender's -- as for customers.phone.
+    owner_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    owner_phone_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
 
     working_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
@@ -106,5 +138,16 @@ class Shop(IdMixin, TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
 
+    __table_args__ = (
+        # A pasted plaintext token ("123456:ABC...") starts with digits; every
+        # Fernet token starts "gAAAAA" -- version byte 0x80, then the high
+        # bytes of a 64-bit timestamp that stay zero until the year 2106.
+        CheckConstraint(
+            "bot_token_encrypted IS NULL OR bot_token_encrypted LIKE 'gAAAAA%'",
+            name="bot_token_is_ciphertext",
+        ),
+    )
+
     def __repr__(self) -> str:
+        # Deliberately id and name only: never the token column.
         return f"<Shop id={getattr(self, 'id', None)} name={self.name!r}>"

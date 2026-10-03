@@ -203,8 +203,13 @@ def committed_world(settings) -> Iterator[dict]:  # type: ignore[no-untyped-def]
 
     with psycopg.connect(dsn, autocommit=True) as conn:
         purge(conn)
+        # The pilot shop: it speaks through the process BOT_TOKEN, i.e. through
+        # the real `build_bot()` seam these tests exist to exercise. Since
+        # per-shop tokens that is the legacy fallback, which the migration
+        # grants the single pre-existing shop -- so this shop gets it too.
         shop = conn.execute(
-            "INSERT INTO shops (name, working_hours) VALUES (%s, '{}'::jsonb) RETURNING id",
+            "INSERT INTO shops (name, working_hours, uses_process_bot_token) "
+            "VALUES (%s, '{}'::jsonb, true) RETURNING id",
             (SHOP_NAME,),
         ).fetchone()[0]
         customer = conn.execute(

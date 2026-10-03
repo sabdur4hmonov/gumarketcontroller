@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     redis_db_test: int = 15
 
     bot_token: SecretStr = SecretStr("")
+    #: Fernet key(s) for shops.bot_token_encrypted; comma-separated to rotate
+    #: (first encrypts, all decrypt). Read only by gulbot.services.shop_tokens.
+    shop_token_encryption_key: SecretStr = SecretStr("")
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
     log_level: str = "INFO"
