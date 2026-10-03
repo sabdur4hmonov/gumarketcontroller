@@ -14,7 +14,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
-from aiogram.fsm.storage.base import BaseStorage
+from aiogram.fsm.storage.base import BaseStorage, DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
 from aiogram.fsm.strategy import FSMStrategy
 from redis.asyncio import Redis
@@ -61,8 +61,25 @@ def build_bot() -> Bot:
 
 
 def build_storage() -> RedisStorage:
+    """FSM storage, with the BOT ID IN EVERY KEY.
+
+    C3 of AUDIT_MULTI_TENANT.md, reproduced before it was fixed. aiogram's
+    default key builder omits the bot id, giving `fsm:<chat_id>:<user_id>` --
+    and in a private chat the chat id IS the user id, so the key named the
+    person rather than the conversation. Two shops' bots sharing this Redis read
+    and wrote the same state: shop B resumed shop A's half-finished order and
+    wrote a shop-B order for shop A's bouquet. Keys are now
+    `fsm:<bot_id>:<chat_id>:<user_id>:<part>`.
+
+    MemoryStorage never had this bug -- it keys on the whole StorageKey, bot id
+    included -- which is why the tests, which all use it, never saw it.
+    `tests/test_fsm_isolation.py` runs against real Redis for that reason.
+    """
     settings = get_settings()
-    return RedisStorage(redis=Redis.from_url(settings.redis_url(settings.redis_db_fsm)))
+    return RedisStorage(
+        redis=Redis.from_url(settings.redis_url(settings.redis_db_fsm)),
+        key_builder=DefaultKeyBuilder(with_bot_id=True),
+    )
 
 
 def build_dispatcher(
