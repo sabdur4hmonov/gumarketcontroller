@@ -192,3 +192,28 @@ A post made earlier generates no update, Telegram never backfills, and the Bot
 API cannot read channel history, so it is gone. To check what Telegram is
 actually delivering, stop `bot.run` and long-poll `getUpdates` yourself -- two
 concurrent pollers get a 409.
+
+## The public pages (Ha/Yo'q, taklifnoma)
+
+Customers make shareable pages in a shop's bot. The page server shows them:
+
+```
+python -m gulbot.web.run
+```
+
+It serves `http://127.0.0.1:8088` by default (`PUBLIC_BASE_URL`, `WEB_HOST`,
+`WEB_PORT`).
+
+- **See every design** without the bot:
+  - `http://127.0.0.1:8088/demo/yesno` and `/demo/invite`;
+  - one design in one language: `/demo/invite/milliy?lang=ru`. The languages
+    are `uz`, `uz_cyrl`, `ru` and `en`.
+- **"They said Ha" needs the worker.** That message is sent by the worker task
+  `gulbot.notify_page_answer`.
+- **Live evidence** through the real dev bot:
+  `python scripts/live_pages.py --shop-id 1 --customer-id 3`.
+
+Going live needs a domain and HTTPS, and the bot keeps the feature off in
+production until it has them: `docs/DEPLOY.md`, step 6. Design notes are in
+`docs/DESIGN_BRIEF_INVITES.md`, and what the feature guarantees is CP16 in
+`docs/CHECKPOINTS.md`.

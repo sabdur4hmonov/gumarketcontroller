@@ -169,3 +169,91 @@ Written down in `docs/CHECKPOINTS.md` under *Deliberately not built*:
   production launch beyond the pilot.** For the pilot, whoever runs the deploy
   checks the worker log for `tick:` lines daily.
 - **The health check shares the worker's queue** with the ticks.
+## 6. Public pages (Ha/Yo'q, taklifnoma): going live
+
+The page server (`python -m gulbot.web.run`) is built and tested, but it is
+only reachable on this machine until these steps are done. **Until
+`PUBLIC_BASE_URL` is https, a production bot answers the pages menu with
+"coming soon"** (`gulbot.web.links.pages_available`). That is deliberate: a
+customer must never be handed an http:// link or a 127.0.0.1 one.
+
+Do these in order.
+
+1. **A domain.** Pick a hostname for the pages, for example
+   `pages.<your-domain>.uz`. Point an `A` record (and `AAAA` if the server has
+   IPv6) at the VPS. Check it with `nslookup pages.<your-domain>.uz` before
+   going on.
+
+2. **HTTPS in front of the page server.** The page server listens on
+   127.0.0.1 only; a reverse proxy terminates TLS for it. Caddy is the least
+   work, because it obtains and renews the certificate itself:
+
+   ```
+   pages.<your-domain>.uz {
+       reverse_proxy 127.0.0.1:8088
+   }
+   ```
+
+   With nginx instead, use certbot for the certificate and
+   `proxy_pass http://127.0.0.1:8088;` with
+   `proxy_set_header X-Forwarded-For $remote_addr;`.
+
+   Ports 80 and 443 must be open to the internet. Port 8088 must NOT be.
+
+3. **The environment.** Set these for the page-server process, AND for the
+   bot and worker processes, which build the links:
+
+   ```
+   PUBLIC_BASE_URL=https://pages.<your-domain>.uz   # an origin: no path, no trailing slash
+   WEB_HOST=127.0.0.1
+   WEB_PORT=8088
+   WEB_TRUST_PROXY=true                             # only because a proxy sets X-Forwarded-For
+   ```
+
+   Step 0 applies to this process too: check `ENVIRONMENT=production` with
+   your own eyes in the shell or unit file that starts it.
+
+4. **Migrate, and check.** The pages add migration `1897629a71dc`:
+
+   ```
+   alembic upgrade head
+   alembic current
+   alembic heads
+   ```
+
+   `current` and `heads` must print the same revision.
+
+5. **Install the new dependency** (`jinja2`), with `pip install -e .` on the
+   server.
+
+6. **Start the page server** under the service manager, next to the bot,
+   worker and beat:
+
+   ```
+   python -m gulbot.web.run
+   ```
+
+   It logs `pages: serving on 127.0.0.1:8088 for https://pages.<your-domain>.uz
+   (environment=production)`. It writes **no access log on purpose**: every
+   page's address is its secret. Do not turn one on in the proxy either, or
+   configure the proxy not to log paths.
+
+7. **Restart the worker and beat.** That registers the two new tasks,
+   `gulbot.notify_page_answer` and `gulbot.scrub_expired_pages`. Beat's
+   startup should list `scrub-expired-pages` (03:30).
+
+8. **Verify, from outside the server:**
+   - `curl -I https://pages.<your-domain>.uz/healthz` returns 200, with
+     `Content-Security-Policy`, `X-Robots-Tag: noindex` and
+     `Strict-Transport-Security` in the headers.
+   - On a phone, open `https://pages.<your-domain>.uz/demo/yesno` and
+     `/demo/invite`, and tap through a few designs.
+   - In a shop's bot, make a Ha/Yo'q page. The reply must now carry
+     **🔗 Ochish** and **📤 Ulashish** buttons (they appear only on https).
+     Open the link, press Ha, and check that the "they said Ha" message
+     arrives in the bot.
+   - Tap "Gul buyurtma qilish" on the page. It must open THAT shop's bot.
+
+**Backups.** The new tables (`share_pages`, `share_page_rsvps`,
+`share_page_referrals`) are in the normal database dump. Nothing is stored on
+disk.

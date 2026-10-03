@@ -137,8 +137,10 @@ building:
 
 - **Mobile first.** Designed at 360 px. The card is at most 460 px wide, and
   there is no horizontal scroll.
-- **Weight.** HTML, CSS and JS come to about 25 KB uncompressed. A page needs
-  2–4 font subsets, about 40–110 KB. Nothing comes from a third party.
+- **Weight, measured on the built pages.** The HTML is 5–7 KB. CSS and JS
+  come to about 35 KB uncompressed, shared and cached for a year. A page needs
+  2–4 font subsets, 40–110 KB: the Milliy taklifnoma in Uzbek Latin is about
+  85 KB in all. Nothing comes from a third party.
 - **Security.**
   - CSP: `default-src 'none'`, with script, style, font and connect allowed
     only from `'self'`, images from `'self'` and `data:`, and no inline script

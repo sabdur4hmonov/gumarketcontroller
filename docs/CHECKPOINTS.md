@@ -26,6 +26,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
 | CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
 | CP-MT | Multi-tenant: per-shop bot tokens, per-shop send paths, owner onboarding, one process for every shop | done, 4 commits; open items in `docs/AUDIT_MULTI_TENANT.md` |
+| CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -306,6 +307,177 @@ Still open from the audit, recorded rather than forgotten:
 - **H5, partly:** a shop with no usable bot no longer trips the breaker, but
   the breaker is still one per tick across shops.
 - **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
+
+## What CP16 guarantees
+
+Customers make two kinds of shareable page in their shop's bot:
+
+- **Ha/Yo'q**: one question, and a Yo'q button that runs away.
+- **Taklifnoma**: an invitation for ten event types, with an optional map pin
+  and RSVP.
+
+Both are served by `gulbot.web` at `PUBLIC_BASE_URL/p/<token>`. The design
+brief is `docs/DESIGN_BRIEF_INVITES.md`, and every design is in
+`docs/screenshots/share_pages/`.
+
+**Tenancy.**
+- Every page row carries `shop_id`, with composite FKs onto `customers`;
+  RSVPs and referrals hang off `(page_id, shop_id)`.
+- The bot reads and deletes pages only by (shop, customer, id), so a crafted
+  `MyPageCB` from another shop or another customer finds nothing.
+- A page links back to the bot that served the conversation, which is that
+  shop's bot by construction.
+- A `/start pg_<token>` arriving in another shop's bot records nothing.
+- Proven in `tests/test_share_page_tenancy.py`, at the database and through
+  two shops' real dispatchers, with the same person a customer of both.
+
+**Links.**
+- A link is 128 random bits (`secrets.token_urlsafe(16)`), never an id.
+- Every response is `noindex`, and `robots.txt` disallows everything.
+- There is no access log, because every path is a secret.
+
+**What a stranger with a link can do.**
+- Read the page. Every typed field is autoescaped.
+- Press Ha once (compare-and-swap on `answered_at`).
+- RSVP once per browser, as a cookie key with an upsert.
+- Tap the shop's link, which is counted.
+
+**What they cannot do.**
+- POST without the page's own `X-Requested-With` header and JSON body. A
+  cross-site form cannot send either, and the CORS preflight is never
+  granted.
+- Exceed the per-address rate limits.
+- Exceed 500 RSVPs per page.
+- See a phone number. Nothing in `gulbot.web` reads one.
+
+**CSP.**
+- Script, style, font and connect are allowed from `'self'` only, images
+  from `'self'` and `data:`.
+- There is no inline script or style anywhere and no third-party request.
+- Fonts are self-hosted, OFL; see `static/fonts/LICENSES.md`.
+
+**"They said Ha".**
+- The creator gets the message exactly once, through the shop's own bot.
+- The claim is committed before the send.
+- A retryable failure releases the claim and the Celery task retries (3×).
+- A creator who blocked the bot keeps the claim.
+
+**Mutation proof: 22/22 guards caught on an assertion.** The list is in the
+CP16 commit message. Four mutants first failed only with an exception, and
+their tests were tightened until each failed on an assertion. One finding:
+the referral's shop filter has a second wall, the composite FK refuses the
+row.
+
+### Decisions made during CP16, each with its reason
+
+- **One table for both kinds.** Everything public starts from the same token
+  lookup. Kind-specific columns are nullable, and a CHECK per kind says what a
+  live page must have.
+- **Deleting scrubs; it does not drop.** The typed fields go to NULL and the
+  row stays, so the shop keeps its view and click counts. The completeness
+  CHECKs read "deleted, or complete". Expired pages are scrubbed the same way
+  at 03:30 (`gulbot.scrub_expired_pages`).
+- **Expiry.**
+  - A Ha/Yo'q page lives 60 days.
+  - A taklifnoma lives until the event day plus 14 days, for the thank-you
+    messages that follow an event.
+  - Events can be up to 12 months ahead.
+- **Creation limits.** 5 pages per customer in any 24 hours, deleted ones
+  included, and 20 live at once, checked under an advisory lock. `created_at`
+  is set from the same clock the limit uses: the first test run caught the
+  server clock and the check disagreeing.
+- **No shop logo.** `shops` has no logo column and nothing collects one, so
+  the page shows the shop's name and a monogram. A logo upload is its own
+  piece of work.
+- **Jinja2 added as a dependency**, for autoescaping. Hand-built HTML is
+  exactly where an escaping bug hides. The web server is aiohttp, already
+  installed through aiogram.
+- **Maps are links (Google, Yandex) and an .ics file, not an embedded map.**
+  An iframe would break the strict CSP and add a heavy third party to a page
+  opened on mobile data.
+- **URL buttons only on https.** Telegram refuses URL buttons for localhost
+  and plain IPs, and a refused button would lose the whole message. Until
+  there is a domain, the link travels as text.
+- **In production the feature switches itself off until `PUBLIC_BASE_URL` is
+  https.** The bot says "coming soon" instead of refusing to start. A missing
+  domain should not take down the shops.
+- **Page language is chosen per page** (Uzbek Latin, Uzbek Cyrillic, Russian,
+  English), separately from the customer's bot language (uz/ru).
+  - Uzbek Cyrillic is generated from our Latin strings by `to_cyrillic`,
+    pinned against hand-checked words.
+  - User text is never transliterated.
+- **Gendered Russian presets.** "Marry" and "valentine" are written to a woman
+  in Russian, the common case for a flower shop. Uzbek has no grammatical
+  gender, and anyone else types their own question.
+- **RSVP shows counts in "My pages", with no push per answer.** A message per
+  guest would be spam at a 300-guest wedding.
+- **Only one message is pushed: the first Ha**, and only if the creator asked
+  for it. It is queued to Celery from the web request, so a Telegram call
+  never runs inside a page request.
+- **Attribution has three parts.**
+  - Views exclude Telegram's link-preview fetcher.
+  - Taps on "Gul buyurtma qilish" are counted at `/p/<token>/go`.
+  - A `/start pg_<token>` records a referral. A page's orders are the orders
+    its referred customers placed after arriving
+    (`share_pages.shop_page_stats`).
+  - A returning customer who arrives this way lands on the bouquet list.
+- **Fonts, checked glyph by glyph before use.** Manrope, named in the first
+  brief, has no Қ Ғ Ҳ and was dropped. Great Vibes, Unbounded and Comfortaa
+  switch to a complete face on `:lang(uz-Cyrl)`.
+- **Rate limits are in memory, per web process.** That is right for one page
+  server. More than one would want them in Redis.
+
+### Found by looking, not by the tests
+
+- In a real 360 px browser, the escaping Yo'q button always landed on top of
+  Ha. When Yo'q left the layout, Ha re-centred into the spot just chosen as
+  "away from Ha". Fixed with a placeholder, and checked over 8 consecutive
+  escapes.
+- Uzbek Cyrillic names in Bog' and Romantik rendered at 13 px: an `em` scaled
+  from the body text. The Tungi ornament's crescent did not draw.
+- Headless Chrome cannot make a 360 px window. The screenshots come from
+  DevTools device emulation.
+
+### Found by the gate during CP16, outside it, and still OPEN
+
+`test_concurrency::test_two_processes_racing_a_merged_group_send_it_once_and_whole`
+failed once in a full-suite run on 2026-10-03, in the F4 gate. This is a new
+signature, different from the 2026-09-06 failure recorded in CONTRIBUTING.
+
+**What the snapshot showed.** Three `race-cluster` rows:
+- row 1 was `sent`;
+- rows 2 and 3 were `pending`;
+- all three had `attempts = 1`;
+- the ledger held one `race-cluster` claim, marked sent.
+
+**Diagnosis.** `select_due_rows` locks row by row with SKIP LOCKED, so two
+workers starting together each locked PART of one merge group. Each built its
+group from only the rows it held. Both claimed the same merge_key. The winner
+sent a message covering its rows only; the loser's rows went back to pending,
+behind a key that was already claimed.
+
+That breaks CP6's "no partially-sent group" guarantee. It is not caused by
+anything in CP16 or CP-MT, which touch neither the selection nor the claim,
+and the test passed in every earlier gate today.
+
+A rerun is not evidence that it is gone. A follow-up task is filed: write a
+deterministic reproduction, then make a group claimable only as a whole.
+
+### Live evidence, 2026-10-03, through the real dev bot (@Flowersmarketcontroller_bot)
+
+`scripts/live_pages.py --shop-id 1 --customer-id 3`, run against the dev
+database and the local page server. It used the real dispatcher and the real
+Bot; the taps are synthetic, as in `live_order.py`.
+
+- Made a Ha/Yo'q page: Uzbek, the proposal question, Romantik, notify on Ha.
+- Made a taklifnoma: wedding, Sardor & Madina, 14 November 18:30, a map pin,
+  RSVP on, Milliy naqsh.
+- Both links arrived in the customer's DM. Both pages are stored with
+  `bot_username = Flowersmarketcontroller_bot`.
+- A visitor opened each page (views 1 and 1), pressed Ha, and RSVPed
+  (2 guests).
+- "They said Ha" was sent once; the second attempt returned `nothing`.
+- Screenshots: `docs/screenshots/share_pages/live-*.png`.
 
 ## Briefs already agreed for future checkpoints
 
