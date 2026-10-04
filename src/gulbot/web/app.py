@@ -6,6 +6,7 @@
     POST /p/<token>/choose      after Ha: the place and time from the date plan
     GET  /p/<token>/go          a tap on the shop's link: counted, then t.me
     GET  /p/<token>/event.ics   the invitation as a calendar entry
+    GET  /p/<token>/photo/<id>.jpg   one of the page's photos, re-encoded, no metadata
     GET  /demo[/<kind>[/<theme>]]  the designs, with sample text
     GET  /static/...            CSS, JS, fonts -- this origin only
     GET  /robots.txt, /healthz
@@ -46,7 +47,7 @@ from gulbot.models.share_page import (
     PageKind,
     SharePage,
 )
-from gulbot.services import share_pages
+from gulbot.services import share_page_photos, share_pages
 from gulbot.web import render, strings
 
 log = logging.getLogger("gulbot.web")
@@ -234,12 +235,17 @@ async def page(request: web.Request) -> web.Response:
                     if o.slot_at is not None
                 ],
             )
+        photos = [
+            render.PhotoLink(f"/p/{token}/photo/{ref.id}.jpg", ref.width, ref.height)
+            for ref in await share_page_photos.photos_of(session, page_id=p.id)
+        ]
         body = render.page_html(
             p,
             render.Branding(shop_name=found.shop_name, cta_url=cta),
             tz_name=found.shop_timezone,
             base=f"/p/{token}",
             plan=plan,
+            photos=photos,
         )
     return _html(body)
 
@@ -380,6 +386,24 @@ async def go(request: web.Request) -> web.Response:
     raise web.HTTPFound(f"/p/{token}")
 
 
+async def photo(request: web.Request) -> web.Response:
+    token = _token(request)
+    sessions = request.app[KEY_SESSIONS]
+    async with sessions() as session:
+        found = await share_page_photos.photo_for_token(
+            session, token, int(request.match_info["photo_id"])
+        )
+    if found is None:
+        raise web.HTTPNotFound()
+    # Every photo has its own id, so a replaced photo is a new URL; this
+    # one may be kept by the browser, but only privately.
+    return web.Response(
+        body=found.data,
+        content_type="image/jpeg",
+        headers={"Cache-Control": "private, max-age=86400"},
+    )
+
+
 async def event_ics(request: web.Request) -> web.Response:
     token = _token(request)
     sessions = request.app[KEY_SESSIONS]
@@ -461,6 +485,7 @@ def build_app(
     app.router.add_post("/p/{token}/choose", choose)
     app.router.add_get("/p/{token}/go", go)
     app.router.add_get("/p/{token}/event.ics", event_ics)
+    app.router.add_get(r"/p/{token}/photo/{photo_id:\d{1,18}}.jpg", photo)
     app.router.add_get("/demo", demo_index)
     app.router.add_get("/demo/{kind}", demo_index)
     app.router.add_get("/demo/{kind}/{theme}", demo_page)

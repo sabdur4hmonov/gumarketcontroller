@@ -133,11 +133,22 @@ def _common(theme: str, lang: str, branding: Branding) -> dict[str, Any]:
         "made_with": s["made_with"].format(shop=branding.shop_name),
         "seal_letter": None,
         "photo_url": None,
+        "gallery": [],
         #: The Foto design without a photo: a heart on a Ha/Yo'q page, the
         #: couple's initials on an invitation (invite_view) -- never the
         #: shop's letter, which would put the florist in the frame.
         "monogram": "♥",
     }
+
+
+@dataclass(frozen=True)
+class PhotoLink:
+    """A page's photo as the page links it: our own URL, and its size so the
+    layout does not jump while it loads."""
+
+    url: str
+    width: int
+    height: int
 
 
 @dataclass(frozen=True)
@@ -282,7 +293,13 @@ def gallery_view(kind: str, lang: str) -> dict[str, Any]:
 
 
 def page_html(
-    page: SharePage, branding: Branding, *, tz_name: str, base: str, plan: Plan | None = None
+    page: SharePage,
+    branding: Branding,
+    *,
+    tz_name: str,
+    base: str,
+    plan: Plan | None = None,
+    photos: list[PhotoLink] | None = None,
 ) -> str:
     """The live page. `base` is "/p/<token>", the root of its own endpoints."""
     if page.kind == PageKind.YESNO:
@@ -294,13 +311,18 @@ def page_html(
             plan=plan,
             tz_name=tz_name,
         )
+        view["photo_url"] = photos[0].url if photos else None
         return render("yesno.html", view)
-    return render(
-        "invite.html",
-        invite_view(
-            page, branding, tz_name=tz_name, rsvp_url=f"{base}/rsvp", ics_url=f"{base}/event.ics"
-        ),
+    view = invite_view(
+        page, branding, tz_name=tz_name, rsvp_url=f"{base}/rsvp", ics_url=f"{base}/event.ics"
     )
+    photos = photos or []
+    # The Foto design frames the first photo; the gallery shows the rest. Any
+    # other design shows them all in the gallery.
+    framed = page.template == "foto" and bool(photos)
+    view["photo_url"] = photos[0].url if framed else None
+    view["gallery"] = photos[1:] if framed else photos
+    return render("invite.html", view)
 
 
 # --- calendar file ------------------------------------------------------------

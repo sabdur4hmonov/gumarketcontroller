@@ -40,6 +40,7 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Index,
     Integer,
+    LargeBinary,
     Numeric,
     SmallInteger,
     String,
@@ -289,6 +290,45 @@ class SharePageOption(Base):
             "OR (kind = 'slot' AND slot_at IS NOT NULL AND place IS NULL)",
             name="one_value",
         ),
+    )
+
+
+#: The stored (re-encoded) photo is never bigger than this.
+PHOTO_MAX_BYTES = 1_500_000
+#: An invitation's gallery: at most this many photos. A Ha/Yo'q page has one.
+GALLERY_MAX = 6
+
+
+class SharePagePhoto(Base):
+    """A page's photo, as re-encoded by services/share_page_photos.py: no EXIF,
+    no GPS, at most 1200 px. Position 1 is the Foto design's framed photo;
+    an invitation's gallery holds up to GALLERY_MAX. Reached only through the
+    page's token."""
+
+    __tablename__ = "share_page_photos"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    width: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    height: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["page_id", "shop_id"],
+            ["share_pages.id", "share_pages.shop_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint(f"size_bytes > 0 AND size_bytes <= {PHOTO_MAX_BYTES}", name="size_bound"),
+        CheckConstraint("width > 0 AND height > 0", name="dimensions_positive"),
+        CheckConstraint(f"position BETWEEN 1 AND {GALLERY_MAX}", name="position_range"),
+        UniqueConstraint("page_id", "position"),
     )
 
 

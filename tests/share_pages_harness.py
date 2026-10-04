@@ -17,6 +17,7 @@ from tests.bot_harness import (
     bound_session_factory,
     callback_update,
     feed,
+    photo_sizes,
     text_update,
 )
 
@@ -68,6 +69,20 @@ class ShopBot:
                 chat=Chat(id=user, type="private"),
                 from_user=User(id=user, is_bot=False, first_name="Aziz"),
                 location=Location(latitude=lat, longitude=lon),
+            ),
+        )
+        await feed(self.dispatcher, self.bot, update)
+
+    async def photo(self, file_id: str, *, user: int) -> None:
+        """A photo message, as Telegram sends one: several sizes, largest last."""
+        update = Update(
+            update_id=next(_updates),
+            message=Message(
+                message_id=next(_updates),
+                date=datetime.now(tz=UTC),
+                chat=Chat(id=user, type="private"),
+                from_user=User(id=user, is_bot=False, first_name="Aziz"),
+                photo=photo_sizes(file_id),
             ),
         )
         await feed(self.dispatcher, self.bot, update)

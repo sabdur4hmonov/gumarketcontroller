@@ -160,6 +160,8 @@ class YesNoPage(StatesGroup):
     plan_hour = State()
     plan_minute = State()
     after_slot = State()
+    #: CP17: the Foto design's photo -- a photo message, or skip.
+    sending_photo = State()
 
 
 class InvitePage(StatesGroup):
@@ -181,6 +183,8 @@ class InvitePage(StatesGroup):
     choosing_rsvp = State()
     choosing_template = State()
     confirming = State()
+    #: CP17: the Foto design's photo -- a photo message, or skip.
+    sending_photo = State()
 
 
 class EditPage(StatesGroup):
@@ -196,3 +200,4 @@ class EditPage(StatesGroup):
     sending_location = State()
     choosing_template = State()
     choosing_lang = State()
+    sending_photo = State()

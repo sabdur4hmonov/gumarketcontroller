@@ -121,6 +121,10 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
         _field_button(lang, page.id, "template", "ibtn.pages.f_template")
         + _field_button(lang, page.id, "lang", "ibtn.pages.f_lang")
     )
+    if page.kind == PageKind.INVITE:
+        rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_gallery"))
+    elif page.template == "foto":
+        rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_photo"))
     rows.append(
         [
             InlineKeyboardButton(
@@ -239,10 +243,16 @@ async def pick_field(
         return
     field = callback_data.field
     plan = field == "plan" and page.kind == PageKind.YESNO
-    if not plan and field not in share_pages.EDITABLE_FIELDS[page.kind]:
+    photo = field == "photo" and (page.kind == PageKind.INVITE or page.template == "foto")
+    if not (plan or photo) and field not in share_pages.EDITABLE_FIELDS[page.kind]:
         return
     if page.kind == PageKind.YESNO and page.answered_at is not None:
         await target.answer(t("pages.edit_locked", lang))
+        return
+    if photo:
+        from gulbot.bot.routers.share_page_photo import start_photo_edit
+
+        await start_photo_edit(target, state, session, page, lang)
         return
     if plan:
         from gulbot.bot.routers.share_page_plan import start_plan_edit

@@ -22,6 +22,7 @@ from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
 from gulbot.bot.routers.share_page_edit import build_share_page_edit_router
+from gulbot.bot.routers.share_page_photo import build_share_page_photo_router
 from gulbot.bot.routers.share_page_plan import build_share_page_plan_router
 from gulbot.bot.routers.share_pages import build_share_pages_router
 from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
@@ -71,6 +72,8 @@ def build_routers() -> tuple[Router, ...]:
         build_share_page_edit_router(),
         # CP17: the date plan of a Ha/Yo'q page. Its own states and prefix.
         build_share_page_plan_router(),
+        # CP17: the Foto design's photo step, in creation and in editing.
+        build_share_page_photo_router(),
         build_menu_router(),
         build_fallback_router(),
     )

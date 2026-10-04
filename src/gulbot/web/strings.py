@@ -135,6 +135,7 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "dress_code": {"uz": "Kiyinish uslubi", "ru": "Дресс-код", "en": "Dress code"},
     "program": {"uz": "Dastur", "ru": "Программа", "en": "Programme"},
     "contact": {"uz": "Aloqa uchun", "ru": "Контакт", "en": "Contact"},
+    "gallery": {"uz": "Suratlar", "ru": "Фотографии", "en": "Photos"},
     "calendar": {"uz": "Kalendarga qo'shish", "ru": "В календарь", "en": "Add to calendar"},
     "plan_title": {"uz": "Qayerda va qachon?", "ru": "Где и когда?", "en": "Where and when?"},
     "plan_place": {"uz": "Qayerga boramiz?", "ru": "Куда пойдём?", "en": "Where shall we go?"},

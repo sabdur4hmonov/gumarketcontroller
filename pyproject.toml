@@ -20,6 +20,9 @@ dependencies = [
     # The public Ha/Yo'q and taklifnoma pages (gulbot.web). Autoescaping
     # templates, so user text cannot become markup.
     "jinja2>=3.1,<4",
+    # The "Foto" design's photo (CP17): decoded and RE-ENCODED server-side, so
+    # no uploaded metadata -- EXIF, GPS, camera -- is ever stored or served.
+    "pillow>=11,<12",
     # Windows ships no IANA tz database. This arrives transitively today via
     # kombu/psycopg/tzlocal, which is not a guarantee -- zoneinfo("Asia/Tashkent")
     # is load-bearing for the whole scheduler, so it is pinned directly.

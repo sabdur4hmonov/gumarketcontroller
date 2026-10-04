@@ -56,6 +56,7 @@ from gulbot.models.share_page import (
     PageKind,
     SharePage,
     SharePageOption,
+    SharePagePhoto,
     SharePageReferral,
     SharePageRsvp,
 )
@@ -383,6 +384,7 @@ async def delete_page(
     if deleted is None:
         return False
     await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page_id))
+    await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id == page_id))
     await session.execute(
         update(SharePageRsvp)
         .where(SharePageRsvp.page_id == page_id, SharePageRsvp.shop_id == shop_id)
@@ -407,6 +409,7 @@ async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -
             update(SharePageRsvp).where(SharePageRsvp.page_id.in_(ids)).values(guest_name=None)
         )
         await session.execute(delete(SharePageOption).where(SharePageOption.page_id.in_(ids)))
+        await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id.in_(ids)))
     return len(ids)
 
 

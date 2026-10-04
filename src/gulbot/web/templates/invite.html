@@ -51,6 +51,17 @@
   </dl>
   {%- endif %}
 
+  {%- if v.gallery %}
+  <section class="gallery" aria-labelledby="gallery-title">
+    <h2 id="gallery-title" class="venue-label">{{ v.s.gallery }}</h2>
+    <div class="gallery-grid">
+      {%- for p in v.gallery %}
+      <img src="{{ p.url }}" alt="" width="{{ p.width }}" height="{{ p.height }}" loading="lazy" decoding="async">
+      {%- endfor %}
+    </div>
+  </section>
+  {%- endif %}
+
   {%- if v.rsvp %}
   <section class="rsvp" aria-labelledby="rsvp-title">
     <h2 id="rsvp-title">{{ v.s.rsvp_title }}</h2>

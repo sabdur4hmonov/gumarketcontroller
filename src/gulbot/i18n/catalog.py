@@ -1068,6 +1068,92 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "📍 Joy va vaqt tanlandi! Joy: {place}. Sana: {when}.",
         "ru": "📍 Место и время выбраны! Место: {place}. Дата: {when}.",
     },
+    # --- the Foto design's photo (CP17) -------------------------------------
+    "pages.ask_photo": {
+        "uz": (
+            "📷 Bitta rasm yuboring — u sahifaning tepasida, ramkada "
+            "turadi. Rasmdan joylashuv va boshqa yashirin ma'lumotlar "
+            "olib tashlanadi."
+        ),
+        "ru": (
+            "📷 Пришлите одно фото — оно будет в рамке вверху страницы. "
+            "Геолокация и другие скрытые данные из фото удаляются."
+        ),
+    },
+    "ibtn.pages.photo_skip": {
+        "uz": "⏭ Rasmsiz",
+        "ru": "⏭ Без фото",
+    },
+    "pages.photo_received": {
+        "uz": "🖼 Rasm olindi.",
+        "ru": "🖼 Фото получено.",
+    },
+    "pages.photo_too_big": {
+        "uz": "Rasm juda katta (10 MB gacha). Boshqasini yuboring.",
+        "ru": "Фото слишком большое (до 10 МБ). Пришлите другое.",
+    },
+    "pages.photo_send_as_photo": {
+        "uz": "Rasmni «rasm» sifatida yuboring (fayl emas) yoki o'tkazib yuboring.",
+        "ru": "Отправьте снимок как фото (не файлом) или пропустите.",
+    },
+    "pages.photo_refused": {
+        "uz": (
+            "Bu rasmni saqlab bo'lmadi — sahifa rasmsiz yaratildi. Keyin "
+            "«Tahrirlash»dan qo'shishingiz mumkin."
+        ),
+        "ru": (
+            "Это фото сохранить не удалось — страница создана без него. "
+            "Его можно добавить потом в «Изменить»."
+        ),
+    },
+    "ibtn.pages.f_photo": {
+        "uz": "🖼 Rasm",
+        "ru": "🖼 Фото",
+    },
+    # --- an invitation's photo gallery (CP17) -------------------------------
+    "pages.ask_gallery": {
+        "uz": (
+            "📷 Suratlarni yuboring — har birini alohida xabar qilib, "
+            "{max} tagacha (hozir {n}/{max}). Birinchisi «Foto» dizaynida "
+            "ramkaga tushadi. Joylashuv va boshqa yashirin ma'lumotlar "
+            "olib tashlanadi."
+        ),
+        "ru": (
+            "📷 Пришлите фото — каждое отдельным сообщением, до {max} "
+            "(сейчас {n}/{max}). Первое в дизайне «Фото» встанет в рамку. "
+            "Геолокация и другие скрытые данные удаляются."
+        ),
+    },
+    "pages.gallery_added": {
+        "uz": "🖼 Qo'shildi: {n}/{max}. Yana yuboring yoki «Tayyor»ni bosing.",
+        "ru": "🖼 Добавлено: {n}/{max}. Пришлите ещё или нажмите «Готово».",
+    },
+    "pages.gallery_full": {
+        "uz": (
+            "Suratlar to'ldi ({max}/{max}). Yangidan boshlash uchun «Hammasini o'chirish»ni bosing."
+        ),
+        "ru": ("Галерея заполнена ({max}/{max}). Чтобы начать заново, нажмите «Удалить все»."),
+    },
+    "pages.gallery_cleared": {
+        "uz": "🗑 Suratlar o'chirildi. Yangilarini yuborishingiz mumkin ({max} tagacha).",
+        "ru": "🗑 Фото удалены. Можно прислать новые (до {max}).",
+    },
+    "pages.photo_unreadable": {
+        "uz": "Bu rasmni o'qib bo'lmadi. Boshqasini yuboring.",
+        "ru": "Это фото не удалось прочитать. Пришлите другое.",
+    },
+    "ibtn.pages.photo_clear": {
+        "uz": "🗑 Hammasini o'chirish",
+        "ru": "🗑 Удалить все",
+    },
+    "ibtn.pages.photo_done": {
+        "uz": "✅ Tayyor",
+        "ru": "✅ Готово",
+    },
+    "ibtn.pages.f_gallery": {
+        "uz": "🖼 Suratlar",
+        "ru": "🖼 Фото",
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1640,6 +1726,35 @@ _EN["pages.notify_yes_unchosen"] = (
     "chosen yet — I'll write again when they choose."
 )
 _EN["pages.notify_choice_later"] = "📍 Place and time chosen! Place: {place}. Date: {when}."
+
+# The Foto design's photo (CP17).
+_EN["pages.ask_photo"] = (
+    "📷 Send one photo — it goes in the frame at the top of the "
+    "page. Location and other hidden data are removed from it."
+)
+_EN["ibtn.pages.photo_skip"] = "⏭ No photo"
+_EN["pages.photo_received"] = "🖼 Photo received."
+_EN["pages.photo_too_big"] = "That photo is too large (10 MB at most). Please send another."
+_EN["pages.photo_send_as_photo"] = "Please send it as a photo (not a file), or skip."
+_EN["pages.photo_refused"] = (
+    "That photo could not be kept — the page was made without it. "
+    "You can add one later under «Edit»."
+)
+_EN["ibtn.pages.f_photo"] = "🖼 Photo"
+
+# an invitation's photo gallery (CP17).
+_EN["pages.ask_gallery"] = (
+    "📷 Send your photos — one per message, up to {max} (now "
+    "{n}/{max}). In the Foto design the first one goes in the "
+    "frame. Location and other hidden data are removed."
+)
+_EN["pages.gallery_added"] = "🖼 Added: {n}/{max}. Send another, or tap «Done»."
+_EN["pages.gallery_full"] = "The gallery is full ({max}/{max}). Tap «Remove all» to start again."
+_EN["pages.gallery_cleared"] = "🗑 The photos are gone. You can send new ones (up to {max})."
+_EN["pages.photo_unreadable"] = "That photo could not be read. Please send another."
+_EN["ibtn.pages.photo_clear"] = "🗑 Remove all"
+_EN["ibtn.pages.photo_done"] = "✅ Done"
+_EN["ibtn.pages.f_gallery"] = "🖼 Photos"
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

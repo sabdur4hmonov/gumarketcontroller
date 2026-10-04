@@ -456,6 +456,17 @@ class PlanCB(CallbackData, prefix="pgplan"):
         ]
 
 
+class PhotoCB(CallbackData, prefix="pgphoto"):
+    """The photo steps: "skip" (creation), "clear" and "done" (editing). Each
+    is honoured only in the state that offers it."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("skip", "clear", "done")]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -475,6 +486,7 @@ class EditFieldCB(CallbackData, prefix="pged"):
                 "template",
                 "question",
                 "plan",
+                "photo",
             )
         ]
 
@@ -532,6 +544,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     EditFieldCB,
     EditValueCB,
     PlanCB,
+    PhotoCB,
 )
 
 

@@ -306,11 +306,18 @@ async def yesno_template(
     await callback.answer()
     if callback_data.template not in PAGE_TEMPLATES:
         return
-    await state.update_data(template=callback_data.template)
+    await state.update_data(template=callback_data.template, photo_file_id=None)
+    if callback_data.template == "foto":
+        from gulbot.bot.routers.share_page_photo import ask_photo
+
+        await ask_photo(_target(callback), state, lang, YesNoPage.sending_photo)
+        return
+    await ask_notify(_target(callback), state, lang)
+
+
+async def ask_notify(target: Message, state: FSMContext, lang: str) -> None:
     await state.set_state(YesNoPage.choosing_notify)
-    await _target(callback).answer(
-        t("pages.ask_notify", lang), reply_markup=toggle_keyboard(lang, "notify")
-    )
+    await target.answer(t("pages.ask_notify", lang), reply_markup=toggle_keyboard(lang, "notify"))
 
 
 async def yesno_notify(
@@ -582,16 +589,25 @@ async def invite_template(
     await callback.answer()
     if callback_data.template not in PAGE_TEMPLATES:
         return
-    await state.update_data(template=callback_data.template)
+    await state.update_data(template=callback_data.template, photo_file_id=None)
+    if callback_data.template == "foto":
+        from gulbot.bot.routers.share_page_photo import ask_photo
+
+        await ask_photo(_target(callback), state, lang, InvitePage.sending_photo)
+        return
+    await invite_summary(_target(callback), state, lang)
+
+
+async def invite_summary(target: Message, state: FSMContext, lang: str) -> None:
     data = await state.get_data()
     draft = _invite_draft(data)
     if draft is None:
         await state.clear()
-        await _target(callback).answer(t("pages.cancelled", lang))
+        await target.answer(t("pages.cancelled", lang))
         return
     names = draft.name_1 + (f" & {draft.name_2}" if draft.name_2 else "")
     await state.set_state(InvitePage.confirming)
-    await _target(callback).answer(
+    await target.answer(
         t(
             "pages.confirm_invite",
             lang,
@@ -708,6 +724,12 @@ async def confirm(
         await target.answer(t("pages.cancelled", lang), reply_markup=main_menu_keyboard(lang))
         return
     await session.commit()
+    if data.get("photo_file_id") and page.template == "foto":
+        from gulbot.bot.routers.share_page_photo import store_after_create
+
+        await store_after_create(
+            callback.bot, target, session, customer, page.id, data["photo_file_id"], lang
+        )
     await _send_link(target, session, page, lang)
 
 

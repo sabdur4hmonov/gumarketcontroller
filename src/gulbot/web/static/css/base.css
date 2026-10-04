@@ -563,6 +563,38 @@ body {
   font-family: var(--font-display-uzc);
 }
 
+/* --- Gallery (CP17): up to six photos, two to a row ------------------------- */
+
+.gallery {
+  margin: 26px 0 0;
+}
+
+.gallery h2 {
+  margin: 0 0 12px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.gallery-grid img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  border-radius: calc(var(--photo-radius, 10px));
+  background: var(--cell-bg);
+}
+
+.gallery-grid img:only-child,
+.gallery-grid img:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  aspect-ratio: 4 / 3;
+}
+
 /* --- RSVP ----------------------------------------------------------------- */
 
 .rsvp {
