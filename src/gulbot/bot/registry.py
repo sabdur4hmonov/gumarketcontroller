@@ -124,7 +124,16 @@ class BotRegistry:
         bot = self._by_shop.get(shop_id)
         if bot is not None:
             return bot
-        token = self._token_for(shop_id)
+        try:
+            token = self._token_for(shop_id)
+        except ShopBotUnavailable:
+            raise
+        except LookupError:
+            # A resolver that has no entry for this shop -- a mapping's KeyError
+            # -- is the same answer as ShopBotUnavailable, and every send path
+            # catches only that. Let through, it stopped the health job for
+            # every shop after the first one without a bot (CP17).
+            raise ShopBotUnavailable(shop_id, "no bot is registered for it") from None
         bot = self._by_token.get(token)
         if bot is None:
             try:

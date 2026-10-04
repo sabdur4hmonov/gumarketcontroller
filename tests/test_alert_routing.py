@@ -35,6 +35,7 @@ from gulbot.models.shop import DEFAULT_WORKING_HOURS
 from gulbot.sending.alerts import render_stalled, render_summary
 from gulbot.sending.health import read_daily_totals, read_health
 from gulbot.sending.telegram import TelegramTransport
+from gulbot.sending.transport import ShopBotUnavailable
 
 TOKEN = {
     "A": "111111:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
@@ -198,6 +199,89 @@ async def test_a_shop_without_a_bot_is_skipped_loudly_and_the_rest_still_hear(
     assert len(errors) == 1 and f"shop {shop_b}" in errors[0].getMessage()
     assert errors[0].exc_info is None
     assert shop_a != shop_b
+
+
+# --- a shop the registry has no bot for (CP17) -------------------------------
+#
+# Found 2026-10-05: the job raised KeyError out of `BotRegistry.bot_for` on the
+# first shop row its resolver had no entry for, and every shop after it went
+# unalerted. The resolver's contract is ShopBotUnavailable; the registry now
+# holds every resolver to it, so the job skips that one shop, says so, and the
+# rest are still told.
+
+
+async def _outcome(call: Any) -> BaseException | None:
+    """What the call raised, if anything -- asserted on in the test, so a crash
+    is a failed assertion and not an error."""
+    try:
+        await call
+    except Exception as error:  # noqa: BLE001 - the type is the assertion
+        return error
+    return None
+
+
+def test_a_resolver_with_no_entry_for_the_shop_is_a_clear_refusal() -> None:
+    registry = BotRegistry(token_for={}.__getitem__, bot_factory=Bots())
+    try:
+        registry.bot_for(7)
+    except Exception as error:  # noqa: BLE001 - the type is the assertion
+        refused: BaseException | None = error
+    else:
+        refused = None
+    assert isinstance(refused, ShopBotUnavailable), repr(refused)
+    assert refused.shop_id == 7
+    assert "no bot is registered" in str(refused)
+
+
+@pytest.mark.infra
+async def test_a_shop_row_with_no_registered_bot_does_not_stop_the_job(
+    world: dict[str, Any], caplog: pytest.LogCaptureFixture
+) -> None:
+    from gulbot.sending.alerts import announce_for_every_shop
+
+    db = world["db"]
+    shop_c = (
+        await db.execute(
+            text(
+                "INSERT INTO shops (name, working_hours, group_chat_id) "
+                "VALUES ('Shop C, onboarding never finished', CAST(:wh AS jsonb), -1003333) "
+                "RETURNING id"
+            ),
+            {"wh": json.dumps(DEFAULT_WORKING_HOURS)},
+        )
+    ).scalar_one()
+    bots = Bots()
+    # Only A and B have a bot; C -- and any shop row this test did not make --
+    # is a KeyError to this resolver, exactly the crash that was found.
+    registered = {world["shop"][label]: TOKEN[label] for label in ("A", "B")}
+    reg = BotRegistry(token_for=registered.__getitem__, bot_factory=bots)
+    counts: dict[str, int] = {}
+
+    async def job() -> None:
+        counts.update(
+            await announce_for_every_shop(
+                session,
+                job="summary",
+                transport_for=lambda shop_id: TelegramTransport(reg.bot_for(shop_id)),
+                now_utc=world["now"],
+            )
+        )
+
+    async with bound_session_factory(db)() as session:
+        try:
+            crashed = await _outcome(job())
+        finally:
+            await reg.close()
+
+    assert crashed is None, f"one shop without a bot stopped every shop's alerts: {crashed!r}"
+    # Both shops with a bot were still told, each in its own group.
+    assert [chat for chat, _ in bots.texts("A")] == [GROUP["A"]]
+    assert [chat for chat, _ in bots.texts("B")] == [GROUP["B"]]
+    # Every shop without one was skipped and counted -- C among them.
+    assert counts["unreachable"] == counts["shops"] - 2 >= 1
+    errors = [r.getMessage() for r in caplog.records if r.levelname == "ERROR"]
+    assert any(f"shop {shop_c} has no usable bot" in line for line in errors), errors
+    assert all(r.exc_info is None for r in caplog.records if r.levelname == "ERROR")
 
 
 # --- the worker wiring ------------------------------------------------------
