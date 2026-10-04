@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import secrets
 from collections.abc import AsyncIterator, Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -146,6 +147,27 @@ def migrated_test_database(settings: Settings) -> Iterator[None]:
         command.upgrade(cfg, "head")
     write_fingerprint(settings, name, digest)
     yield
+
+
+@pytest.fixture(scope="session", autouse=True)
+def alert_cooldowns_of_this_session_only() -> Iterator[str]:
+    """Health-alert cooldowns live in REDIS, keyed by shop id, for an hour.
+
+    Shop ids come from the test database's sequence, and that database is
+    rebuilt whenever a migration changes -- so a run within the hour after the
+    previous one hands out the SAME ids, finds the previous run's cooldowns,
+    and an alert test sees "already announced" (found 2026-10-05, CP17: five
+    alert tests failed only on a run right after a rebuild). Each session
+    therefore claims under its own prefix; the keys still expire on their own.
+    """
+    from gulbot.sending import health
+
+    previous = health.ALERT_KEY
+    health.ALERT_KEY = f"gulbot:test-alert:{secrets.token_hex(6)}"
+    try:
+        yield health.ALERT_KEY
+    finally:
+        health.ALERT_KEY = previous
 
 
 @pytest_asyncio.fixture
