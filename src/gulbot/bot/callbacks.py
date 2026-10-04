@@ -467,6 +467,17 @@ class PhotoCB(CallbackData, prefix="pgphoto"):
         return [cls(action=a).pack() for a in ("skip", "clear", "done")]
 
 
+class ColorCB(CallbackData, prefix="pgcol"):
+    """A dress-code colour (a palette key), "none" or "done". Honoured only
+    while the palette is open (bot/routers/share_page_colors.py)."""
+
+    color: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(color=c).pack() for c in ("oq", "oltin", "none", "done")]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -487,6 +498,9 @@ class EditFieldCB(CallbackData, prefix="pged"):
                 "question",
                 "plan",
                 "photo",
+                "dress_colors",
+                "show_countdown",
+                "show_gallery",
             )
         ]
 
@@ -545,6 +559,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     EditValueCB,
     PlanCB,
     PhotoCB,
+    ColorCB,
 )
 
 

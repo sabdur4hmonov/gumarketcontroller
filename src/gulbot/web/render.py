@@ -22,7 +22,7 @@ from zoneinfo import ZoneInfo
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from gulbot.models.share_page import PageKind, SharePage
-from gulbot.web import strings
+from gulbot.web import sections, strings
 
 WEB_ROOT: Final = Path(__file__).resolve().parent
 TEMPLATES: Final = WEB_ROOT / "templates"
@@ -243,11 +243,17 @@ def invite_view(
             {"label": v["s"][field], "text": value}
             for field, value in (
                 ("dress_code", page.dress_code),
-                ("program", page.program),
                 ("contact", page.contact),
             )
             if value
         ],
+        "program": sections.program_rows(page.program),
+        "colors": [
+            {"key": key, "name": sections.DRESS_PALETTE[key][1][lang]}
+            for key in sections.colors_of(page.dress_colors)
+        ],
+        "show_countdown": page.show_countdown,
+        "has_dress_code": bool(page.dress_code),
         "closing": page.closing or strings.event_closing(page.event_type, lang),
         "seal_letter": _initial(page.name_1 or ""),
         "monogram": _initial(page.name_1 or "")
@@ -321,7 +327,7 @@ def page_html(
     # other design shows them all in the gallery.
     framed = page.template == "foto" and bool(photos)
     view["photo_url"] = photos[0].url if framed else None
-    view["gallery"] = photos[1:] if framed else photos
+    view["gallery"] = (photos[1:] if framed else photos) if page.show_gallery else []
     return render("invite.html", view)
 
 

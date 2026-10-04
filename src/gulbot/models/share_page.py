@@ -200,6 +200,13 @@ class SharePage(IdMixin, TimestampMixin, Base):
     #: The last edit. The link never changes on edit; this records that the
     #: content did.
     edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: CP17 sections a taklifnoma's creator switches on and off (bot: Edit).
+    show_countdown: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    show_gallery: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
+    #: Palette keys, "oq,oltin" (web/sections.py). Picked, never typed.
+    dress_colors: Mapped[str | None] = mapped_column(String(80), nullable=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -213,6 +220,10 @@ class SharePage(IdMixin, TimestampMixin, Base):
         Index("ix_share_pages_shop_customer_created", "shop_id", "customer_id", "created_at"),
         Index("ix_share_pages_expires_at", "expires_at"),
         CheckConstraint(f"kind IN ({_sql_list(tuple(PageKind))})", name="kind_known"),
+        CheckConstraint(
+            "dress_colors IS NULL OR dress_colors ~ '^[a-z]{2,12}(,[a-z]{2,12}){0,4}$'",
+            name="dress_colors_shape",
+        ),
         CheckConstraint(f"template IN ({_sql_list(PAGE_TEMPLATES)})", name="template_known"),
         CheckConstraint(f"lang IN ({_sql_list(PAGE_LANGUAGES)})", name="lang_known"),
         CheckConstraint(

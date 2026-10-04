@@ -61,6 +61,7 @@ from gulbot.models.share_page import (
     SharePageRsvp,
 )
 from gulbot.models.shop import Shop
+from gulbot.web import sections
 
 #: Pages one customer may create in any rolling 24 hours, deleted ones included.
 CREATE_PER_DAY: Final = 5
@@ -352,6 +353,7 @@ _SCRUB = {
     "program": None,
     "contact": None,
     "closing": None,
+    "dress_colors": None,
     "chosen_place": None,
     "chosen_slot_at": None,
     "chosen_at": None,
@@ -974,6 +976,9 @@ EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
             "contact",
             "closing",
             "rsvp_enabled",
+            "show_countdown",
+            "show_gallery",
+            "dress_colors",
             "template",
             "lang",
         }
@@ -1070,6 +1075,11 @@ async def update_page(
             cleaned = clean_text(value, cap, multiline=multiline)
             if cleaned is None and not may_empty:
                 raise EditRefused("invalid")
+            if field == "program" and cleaned is not None:
+                try:
+                    cleaned = sections.normalise_program(cleaned) or None
+                except sections.ProgramRefused:
+                    raise EditRefused("invalid") from None
             values[field] = cleaned
             if field == "question":
                 values["question_preset"] = "custom"
@@ -1088,7 +1098,12 @@ async def update_page(
                 and "question" not in changes
             ):
                 values["question"] = strings.question(page.question_preset, str(value))
-        elif field in ("rsvp_enabled", "notify_creator"):
+        elif field == "dress_colors":
+            try:
+                values[field] = sections.checked_colors(value)
+            except ValueError:
+                raise EditRefused("invalid") from None
+        elif field in ("rsvp_enabled", "notify_creator", "show_countdown", "show_gallery"):
             if not isinstance(value, bool):
                 raise EditRefused("invalid")
             values[field] = value

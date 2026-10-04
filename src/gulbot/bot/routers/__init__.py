@@ -21,6 +21,7 @@ from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
+from gulbot.bot.routers.share_page_colors import build_share_page_colors_router
 from gulbot.bot.routers.share_page_edit import build_share_page_edit_router
 from gulbot.bot.routers.share_page_photo import build_share_page_photo_router
 from gulbot.bot.routers.share_page_plan import build_share_page_plan_router
@@ -74,6 +75,8 @@ def build_routers() -> tuple[Router, ...]:
         build_share_page_plan_router(),
         # CP17: the Foto design's photo step, in creation and in editing.
         build_share_page_photo_router(),
+        # CP17: the dress-code palette.
+        build_share_page_colors_router(),
         build_menu_router(),
         build_fallback_router(),
     )

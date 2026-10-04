@@ -201,3 +201,5 @@ class EditPage(StatesGroup):
     choosing_template = State()
     choosing_lang = State()
     sending_photo = State()
+    #: CP17: the dress-code palette is open.
+    choosing_colors = State()

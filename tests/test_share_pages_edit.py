@@ -267,7 +267,7 @@ async def test_the_same_link_shows_the_new_content_escaped(
             customer,
             title="Bizning kun",
             dress_code=HOSTILE,
-            program="18:00\n19:00",
+            program="18:00 Kutib olish\n19.30 - <b>Ziyofat</b>",
             closing="Kutamiz!",
         )
         await session.commit()
@@ -275,7 +275,12 @@ async def test_the_same_link_shows_the_new_content_escaped(
     assert "Bizning kun" not in before and "Bizning kun" in after
     # No closing written yet: the event type's preset closes the card.
     assert "Sizni intizorlik bilan kutamiz!" in before
-    assert "Kutamiz!" in after and "18:00\n19:00" in after
+    assert "Kutamiz!" in after
+    # The programme as rows: the time normalised, the item escaped.
+    assert (
+        '<span class="program-at">19:30</span>'
+        '<span class="program-item">&lt;b&gt;Ziyofat&lt;/b&gt;</span>'
+    ) in after
     assert "<script>alert" not in after and "&lt;script&gt;" in after
     assert " style=" not in after
 

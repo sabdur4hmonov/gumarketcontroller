@@ -21,12 +21,14 @@
   </div>
   <div class="when-month">{{ v.month_year }}</div>
 
+  {%- if v.show_countdown %}
   <div class="countdown" id="countdown" data-at="{{ v.iso }}" hidden>
     <div class="cd-cell"><span class="cd-num" data-unit="d">0</span><span class="cd-lbl">{{ v.s.days }}</span></div>
     <div class="cd-cell"><span class="cd-num" data-unit="h">00</span><span class="cd-lbl">{{ v.s.hours }}</span></div>
     <div class="cd-cell"><span class="cd-num" data-unit="m">00</span><span class="cd-lbl">{{ v.s.minutes }}</span></div>
     <div class="cd-cell"><span class="cd-num" data-unit="s">00</span><span class="cd-lbl">{{ v.s.seconds }}</span></div>
   </div>
+  {%- endif %}
 
   <div class="divider" aria-hidden="true"><span></span></div>
 
@@ -42,13 +44,35 @@
     </div>
   </div>
 
-  {%- if v.details %}
+  {%- if v.program %}
+  <div class="divider" aria-hidden="true"><span></span></div>
+  <section class="program" aria-labelledby="program-title">
+    <h2 id="program-title" class="venue-label">{{ v.s.program }}</h2>
+    <ol class="program-rows">
+      {%- for at, item in v.program %}
+      <li><span class="program-at">{{ at }}</span><span class="program-item">{{ item }}</span></li>
+      {%- endfor %}
+    </ol>
+  </section>
+  {%- endif %}
+
+  {%- if v.details or v.colors %}
   <div class="divider" aria-hidden="true"><span></span></div>
   <dl class="details">
+    {%- if v.colors and not v.has_dress_code %}
+    <div class="detail"><dt>{{ v.s.dress_code }}</dt><dd class="swatches-only"></dd></div>
+    {%- endif %}
     {%- for item in v.details %}
     <div class="detail"><dt>{{ item.label }}</dt><dd>{{ item.text }}</dd></div>
     {%- endfor %}
   </dl>
+  {%- if v.colors %}
+  <ul class="swatches" aria-label="{{ v.s.dress_code }}">
+    {%- for c in v.colors %}
+    <li class="swatch"><span class="sw sw-{{ c.key }}" aria-hidden="true"></span>{{ c.name }}</li>
+    {%- endfor %}
+  </ul>
+  {%- endif %}
   {%- endif %}
 
   {%- if v.gallery %}

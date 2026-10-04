@@ -106,15 +106,30 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
             _field_button(lang, page.id, "venue", "ibtn.pages.f_venue")
             + _field_button(lang, page.id, "location", "ibtn.pages.f_location"),
             _field_button(lang, page.id, "dress_code", "ibtn.pages.f_dress_code")
-            + _field_button(lang, page.id, "program", "ibtn.pages.f_program"),
-            _field_button(lang, page.id, "contact", "ibtn.pages.f_contact")
-            + _field_button(lang, page.id, "closing", "ibtn.pages.f_closing"),
+            + _field_button(lang, page.id, "dress_colors", "ibtn.pages.f_colors"),
+            _field_button(lang, page.id, "program", "ibtn.pages.f_program")
+            + _field_button(lang, page.id, "contact", "ibtn.pages.f_contact"),
+            _field_button(lang, page.id, "closing", "ibtn.pages.f_closing"),
             _field_button(
                 lang,
                 page.id,
                 "rsvp_enabled",
                 "ibtn.pages.f_rsvp",
                 state=yes if page.rsvp_enabled else no,
+            ),
+            _field_button(
+                lang,
+                page.id,
+                "show_countdown",
+                "ibtn.pages.f_countdown",
+                state=yes if page.show_countdown else no,
+            )
+            + _field_button(
+                lang,
+                page.id,
+                "show_gallery",
+                "ibtn.pages.f_show_gallery",
+                state=yes if page.show_gallery else no,
             ),
         ]
     rows.append(
@@ -264,7 +279,7 @@ async def pick_field(
     await state.clear()
     await state.update_data(edit_page_id=page.id, edit_field=field)
 
-    if field in ("rsvp_enabled", "notify_creator"):
+    if field in ("rsvp_enabled", "notify_creator", "show_countdown", "show_gallery"):
         await _save(
             target, state, session, customer, lang, page.id, {field: not getattr(page, field)}
         )
@@ -279,9 +294,15 @@ async def pick_field(
         )
         if field == "contact":
             prompt = f"{prompt}\n\n{t('pages.edit_contact_hint', lang)}"
+        elif field == "program":
+            prompt = f"{prompt}\n\n{t('pages.edit_program_hint', lang)}"
         await state.set_state(EditPage.entering_text)
         await target.answer("✍️", reply_markup=cancel_reply_keyboard(lang))
         await target.answer(prompt, reply_markup=_value_keyboard(lang, field))
+    elif field == "dress_colors":
+        from gulbot.bot.routers.share_page_colors import start_color_edit
+
+        await start_color_edit(target, state, page, lang)
     elif field == "event_at":
         today = await _shop_today(session, customer.shop_id)
         await state.set_state(EditPage.choosing_month)

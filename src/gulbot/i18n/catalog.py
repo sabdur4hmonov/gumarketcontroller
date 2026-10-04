@@ -1154,6 +1154,40 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "🖼 Suratlar",
         "ru": "🖼 Фото",
     },
+    # --- a taklifnoma's sections (CP17) -------------------------------------
+    "ibtn.pages.f_colors": {
+        "uz": "🎨 Ranglar",
+        "ru": "🎨 Цвета",
+    },
+    "ibtn.pages.f_countdown": {
+        "uz": "⏳ Taymer: {state}",
+        "ru": "⏳ Таймер: {state}",
+    },
+    "ibtn.pages.f_show_gallery": {
+        "uz": "🖼 Galereya: {state}",
+        "ru": "🖼 Галерея: {state}",
+    },
+    "ibtn.pages.colors_none": {
+        "uz": "🚫 Ranglarsiz",
+        "ru": "🚫 Без цветов",
+    },
+    "pages.ask_colors": {
+        "uz": (
+            "🎨 Kiyinish uslubi uchun ranglarni tanlang ({max} tagacha), keyin «Tayyor»ni bosing."
+        ),
+        "ru": "🎨 Выберите цвета дресс-кода (до {max}), затем нажмите «Готово».",
+    },
+    "pages.colors_max": {
+        "uz": "{max} tagacha rang tanlash mumkin.",
+        "ru": "Можно выбрать до {max} цветов.",
+    },
+    "pages.edit_program_hint": {
+        "uz": (
+            "Har bir bandni alohida qatorga yozing, vaqti bilan: «18:00 "
+            "Mehmonlarni kutib olish». 8 qatorgacha."
+        ),
+        "ru": ("Каждый пункт — с новой строки, со временем: «18:00 Встреча гостей». До 8 строк."),
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1755,6 +1789,17 @@ _EN["pages.photo_unreadable"] = "That photo could not be read. Please send anoth
 _EN["ibtn.pages.photo_clear"] = "🗑 Remove all"
 _EN["ibtn.pages.photo_done"] = "✅ Done"
 _EN["ibtn.pages.f_gallery"] = "🖼 Photos"
+
+# a taklifnoma's sections (CP17).
+_EN["ibtn.pages.f_colors"] = "🎨 Colours"
+_EN["ibtn.pages.f_countdown"] = "⏳ Countdown: {state}"
+_EN["ibtn.pages.f_show_gallery"] = "🖼 Gallery: {state}"
+_EN["ibtn.pages.colors_none"] = "🚫 No colours"
+_EN["pages.ask_colors"] = "🎨 Pick the dress-code colours (up to {max}), then tap «Done»."
+_EN["pages.colors_max"] = "You can pick up to {max} colours."
+_EN["pages.edit_program_hint"] = (
+    "One item per line, with its time: «18:00 Guests arrive». Up to 8 lines."
+)
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():
