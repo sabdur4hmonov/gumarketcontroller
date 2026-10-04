@@ -19,6 +19,7 @@ SETTINGS_LABELS = set(CATALOG["btn.menu.settings"].values())
 CHANGE_LANGUAGE_LABELS = set(CATALOG["btn.settings.change_language"].values())
 UZ_LABELS = set(CATALOG["btn.language.uz"].values())
 RU_LABELS = set(CATALOG["btn.language.ru"].values())
+EN_LABELS = set(CATALOG["btn.language.en"].values())
 
 
 async def open_settings(message: Message, lang: str) -> None:
@@ -57,10 +58,17 @@ async def set_ru(
     await _apply(message, state, session, customer, "ru")
 
 
+async def set_en(
+    message: Message, state: FSMContext, session: AsyncSession, customer: Customer
+) -> None:
+    await _apply(message, state, session, customer, "en")
+
+
 def build_settings_router() -> Router:
     router = Router(name="settings")
     router.message.register(open_settings, StateFilter(None), F.text.in_(SETTINGS_LABELS))
     router.message.register(ask_language, StateFilter(None), F.text.in_(CHANGE_LANGUAGE_LABELS))
     router.message.register(set_uz, SettingsFlow.choosing_language, F.text.in_(UZ_LABELS))
     router.message.register(set_ru, SettingsFlow.choosing_language, F.text.in_(RU_LABELS))
+    router.message.register(set_en, SettingsFlow.choosing_language, F.text.in_(EN_LABELS))
     return router

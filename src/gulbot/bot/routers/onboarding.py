@@ -28,6 +28,7 @@ from gulbot.services.share_pages import record_referral
 
 UZ_LABELS = set(CATALOG["btn.language.uz"].values())
 RU_LABELS = set(CATALOG["btn.language.ru"].values())
+EN_LABELS = set(CATALOG["btn.language.en"].values())
 
 #: A page's link back: `t.me/<this bot>?start=pg_<token>`.
 PAGE_PAYLOAD = re.compile(r"^pg_([A-Za-z0-9_-]{20,32})$")
@@ -100,9 +101,16 @@ async def choose_ru(
     await _choose(message, state, session, customer, "ru")
 
 
+async def choose_en(
+    message: Message, state: FSMContext, session: AsyncSession, customer: Customer
+) -> None:
+    await _choose(message, state, session, customer, "en")
+
+
 def build_onboarding_router() -> Router:
     router = Router(name="onboarding")
     router.message.register(start, CommandStart())
     router.message.register(choose_uz, Onboarding.choosing_language, F.text.in_(UZ_LABELS))
     router.message.register(choose_ru, Onboarding.choosing_language, F.text.in_(RU_LABELS))
+    router.message.register(choose_en, Onboarding.choosing_language, F.text.in_(EN_LABELS))
     return router

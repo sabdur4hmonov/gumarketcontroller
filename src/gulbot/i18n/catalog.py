@@ -1197,4 +1197,163 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     },
 }
 
+
+# --- English (CP17) ----------------------------------------------------------
+#
+# English covers what an English-speaking customer needs to reach and use the
+# Ha/Yo'q and taklifnoma flows -- first contact, the language choice, the main
+# menu, settings, navigation -- and those flows themselves, completely. Every
+# other key falls back to Uzbek through `t()`. A full English catalogue is a
+# separate piece of work, recorded in docs/CHECKPOINTS.md (CP17).
+#
+# TRILINGUAL_KEYS is what tests/test_i18n_trilingual.py holds to uz + ru + en,
+# together with every key of the page flows, so a new page-flow key that forgets
+# English fails the build.
+_EN: Final[dict[str, str]] = {
+    "start.choose_language": "Hello! Welcome to Gulbot. Which language shall we use?",
+    "start.welcome_back": "Welcome back, {name}!",
+    "language.saved": (
+        "Great, we'll continue in English. Invitations and Yes/No pages are fully in "
+        "English; a few other sections are still in Uzbek."
+    ),
+    "menu.title": "Main menu. What shall we do?",
+    "settings.title": "Settings",
+    "help.text": (
+        "Gulbot reminds you of important dates and helps you order flowers.\n\n"
+        "If you have questions, write to the operator."
+    ),
+    "nav.cancelled": "Cancelled.",
+    "nav.nothing_to_cancel": "Nothing to cancel.",
+    "common.unknown": "Please choose one of the buttons below 🙂",
+    "btn.menu.settings": "⚙️ Settings",
+    "btn.menu.help": "ℹ️ Help",
+    "btn.menu.browse": "💐 Order flowers",
+    "btn.menu.occasions": "📅 My dates",
+    "btn.menu.pages": "💌 Invitations · Yes/No",
+    "btn.nav.back": "⬅️ Back",
+    "btn.nav.cancel": "✖️ Cancel",
+    "btn.settings.change_language": "🌐 Change language",
+    "btn.language.uz": "🇺🇿 O'zbekcha",
+    "btn.language.ru": "🇷🇺 Русский",
+    "btn.language.en": "🇬🇧 English",
+    # --- the page flows ---------------------------------------------------
+    "pages.menu": (
+        "What shall we make?\n\n"
+        "💍 <b>Yes/No page</b> — one question, and the «No» button runs away 😄\n"
+        "💌 <b>Invitation</b> — a beautiful link for a wedding, a birthday or any "
+        "other event.\n\nYou send the finished link through Telegram."
+    ),
+    "ibtn.pages.yesno": "💍 Yes/No page",
+    "ibtn.pages.invite": "💌 Invitation",
+    "ibtn.pages.mine": "📂 My pages",
+    "pages.unavailable": "This isn't available yet. Coming soon!",
+    "pages.choose_lang": "Which language should the page be in?",
+    "pages.choose_question": "Which question shall we ask?",
+    "ibtn.pages.custom_question": "✏️ I'll write my own",
+    "pages.enter_question": "Write your question (up to {max} characters).",
+    "pages.text_empty": "Please type text, not a button. Try again.",
+    "pages.text_trimmed": "The text was shortened to {max} characters.",
+    "pages.choose_template": "Choose a design. Preview them all here:\n{gallery}",
+    "pages.ask_notify": "Shall I tell you when they answer «Yes»?",
+    "ibtn.pages.notify_yes": "🔔 Yes, tell me",
+    "ibtn.pages.notify_no": "🔕 No need",
+    "pages.confirm_yesno": (
+        "Please check:\n\n❓ <b>{question}</b>\n🌐 Language: {lang_name}\n🎨 Design: {template}\n"
+        "🔔 Notify me: {notify}\n\nCreate it?"
+    ),
+    "ibtn.pages.create": "✅ Create",
+    "ibtn.pages.cancel": "❌ Cancel",
+    "pages.created": (
+        "Done! 🎉 Here is the link:\n\n{url}\n\n"
+        "Send it to anyone on Telegram. The page stays open until {expires}."
+    ),
+    "ibtn.pages.open": "🔗 Open",
+    "ibtn.pages.share": "📤 Share",
+    "pages.limit_daily": (
+        "You've made {n} pages today — that's the daily limit. Try again tomorrow."
+    ),
+    "pages.limit_live": "You have {n} live pages. Delete an old one to make a new one.",
+    "pages.cancelled": "Cancelled.",
+    "pages.choose_event": "What kind of event?",
+    "ibtn.event.wedding": "💍 Wedding",
+    "ibtn.event.nikoh": "🤍 Nikah",
+    "ibtn.event.fotiha": "💐 Engagement",
+    "ibtn.event.birthday": "🎂 Birthday",
+    "ibtn.event.beshik": "👶 Beshik toy",
+    "ibtn.event.sunnat": "🎊 Sunnat toy",
+    "ibtn.event.anniversary": "🥂 Anniversary",
+    "ibtn.event.graduation": "🎓 Graduation",
+    "ibtn.event.corporate": "🏢 Corporate",
+    "ibtn.event.other": "✨ Other event",
+    "pages.enter_couple_1": "Write the groom's name (up to {max} characters).",
+    "pages.enter_couple_2": "Now the bride's name.",
+    "pages.enter_name_single": (
+        "Who is the event for? Write the name — for example «Malika» or «The Aliyev family»."
+    ),
+    "pages.choose_month": "Which month?",
+    "pages.choose_day": "Which day?",
+    "pages.choose_hour": "What time does it start?",
+    "pages.choose_minute": "Exact time:",
+    "pages.enter_venue": "Write the venue: hall, city, street (up to {max} characters).",
+    "pages.ask_location": (
+        "Show the place on a map? Send the point through 📎 → «Location», or skip."
+    ),
+    "ibtn.pages.skip": "⏭ Skip",
+    "pages.location_saved": "📍 Location saved.",
+    "pages.enter_message": (
+        "Would you like to write your own words to the guests? (up to {max} characters) "
+        "If not, a ready text will be used."
+    ),
+    "pages.ask_rsvp": (
+        "Let guests answer «I'll be there / Can't make it»? The counts will show here, in "
+        "«My pages»."
+    ),
+    "ibtn.pages.rsvp_yes": "✅ Yes",
+    "ibtn.pages.rsvp_no": "No need",
+    "pages.confirm_invite": (
+        "Please check:\n\n{event}: <b>{names}</b>\n📅 {date}, {time}\n📍 {venue}{pin}\n"
+        "💬 {message}\n✅ Replies (RSVP): {rsvp}\n🌐 Language: {lang_name}\n🎨 Design: {template}"
+        "\n\nCreate it?"
+    ),
+    "pages.word_yes": "yes",
+    "pages.word_no": "no",
+    "pages.word_pin": " (on the map)",
+    "pages.word_default_text": "ready text",
+    "pages.mine_empty": "You have no pages yet. Make a new one:",
+    "pages.mine_title": "Your pages:",
+    "pages.detail_yesno": (
+        "💍 <b>{question}</b>\n\n🔗 {url}\n👀 Opened: {views}\n🌸 Shop link taps: {clicks}\n"
+        "{answer}\n⏳ until {expires}"
+    ),
+    "pages.answer_none": "⏳ No answer yet",
+    "pages.answer_yes": "✅ Answer: «Yes»! ({when})",
+    "pages.detail_invite": (
+        "💌 <b>{names}</b> — {event}\n📅 {date}\n\n🔗 {url}\n👀 Opened: {views}\n"
+        "🌸 Shop link taps: {clicks}\n{rsvp}\n⏳ until {expires}"
+    ),
+    "pages.rsvp_counts": (
+        "✅ Coming: {coming} ({guests} people in all)\n❌ Can't come: {not_coming}"
+    ),
+    "pages.rsvp_off": "RSVP is off",
+    "ibtn.pages.delete": "🗑 Delete",
+    "ibtn.pages.really_delete": "🗑 Yes, delete it",
+    "ibtn.pages.back_list": "⬅️ Back to the list",
+    "pages.confirm_delete": (
+        "Delete the page? The link will stop opening and the text will be erased."
+    ),
+    "pages.deleted": "Deleted.",
+    "pages.gone": "This page was not found.",
+    "pages.notify_yes": (
+        "🎉 An answer! To «{question}» they said <b>«Yes»</b> 💖\n\n"
+        "Celebrate the day with flowers 🌸"
+    ),
+}
+
+CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
+for _key, _value in _EN.items():
+    CATALOG[_key]["en"] = _value
+
+TRILINGUAL_KEYS: Final = frozenset(_EN)
+
+# After every key exists, English included: the sweep probes each label.
 BUTTON_KEYS: Final = tuple(k for k in CATALOG if k.startswith("btn."))

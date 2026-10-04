@@ -52,6 +52,8 @@ class CustomerStatus(StrEnum):
 class Language(StrEnum):
     UZ = "uz"
     RU = "ru"
+    #: CP17. Covers the menus and the page flows; other flows fall back to Uzbek.
+    EN = "en"
 
 
 class Customer(IdMixin, TimestampMixin, Base):
@@ -93,7 +95,7 @@ class Customer(IdMixin, TimestampMixin, Base):
             "status IN ('active', 'blocked', 'stopped')",
             name="status_known",
         ),
-        CheckConstraint("lang IN ('uz', 'ru')", name="lang_known"),
+        CheckConstraint("lang IN ('uz', 'ru', 'en')", name="lang_known"),
         CheckConstraint(
             "reminder_count IS NULL OR reminder_count IN (1, 2, 3)",
             name="reminder_count_known",

@@ -56,7 +56,7 @@ def _kb(rows: list[list[str]]) -> ReplyKeyboardMarkup:
 
 
 def language_keyboard(lang: str, *, with_back: bool) -> ReplyKeyboardMarkup:
-    rows = [[t("btn.language.uz", lang), t("btn.language.ru", lang)]]
+    rows = [[t("btn.language.uz", lang), t("btn.language.ru", lang)], [t("btn.language.en", lang)]]
     if with_back:
         rows.append([t("btn.nav.back", lang)])
     return _kb(rows)
