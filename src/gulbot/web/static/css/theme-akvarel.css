@@ -1,0 +1,44 @@
+/* Akvarel -- soft watercolour: colour pooled and bled on white paper, made of
+ * blurred radial washes; a handwritten heading. */
+:root {
+  --bg: #fdfbf7;
+  --card: rgba(255, 255, 255, 0.78);
+  --ink: #3b3a4a;
+  --ink-soft: #5a586b;
+  --muted: #9a97ac;
+  --accent: #d97a96;
+  --accent-ink: #ffffff;
+  --accent-2: #7cc3c1;
+  --line: rgba(217, 122, 150, 0.3);
+  --cell-bg: rgba(250, 244, 246, 0.9);
+  --display-ink: #c45d7d;
+  --radius: 26px;
+  --shadow: 0 16px 44px rgba(120, 90, 130, 0.12);
+  --font-display: "Caveat", "Bad Script", cursive;
+  --font-body: "Lora", Georgia, serif;
+  --display-size: clamp(42px, 13vw, 60px);
+}
+
+/* the washes sit behind everything and are blurred, so their edges bleed */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -12%;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 22%, rgba(232, 160, 180, 0.7) 0, transparent 26%),
+    radial-gradient(circle at 82% 16%, rgba(246, 197, 165, 0.7) 0, transparent 24%),
+    radial-gradient(circle at 74% 78%, rgba(159, 211, 210, 0.75) 0, transparent 26%),
+    radial-gradient(circle at 22% 84%, rgba(196, 181, 227, 0.7) 0, transparent 24%),
+    radial-gradient(circle at 50% 50%, rgba(255, 230, 210, 0.45) 0, transparent 40%);
+  filter: blur(26px);
+  pointer-events: none;
+}
+
+.card {
+  backdrop-filter: blur(2px);
+}
+
+.names {
+  font-size: clamp(48px, 15vw, 68px);
+}

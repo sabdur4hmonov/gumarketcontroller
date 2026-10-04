@@ -1,31 +1,33 @@
-/* Konvert -- the page arrives sealed. Tap the wax seal, the flap turns over
- * and the letter rises out: cream paper and a handwritten heading. */
+/* Konvert -- the page arrives sealed in a lilac envelope. Tap the wax seal
+ * (it carries the creator's initials), the flap turns over and the letter
+ * rises out, section by section. */
 :root {
-  --bg: #efe4d2;
+  --bg: #e9e1f2;
   --bg-image:
-    repeating-linear-gradient(45deg, rgba(120, 90, 50, 0.04) 0 2px, transparent 2px 8px),
-    linear-gradient(180deg, #f2e8d7, #e6d6bb);
-  --card: #fffdf7;
-  --ink: #3b2a1e;
-  --ink-soft: #5e4a3a;
-  --muted: #9c8670;
-  --accent: #8a1d2a;
-  --accent-ink: #fff7ea;
-  --accent-2: #c79a5b;
-  --line: rgba(138, 29, 42, 0.2);
-  --cell-bg: #f7f0e3;
-  --display-ink: #6d1622;
+    repeating-linear-gradient(45deg, rgba(90, 60, 130, 0.045) 0 2px, transparent 2px 8px),
+    linear-gradient(180deg, #efe8f6, #ddd0ec);
+  --card: #fdfbff;
+  --ink: #33273f;
+  --ink-soft: #54476a;
+  --muted: #8c7fa3;
+  --accent: #6a3d86;
+  --accent-ink: #fbf6ff;
+  --accent-2: #c2a25e;
+  --line: rgba(106, 61, 134, 0.2);
+  --cell-bg: #f4eefa;
+  --display-ink: #55296f;
   --radius: 4px;
   --shadow:
-    0 1px 0 #e9dcc5,
-    0 22px 50px rgba(80, 50, 20, 0.2);
+    0 1px 0 #e3d8ef,
+    0 22px 50px rgba(70, 40, 100, 0.2);
   --font-display: "Bad Script", cursive;
   --font-body: "Lora", Georgia, serif;
-  --env-paper: #ead9bb;
-  --env-flap: #dcc49c;
-  --env-fold: rgba(110, 80, 40, 0.1);
-  --seal: #7d1420;
-  --seal-hi: #c8414c;
+  --env-paper: #d8c8ec;
+  --env-flap: #c4ade0;
+  --env-fold: rgba(70, 40, 110, 0.12);
+  --seal: #4e2463;
+  --seal-hi: #9a5cb8;
+  --seal-ink: #f3e3b8;
   --display-size: clamp(32px, 9.5vw, 46px);
 }
 
@@ -36,7 +38,7 @@
 
 /* faint ruled lines, as on writing paper */
 .card {
-  background-image: linear-gradient(transparent 31px, rgba(138, 29, 42, 0.06) 32px);
+  background-image: linear-gradient(transparent 31px, rgba(106, 61, 134, 0.06) 32px);
   background-size: 100% 32px;
 }
 

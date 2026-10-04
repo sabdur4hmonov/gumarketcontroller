@@ -1,0 +1,54 @@
+/* Oq-qora -- black on white and nothing else: a high-contrast didone
+ * headline, hairline rules, inverted buttons. */
+:root {
+  --bg: #ffffff;
+  --card: #ffffff;
+  --card-border: 1px solid #0a0a0a;
+  --ink: #0a0a0a;
+  --ink-soft: #2a2a2a;
+  --muted: #6e6e6e;
+  --accent: #0a0a0a;
+  --accent-ink: #ffffff;
+  --accent-2: #0a0a0a;
+  --line: rgba(10, 10, 10, 0.85);
+  --cell-bg: #f4f4f4;
+  --no-ink: #0a0a0a;
+  --display-ink: #0a0a0a;
+  --cta-bg: #0a0a0a;
+  --cta-ink: #ffffff;
+  --radius: 0;
+  --shadow: none;
+  --font-display: "Prata", "Cormorant Garamond", Georgia, serif;
+  --font-display-uzc: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(34px, 10.5vw, 52px);
+}
+
+.card {
+  padding: 46px 24px 42px;
+}
+
+/* a second hairline frame, inset: the only ornament there is */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 1px solid #0a0a0a;
+  pointer-events: none;
+}
+
+.btn,
+.chip,
+.cta,
+.seg label,
+.choices label {
+  border-radius: 0;
+}
+
+.btn-no {
+  border: 1px solid #0a0a0a;
+}
+
+.mono {
+  border-radius: 0;
+}

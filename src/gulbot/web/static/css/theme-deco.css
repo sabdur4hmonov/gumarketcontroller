@@ -1,0 +1,82 @@
+/* Deco -- Art Deco geometry: a field of overlapping fans in brushed bronze on
+ * deep teal, a card with stepped corners and double rules, wide-set capitals. */
+:root {
+  --bg: #0f3b3a;
+  --bg-image:
+    radial-gradient(circle at 50% 100%, transparent 0 14px, rgba(192, 138, 74, 0.22) 14px 15px, transparent 15px 22px, rgba(192, 138, 74, 0.18) 22px 23px, transparent 23px)
+      0 0 / 48px 26px,
+    radial-gradient(circle at 50% 100%, transparent 0 14px, rgba(192, 138, 74, 0.22) 14px 15px, transparent 15px 22px, rgba(192, 138, 74, 0.18) 22px 23px, transparent 23px)
+      24px 13px / 48px 26px,
+    linear-gradient(180deg, #11403f, #0b2e2d);
+  --card: #0e3433;
+  --ink: #f3e6d2;
+  --ink-soft: #dccbb0;
+  --muted: #b49567;
+  --accent: #c08a4a;
+  --accent-ink: #10201f;
+  --accent-2: #e6c38f;
+  --line: rgba(192, 138, 74, 0.45);
+  --cell-bg: rgba(192, 138, 74, 0.08);
+  --no-ink: #dccbb0;
+  --display-ink: #e6c38f;
+  --radius: 0;
+  --shadow: 0 26px 60px rgba(0, 0, 0, 0.45);
+  --font-display: "Poiret One", "Montserrat", Arial, sans-serif;
+  --font-display-uzc: "Montserrat", Arial, sans-serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(32px, 10vw, 48px);
+  --shop-ink: #dccbb0;
+}
+
+/* stepped corners, cut with a polygon, and a double bronze rule inside */
+.card {
+  clip-path: polygon(
+    18px 0, calc(100% - 18px) 0, calc(100% - 18px) 6px, calc(100% - 6px) 6px, calc(100% - 6px) 18px,
+    100% 18px, 100% calc(100% - 18px), calc(100% - 6px) calc(100% - 18px),
+    calc(100% - 6px) calc(100% - 6px), calc(100% - 18px) calc(100% - 6px), calc(100% - 18px) 100%,
+    18px 100%, 18px calc(100% - 6px), 6px calc(100% - 6px), 6px calc(100% - 18px), 0 calc(100% - 18px),
+    0 18px, 6px 18px, 6px 6px, 18px 6px
+  );
+  padding: 50px 26px 44px;
+}
+
+.card::before,
+.card::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid rgba(192, 138, 74, 0.7);
+}
+
+.card::before {
+  inset: 14px;
+}
+
+.card::after {
+  inset: 19px;
+  border-color: rgba(192, 138, 74, 0.35);
+}
+
+.display,
+.names {
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+:lang(uz-Cyrl) .display,
+:lang(uz-Cyrl) .names {
+  letter-spacing: 0.03em;
+}
+
+.eyebrow,
+.when-side,
+.when-month {
+  letter-spacing: 0.3em;
+}
+
+.btn,
+.cta,
+.chip {
+  border-radius: 0;
+}

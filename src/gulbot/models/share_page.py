@@ -70,6 +70,17 @@ PAGE_TEMPLATES: Final = (
     "tungi",
     "pastel",
     "konvert",
+    # CP17
+    "foto",
+    "bold",
+    "geometrik",
+    "akvarel",
+    "vintaj",
+    "oqqora",
+    "bolalar",
+    "suzani",
+    "neon",
+    "deco",
 )
 
 #: The language the PAGE is written in -- not the customer's bot language.

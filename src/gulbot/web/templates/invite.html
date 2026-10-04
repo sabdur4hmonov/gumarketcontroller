@@ -2,6 +2,11 @@
 {%- from "_ornaments.html" import ornament, icon -%}
 {% block card %}
 <article class="card">
+  {%- if v.theme == "foto" %}
+  <figure class="photo">
+    {%- if v.photo_url %}<img src="{{ v.photo_url }}" alt="" width="260" height="325">{% else %}<span class="photo-ph" aria-hidden="true">{{ v.monogram }}</span>{% endif %}
+  </figure>
+  {%- endif %}
   {{ ornament(v.theme) }}
   <p class="eyebrow">{{ v.event_label }}</p>
   <h1 class="names">{{ v.name_1 }}{% if v.name_2 %}<span class="amp">&amp;</span>{{ v.name_2 }}{% endif %}</h1>

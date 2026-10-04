@@ -1,0 +1,42 @@
+/* Geometrik -- an Islamic-geometric feel, drawn here from scratch: a tiling
+ * of six-pointed stars (two triangles) in a hexagon lattice, used only as a
+ * faint watermark and as a band across the top of the card. Ivory, sage and
+ * gold; restraint is the point. */
+:root {
+  --bg: #f6f2e8;
+  --bg-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%236f8f7a' stroke-opacity='.22' stroke-width='1'%3E%3Cpath d='M20 20h16v16H20zM28 16.7L39.3 28 28 39.3 16.7 28z'/%3E%3Cpath d='M0 28h16.7M39.3 28H56M28 0v16.7M28 39.3V56'/%3E%3C/g%3E%3C/svg%3E");
+  --card: #fffdf6;
+  --card-border: 1px solid rgba(181, 143, 60, 0.6);
+  --ink: #24352c;
+  --ink-soft: #46584d;
+  --muted: #7d8e83;
+  --accent: #6f8f7a;
+  --accent-ink: #ffffff;
+  --accent-2: #b58f3c;
+  --line: rgba(111, 143, 122, 0.35);
+  --cell-bg: #f1f0e4;
+  --display-ink: #2f4a3b;
+  --radius: 10px;
+  --shadow: 0 18px 46px rgba(36, 53, 44, 0.14);
+  --font-display: "El Messiri", "Cormorant Garamond", Georgia, serif;
+  --font-display-uzc: "Cormorant Garamond", Georgia, serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+}
+
+.card {
+  overflow: hidden;
+  padding-top: 58px;
+}
+
+/* the band: the same star tiling, in gold, across the top edge */
+.card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 30px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='30' viewBox='0 0 28 30'%3E%3Cg fill='none' stroke='%23b58f3c' stroke-width='1.2'%3E%3Cpath d='M8 9h12v12H8zM14 6.5L22.5 15 14 23.5 5.5 15z'/%3E%3C/g%3E%3C/svg%3E")
+    center / 28px 30px repeat-x;
+  border-bottom: 1px solid rgba(181, 143, 60, 0.45);
+}

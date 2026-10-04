@@ -38,13 +38,13 @@
   <path d="M30 22h18M112 22h18" opacity=".6"/>
   <circle cx="24" cy="22" r="1.8" fill="currentColor" stroke="none"/><circle cx="136" cy="22" r="1.8" fill="currentColor" stroke="none"/>
 {%- elif theme == "oltin" %}
-  <g transform="translate(80 22)">
-    <path d="M0-14L4-4 14 0 4 4 0 14-4 4-14 0-4-4z" fill="currentColor" stroke="none"/>
-    <circle r="18" opacity=".7"/>
+  <g transform="translate(80 21)" fill="#fff">
+    <circle cy="-8" r="7"/><circle cx="7.6" cy="-2.5" r="7"/><circle cx="4.7" cy="6.5" r="7"/><circle cx="-4.7" cy="6.5" r="7"/><circle cx="-7.6" cy="-2.5" r="7"/>
+    <circle r="3" fill="currentColor" stroke="none"/>
   </g>
-  <path d="M10 22h44M106 22h44"/>
-  <path d="M54 18l4 4-4 4M106 18l-4 4 4 4"/>
-  <path d="M24 22l-4-4M24 22l-4 4M136 22l4-4M136 22l4 4" opacity=".7"/>
+  <path d="M10 22h48M102 22h48"/>
+  <path d="M58 22c-4-6-10-8-16-6 3 5 9 7 16 6zM102 22c4-6 10-8 16-6-3 5-9 7-16 6z" fill="#fff"/>
+  <circle cx="24" cy="22" r="1.8" fill="currentColor" stroke="none"/><circle cx="136" cy="22" r="1.8" fill="currentColor" stroke="none"/>
 {%- elif theme == "quvnoq" %}
   <path d="M10 26l8-8 8 8 8-8 8 8 8-8 8 8" stroke-width="2.4"/>
   <path d="M94 26l8-8 8 8 8-8 8 8 8-8 8 8" stroke-width="2.4" class="o2s"/>
@@ -58,6 +58,68 @@
   <path d="M62 30h36a8 8 0 0 0 0-16 11 11 0 0 0-21-2 8 8 0 0 0-15 18z"/>
   <path class="o2s" d="M36 14v8M32 18h8M124 24v8M120 28h8"/>
   <circle cx="22" cy="24" r="2" class="o2" stroke="none"/><circle cx="140" cy="16" r="2" class="o2" stroke="none"/>
+{%- elif theme == "bold" %}
+  <path d="M8 22h70" stroke-width="7" stroke-linecap="butt"/>
+  <circle cx="94" cy="22" r="6" fill="currentColor" stroke="none"/>
+{%- elif theme == "geometrik" %}
+  <g transform="translate(80 22)">
+    <rect x="-11" y="-11" width="22" height="22"/>
+    <rect x="-11" y="-11" width="22" height="22" transform="rotate(45)"/>
+    <circle r="5" class="o2" stroke="none"/>
+  </g>
+  <path d="M14 22h40M106 22h40" opacity=".55"/>
+  <path class="o2s" d="M46 22l4-4 4 4-4 4zM106 22l4-4 4 4-4 4z"/>
+{%- elif theme == "akvarel" %}
+  <path d="M24 28c18-14 36-14 56-4s38 10 56-6" stroke-width="3.2" opacity=".55"/>
+  <circle cx="58" cy="14" r="4" fill="currentColor" stroke="none" opacity=".45"/>
+  <circle cx="80" cy="10" r="5" class="o2" stroke="none" opacity=".6"/>
+  <circle cx="102" cy="15" r="3.5" fill="currentColor" stroke="none" opacity=".35"/>
+{%- elif theme == "vintaj" %}
+  <g transform="translate(48 22)">
+    <circle r="15"/>
+    <circle r="10.5" opacity=".7"/>
+    <path d="M-6 0h12" opacity=".7"/>
+  </g>
+  <path d="M66 15q8-4 16 0t16 0M66 22q8-4 16 0t16 0M66 29q8-4 16 0t16 0" opacity=".6"/>
+  <g transform="translate(118 9)">
+    <rect width="26" height="26" rx="1.5" class="o2s" stroke-dasharray="2 2.2"/>
+    <path d="M7 18l6-9 6 9z" fill="currentColor" stroke="none" opacity=".5"/>
+  </g>
+{%- elif theme == "oqqora" %}
+  <path d="M30 22h44M86 22h44" stroke-width="1"/>
+  <path d="M80 18l4 4-4 4-4-4z" fill="currentColor" stroke="none"/>
+{%- elif theme == "bolalar" %}
+  <g stroke="none">
+    <ellipse cx="62" cy="16" rx="8" ry="10" fill="#ff5a5f"/>
+    <ellipse cx="80" cy="12" rx="9" ry="11" fill="#ffcf3f"/>
+    <ellipse cx="98" cy="16" rx="8" ry="10" fill="#2bb3ff"/>
+  </g>
+  <path d="M62 26q2 8-2 14M80 23q-2 9 1 17M98 26q-3 8 2 14" stroke-width="1.1" opacity=".6"/>
+  <path d="M28 18l2 5 5 1-5 2-2 5-2-5-5-2 5-1zM134 16l2 4 4 1-4 2-2 4-2-4-4-2 4-1z" fill="#4cd07d" stroke="none"/>
+{%- elif theme == "suzani" %}
+  <g transform="translate(80 22)" stroke="none">
+    <g class="o2">
+      <ellipse cy="-14" rx="4" ry="6"/>
+      <ellipse cy="14" rx="4" ry="6"/>
+      <ellipse cx="-14" rx="6" ry="4"/>
+      <ellipse cx="14" rx="6" ry="4"/>
+    </g>
+    <circle r="9" fill="currentColor"/>
+    <circle r="4" fill="#2c3e75"/>
+  </g>
+  <path d="M20 22c10-8 20-8 30 0M110 22c10 8 20 8 30 0" stroke="#4f7a4a" stroke-width="2"/>
+{%- elif theme == "neon" %}
+  <path d="M80 36s-14-8-16-17c-1-6 3-11 9-11 3 0 5 2 7 5 2-3 4-5 7-5 6 0 10 5 9 11-2 9-16 17-16 17z" stroke-width="2.2"/>
+  <path class="o2s" d="M18 22h36M106 22h36" stroke-width="2.2"/>
+{%- elif theme == "deco" %}
+  <g transform="translate(80 34)">
+    <path d="M-24 0a24 24 0 0 1 48 0z" fill="currentColor" stroke="none" opacity=".18"/>
+    <path d="M-24 0a24 24 0 0 1 48 0M0 0v-24M0 0l-17-17M0 0l17-17M0 0l-23-7M0 0l23-7"/>
+  </g>
+  <path d="M10 34h30v-6h12M150 34h-30v-6h-12"/>
+{%- elif theme == "foto" %}
+  <path d="M60 24c6-8 14-9 20-4M100 24c-6-8-14-9-20-4" />
+  <circle cx="80" cy="22" r="2.6" fill="currentColor" stroke="none"/>
 {%- else %}
   <path d="M80 22c-10-12-26-12-26-2s16 8 26 2c10 6 26 8 26-2s-16-10-26 2z"/>
   <path d="M80 22l-8 14M80 22l8 14"/>

@@ -1,26 +1,28 @@
-/* Oltin -- deep emerald, foil-like gold gradients and an arched frame. */
+/* Oltin -- cream and gold: an arched, double-ruled frame, white flowers
+ * outlined in gold, foil-like gradient lettering. */
 :root {
-  --bg: #0d2420;
+  --bg: #f6efe2;
   --bg-image:
-    radial-gradient(ellipse at 50% -10%, rgba(212, 175, 55, 0.22) 0, transparent 55%),
-    linear-gradient(180deg, #0f2b26 0%, #091a17 100%);
-  --card: #0f2a25;
-  --card-border: 1px solid rgba(212, 175, 55, 0.65);
-  --ink: #f3ead2;
-  --ink-soft: #d9cba5;
-  --muted: #b39b62;
-  --accent: #d4af37;
-  --accent-ink: #1a1405;
-  --accent-2: #f5e6a8;
-  --line: rgba(212, 175, 55, 0.35);
-  --cell-bg: rgba(212, 175, 55, 0.08);
-  --no-ink: #d9cba5;
-  --display-ink: #f1d77f;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 180 180'%3E%3Cg fill='%23ffffff' stroke='%23c9a24a' stroke-opacity='.45' stroke-width='1'%3E%3Cg transform='translate(36 40)'%3E%3Ccircle cy='-7' r='6'/%3E%3Ccircle cx='6.7' cy='-2.2' r='6'/%3E%3Ccircle cx='4.1' cy='5.7' r='6'/%3E%3Ccircle cx='-4.1' cy='5.7' r='6'/%3E%3Ccircle cx='-6.7' cy='-2.2' r='6'/%3E%3C/g%3E%3Cg transform='translate(132 128) scale(.7)'%3E%3Ccircle cy='-7' r='6'/%3E%3Ccircle cx='6.7' cy='-2.2' r='6'/%3E%3Ccircle cx='4.1' cy='5.7' r='6'/%3E%3Ccircle cx='-4.1' cy='5.7' r='6'/%3E%3Ccircle cx='-6.7' cy='-2.2' r='6'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23d9b65c' fill-opacity='.55'%3E%3Ccircle cx='36' cy='40' r='2.4'/%3E%3Ccircle cx='132' cy='128' r='1.8'/%3E%3C/g%3E%3Cpath d='M48 52c10 8 22 10 30 6M120 118c-8-6-18-8-26-4' fill='none' stroke='%23c9a24a' stroke-opacity='.4'/%3E%3C/svg%3E"),
+    radial-gradient(ellipse at 50% -10%, rgba(212, 175, 55, 0.18) 0, transparent 60%),
+    linear-gradient(180deg, #f8f2e6 0%, #efe3cc 100%);
+  --card: #fffaf0;
+  --card-border: 1px solid rgba(190, 150, 60, 0.7);
+  --ink: #3a2e1c;
+  --ink-soft: #5c4a2e;
+  --muted: #a08445;
+  --accent: #b8892f;
+  --accent-ink: #fffaf0;
+  --accent-2: #ffffff;
+  --line: rgba(184, 137, 47, 0.35);
+  --cell-bg: #f8efdc;
+  --no-ink: #5c4a2e;
+  --display-ink: #9c7424;
   --radius: 180px 180px 10px 10px;
-  --shadow: 0 30px 70px rgba(0, 0, 0, 0.55);
+  --shadow: 0 26px 60px rgba(120, 90, 30, 0.2);
   --font-display: "Forum", Georgia, serif;
   --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
-  --shop-ink: #d9cba5;
+  --shop-ink: #5c4a2e;
 }
 
 .card {
@@ -31,7 +33,7 @@
   content: "";
   position: absolute;
   inset: 10px;
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1px solid rgba(184, 137, 47, 0.45);
   border-radius: 170px 170px 6px 6px;
   pointer-events: none;
 }
@@ -40,15 +42,15 @@
 .names {
   font-weight: 400;
   letter-spacing: 0.02em;
-  background: linear-gradient(100deg, #b8892f 0%, #f5e6a8 45%, #d4af37 60%, #9c7424 100%);
+  background: linear-gradient(100deg, #7a5518 0%, #c99a2e 45%, #e0bd62 58%, #8a6420 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .names .amp {
-  -webkit-text-fill-color: #d4af37;
-  color: #d4af37;
+  -webkit-text-fill-color: #b8892f;
+  color: #b8892f;
 }
 
 .eyebrow,
@@ -60,6 +62,6 @@
 .btn-yes,
 .cta,
 .seg input:checked + label {
-  background: linear-gradient(100deg, #b8892f, #f5e6a8 50%, #c99a2e);
-  color: #1a1405;
+  background: linear-gradient(100deg, #9c7424, #d4af37 50%, #a87d27);
+  color: #fffaf0;
 }

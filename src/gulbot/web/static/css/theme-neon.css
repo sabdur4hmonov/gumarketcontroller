@@ -1,0 +1,67 @@
+/* Neon -- a night party: a near-black wall with a faint grid, glowing tube
+ * lettering in pink and cyan. Glow is text-shadow only; nothing animates
+ * when the reader asks for reduced motion. */
+:root {
+  --bg: #0b0b12;
+  --bg-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px) 0 0 / 28px 28px,
+    radial-gradient(ellipse at 50% 30%, #1a1430 0, #0b0b12 70%);
+  --card: rgba(16, 14, 26, 0.86);
+  --card-border: 1.5px solid rgba(34, 228, 255, 0.55);
+  --ink: #f1eefe;
+  --ink-soft: #c9c3e6;
+  --muted: #8f88b5;
+  --accent: #ff2bd6;
+  --accent-ink: #0b0b12;
+  --accent-2: #22e4ff;
+  --line: rgba(34, 228, 255, 0.4);
+  --cell-bg: rgba(255, 255, 255, 0.04);
+  --no-ink: #c9c3e6;
+  --display-ink: #ffe9fb;
+  --cta-bg: transparent;
+  --cta-ink: #22e4ff;
+  --radius: 14px;
+  --shadow:
+    0 0 28px rgba(34, 228, 255, 0.25),
+    inset 0 0 22px rgba(255, 43, 214, 0.1);
+  --font-display: "Oswald", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(36px, 11vw, 54px);
+  --shop-ink: #c9c3e6;
+}
+
+.display,
+.names {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-shadow:
+    0 0 4px #fff,
+    0 0 10px #ff2bd6,
+    0 0 22px #ff2bd6,
+    0 0 42px rgba(255, 43, 214, 0.6);
+}
+
+.names .amp,
+.eyebrow {
+  color: #22e4ff;
+  text-shadow: 0 0 8px rgba(34, 228, 255, 0.8);
+}
+
+.btn-yes {
+  box-shadow:
+    0 0 14px rgba(255, 43, 214, 0.75),
+    0 0 30px rgba(255, 43, 214, 0.35);
+}
+
+.cta {
+  border: 1.5px solid #22e4ff;
+  box-shadow: 0 0 14px rgba(34, 228, 255, 0.45);
+}
+
+.field input,
+.seg label,
+.stepper button,
+.choices label {
+  background: rgba(255, 255, 255, 0.05);
+}

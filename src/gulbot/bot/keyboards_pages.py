@@ -53,6 +53,16 @@ THEME_ICONS: Final = {
     "tungi": "🌙",
     "pastel": "🍬",
     "konvert": "✉️",
+    "foto": "🖼",
+    "bold": "🅱️",
+    "geometrik": "🔷",
+    "akvarel": "🎨",
+    "vintaj": "📜",
+    "oqqora": "🖤",
+    "bolalar": "🎈",
+    "suzani": "🌺",
+    "neon": "💡",
+    "deco": "🏛",
 }
 
 LANG_BUTTONS: Final = (

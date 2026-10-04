@@ -33,13 +33,23 @@ THEME_COLORS: Final = {
     "milliy": "#f6efe2",
     "atlas": "#1f2f6b",
     "minimal": "#f4f1ec",
-    "bog": "#e7eee4",
+    "bog": "#c9d8c0",
     "romantik": "#fde6ea",
-    "oltin": "#0d2420",
+    "oltin": "#f6efe2",
     "quvnoq": "#ffe9f2",
     "tungi": "#0b1026",
     "pastel": "#f1edfb",
-    "konvert": "#efe4d2",
+    "konvert": "#e9e1f2",
+    "foto": "#f4ebe6",
+    "bold": "#efede6",
+    "geometrik": "#f6f2e8",
+    "akvarel": "#fdfbf7",
+    "vintaj": "#e9dcc0",
+    "oqqora": "#ffffff",
+    "bolalar": "#dff3ff",
+    "suzani": "#f3e8d4",
+    "neon": "#0b0b12",
+    "deco": "#0f3b3a",
 }
 
 #: Display names, for the gallery and the bot's picker.
@@ -54,6 +64,16 @@ THEME_NAMES: Final = {
     "tungi": "Tungi",
     "pastel": "Pastel",
     "konvert": "Konvert",
+    "foto": "Foto",
+    "bold": "Bold",
+    "geometrik": "Geometrik",
+    "akvarel": "Akvarel",
+    "vintaj": "Vintaj",
+    "oqqora": "Oq-qora",
+    "bolalar": "Bolalar",
+    "suzani": "Suzani",
+    "neon": "Neon",
+    "deco": "Deco",
 }
 
 
@@ -112,6 +132,11 @@ def _common(theme: str, lang: str, branding: Branding) -> dict[str, Any]:
         "cta_url": branding.cta_url,
         "made_with": s["made_with"].format(shop=branding.shop_name),
         "seal_letter": None,
+        "photo_url": None,
+        #: The Foto design without a photo: a heart on a Ha/Yo'q page, the
+        #: couple's initials on an invitation (invite_view) -- never the
+        #: shop's letter, which would put the florist in the frame.
+        "monogram": "♥",
     }
 
 
@@ -214,6 +239,8 @@ def invite_view(
         ],
         "closing": page.closing or strings.event_closing(page.event_type, lang),
         "seal_letter": _initial(page.name_1 or ""),
+        "monogram": _initial(page.name_1 or "")
+        + (f"&{_initial(page.name_2)}" if page.name_2 else ""),
     }
     return v
 

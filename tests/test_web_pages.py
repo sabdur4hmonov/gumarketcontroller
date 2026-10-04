@@ -368,3 +368,12 @@ def test_the_rate_limiter_cannot_grow_without_bound() -> None:
     for n in range(1000):
         limiter.allow(str(n))
     assert len(limiter._hits) == 100  # noqa: SLF001
+
+
+async def test_the_photo_frame_without_a_photo_never_shows_the_shop(world: World) -> None:
+    """The Foto design's empty frame: the couple's initials on an invitation,
+    a heart on a question -- not the florist's letter."""
+    invite_body = await (await world.client.get("/demo/invite/foto?lang=uz")).text()
+    yesno_body = await (await world.client.get("/demo/yesno/foto?lang=uz")).text()
+    assert '<span class="photo-ph" aria-hidden="true">A&amp;M</span>' in invite_body
+    assert '<span class="photo-ph" aria-hidden="true">♥</span>' in yesno_body

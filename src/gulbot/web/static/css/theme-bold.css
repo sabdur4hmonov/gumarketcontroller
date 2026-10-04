@@ -1,0 +1,84 @@
+/* Bold -- editorial poster type: huge condensed capitals, one signal colour,
+ * a hard black rule. No ornament; the type is the decoration. */
+:root {
+  --bg: #efede6;
+  --card: #ffffff;
+  --ink: #111111;
+  --ink-soft: #333333;
+  --muted: #6b6b6b;
+  --accent: #ff3b1f;
+  --accent-ink: #ffffff;
+  --accent-2: #111111;
+  --line: rgba(17, 17, 17, 0.2);
+  --cell-bg: #f3f1ea;
+  --display-ink: #111111;
+  --cta-bg: #111111;
+  --cta-ink: #ffffff;
+  --radius: 0;
+  --shadow: 10px 10px 0 #111111;
+  --font-display: "Oswald", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Montserrat", "Segoe UI", Arial, sans-serif;
+  --display-size: clamp(40px, 13vw, 64px);
+}
+
+.card {
+  border-top: 14px solid #111111;
+  text-align: left;
+  padding: 30px 24px 30px;
+}
+
+.display,
+.names {
+  text-transform: uppercase;
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+}
+
+.names {
+  font-size: clamp(46px, 15vw, 72px);
+}
+
+.names .amp {
+  color: var(--accent);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.answers,
+.links,
+.countdown {
+  justify-content: flex-start;
+}
+
+.lead,
+.venue,
+.details,
+.closing {
+  margin-left: 0;
+}
+
+.divider {
+  margin-left: 0;
+  max-width: 120px;
+  color: #111111;
+}
+
+.divider::after {
+  display: none;
+}
+
+.when {
+  margin: 0;
+}
+
+.closing {
+  text-transform: uppercase;
+}
+
+.ornament {
+  margin-left: 0;
+  width: 110px;
+}
