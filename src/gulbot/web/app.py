@@ -3,6 +3,7 @@
     GET  /p/<token>             the page (410 once deleted or expired)
     POST /p/<token>/yes         Ha was pressed
     POST /p/<token>/rsvp        an invitation's Kelaman / Kela olmayman
+    POST /p/<token>/choose      after Ha: the place and time from the date plan
     GET  /p/<token>/go          a tap on the shop's link: counted, then t.me
     GET  /p/<token>/event.ics   the invitation as a calendar entry
     GET  /demo[/<kind>[/<theme>]]  the designs, with sample text
@@ -35,9 +36,16 @@ from collections.abc import Awaitable, Callable
 from typing import Final
 
 from aiohttp import web
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from gulbot.models.share_page import MAX_GUESTS, PAGE_LANGUAGES, PAGE_TEMPLATES, PageKind
+from gulbot.models.share_page import (
+    MAX_GUESTS,
+    PAGE_LANGUAGES,
+    PAGE_TEMPLATES,
+    PageKind,
+    SharePage,
+)
 from gulbot.services import share_pages
 from gulbot.web import render, strings
 
@@ -54,9 +62,14 @@ CSP: Final = (
     "frame-ancestors 'none'"
 )
 
-#: Notify = "a creator may want telling about this page": the task is queued,
-#: and the claim in the database decides whether anything is sent.
-Notify = Callable[[int], Awaitable[None] | None]
+#: Notify = "a creator may want telling about this page, now or `delay`
+#: seconds from now": the task is queued, and the claim in the database
+#: decides whether anything is sent.
+Notify = Callable[[int, float], Awaitable[None] | None]
+
+#: The second look after a Ha on a page with a date plan: a little after
+#: CHOICE_WAIT, so the "nothing chosen yet" message is due when it runs.
+CHOICE_CHECK_DELAY: Final = share_pages.CHOICE_WAIT.total_seconds() + 30
 
 KEY_SESSIONS: Final[web.AppKey[async_sessionmaker[AsyncSession]]] = web.AppKey("sessions")
 KEY_NOTIFY: Final[web.AppKey[Notify]] = web.AppKey("notify")
@@ -210,11 +223,23 @@ async def page(request: web.Request) -> web.Response:
             await share_pages.record_view(session, page_id=p.id)
             await session.commit()
         cta = f"/p/{token}/go" if p.bot_username else None
+        plan = None
+        if p.kind == PageKind.YESNO:
+            places, slots = await share_pages.plan_of(session, page_id=p.id)
+            plan = render.Plan(
+                places=[(o.id, o.place or "") for o in places],
+                slots=[
+                    (o.id, strings.slot_text(o.slot_at, p.lang, found.shop_timezone))
+                    for o in slots
+                    if o.slot_at is not None
+                ],
+            )
         body = render.page_html(
             p,
             render.Branding(shop_name=found.shop_name, cta_url=cta),
             tz_name=found.shop_timezone,
             base=f"/p/{token}",
+            plan=plan,
         )
     return _html(body)
 
@@ -230,16 +255,63 @@ async def answer_yes(request: web.Request) -> web.Response:
     if outcome is None:
         raise web.HTTPNotFound(text="Not found")
     if outcome.first and outcome.notify:
-        notify = request.app[KEY_NOTIFY]
-        try:
-            pending = notify(outcome.page_id)
-            if pending is not None:
-                await pending
-        except Exception:
-            # The answer is recorded; the creator's message is the only thing
-            # lost, and the claim stays unclaimed for a later attempt.
-            log.exception("page %s: could not queue the creator's message", outcome.page_id)
+        await _queue(request, outcome.page_id, 0)
+        if outcome.has_plan:
+            # If they close the page without choosing, this is what tells the
+            # creator "Ha -- but nothing chosen yet".
+            await _queue(request, outcome.page_id, CHOICE_CHECK_DELAY)
     return web.json_response({"ok": True})
+
+
+async def _queue(request: web.Request, page_id: int, delay: float) -> None:
+    notify = request.app[KEY_NOTIFY]
+    try:
+        pending = notify(page_id, delay)
+        if pending is not None:
+            await pending
+    except Exception:
+        # The answer is recorded; only the creator's message is at stake, and
+        # its claim stays unclaimed for a later attempt.
+        log.exception("page %s: could not queue the creator's message", page_id)
+
+
+def _option_id(value: object) -> int:
+    """An option id from the page's JSON: a plain integer, nothing else
+    (``true`` is an int to Python, not to us)."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise web.HTTPBadRequest(text="Bad values")
+    return value
+
+
+async def choose(request: web.Request) -> web.Response:
+    """After Ha, the recipient's place and time. The first pick is kept."""
+    _check_post(request)
+    _limit(request, "yes")
+    token = _token(request)
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise web.HTTPBadRequest(text="Bad JSON") from None
+    place = _option_id(body.get("place") if isinstance(body, dict) else None)
+    slot = _option_id(body.get("slot") if isinstance(body, dict) else None)
+    sessions = request.app[KEY_SESSIONS]
+    async with sessions() as session:
+        try:
+            outcome = await share_pages.choose(session, token, place_id=place, slot_id=slot)
+        except share_pages.ChoiceRefused as refused:
+            await session.rollback()
+            if refused.reason == "page":
+                raise web.HTTPNotFound(text="Not found") from None
+            raise web.HTTPBadRequest(text="Bad values") from None
+        lang = await session.scalar(select(SharePage.lang).where(SharePage.id == outcome.page_id))
+        await session.commit()
+    if outcome.first:
+        await _queue(request, outcome.page_id, 0)
+    line = strings.text("plan_chosen", str(lang)).format(
+        place=outcome.place,
+        when=strings.slot_text(outcome.slot_at, str(lang), outcome.shop_timezone),
+    )
+    return web.json_response({"ok": True, "line": line})
 
 
 async def rsvp(request: web.Request) -> web.Response:
@@ -339,10 +411,14 @@ async def demo_page(request: web.Request) -> web.Response:
     event = request.query.get("event", "wedding")
     if event not in strings.EVENT_LABELS:
         event = "wedding"
-    sample = render.sample_page(kind, theme, _demo_lang(request), event_type=event)
+    lang = _demo_lang(request)
+    sample = render.sample_page(kind, theme, lang, event_type=event)
     branding = render.Branding(shop_name=render.SAMPLE_SHOP, cta_url=None)
+    plan = render.sample_plan(lang) if request.query.get("plan") == "1" else None
     # The sample's own endpoints do not exist; pressing Ha only celebrates.
-    return _html(render.page_html(sample, branding, tz_name="Asia/Tashkent", base="/demo/none"))
+    return _html(
+        render.page_html(sample, branding, tz_name="Asia/Tashkent", base="/demo/none", plan=plan)
+    )
 
 
 async def demo_index(request: web.Request) -> web.Response:
@@ -382,6 +458,7 @@ def build_app(
     app.router.add_get("/p/{token}", page)
     app.router.add_post("/p/{token}/yes", answer_yes)
     app.router.add_post("/p/{token}/rsvp", rsvp)
+    app.router.add_post("/p/{token}/choose", choose)
     app.router.add_get("/p/{token}/go", go)
     app.router.add_get("/p/{token}/event.ics", event_ics)
     app.router.add_get("/demo", demo_index)

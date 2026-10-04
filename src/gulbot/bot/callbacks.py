@@ -434,6 +434,28 @@ class MyPageCB(CallbackData, prefix="pgmine"):
         ]
 
 
+class PlanCB(CallbackData, prefix="pgplan"):
+    """The date-plan steps (CP17). Each action is honoured only in the state
+    that offers it (bot/routers/share_page_plan.py)."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(action=a).pack()
+            for a in (
+                "add",
+                "skip",
+                "remove",
+                "more_place",
+                "places_done",
+                "more_slot",
+                "slots_done",
+            )
+        ]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -445,7 +467,15 @@ class EditFieldCB(CallbackData, prefix="pged"):
     def samples(cls) -> list[str]:
         return [
             cls(page_id=1, field=f).pack()
-            for f in ("title", "event_at", "location", "rsvp_enabled", "template", "question")
+            for f in (
+                "title",
+                "event_at",
+                "location",
+                "rsvp_enabled",
+                "template",
+                "question",
+                "plan",
+            )
         ]
 
 
@@ -501,6 +531,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     MyPageCB,
     EditFieldCB,
     EditValueCB,
+    PlanCB,
 )
 
 

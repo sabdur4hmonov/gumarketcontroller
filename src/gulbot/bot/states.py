@@ -150,6 +150,16 @@ class YesNoPage(StatesGroup):
     choosing_template = State()
     choosing_notify = State()
     confirming = State()
+    #: CP17: the optional date plan, between the question and the design.
+    #: One text step (a place); the times are pickers.
+    asking_plan = State()
+    entering_place = State()
+    after_place = State()
+    plan_month = State()
+    plan_day = State()
+    plan_hour = State()
+    plan_minute = State()
+    after_slot = State()
 
 
 class InvitePage(StatesGroup):

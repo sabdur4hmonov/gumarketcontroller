@@ -81,6 +81,7 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
     if page.kind == PageKind.YESNO:
         rows += [
             _field_button(lang, page.id, "question", "ibtn.pages.f_question"),
+            _field_button(lang, page.id, "plan", "ibtn.pages.f_plan"),
             _field_button(
                 lang,
                 page.id,
@@ -237,10 +238,18 @@ async def pick_field(
         await target.answer(t("pages.gone", lang))
         return
     field = callback_data.field
-    if field not in share_pages.EDITABLE_FIELDS[page.kind]:
+    plan = field == "plan" and page.kind == PageKind.YESNO
+    if not plan and field not in share_pages.EDITABLE_FIELDS[page.kind]:
         return
     if page.kind == PageKind.YESNO and page.answered_at is not None:
         await target.answer(t("pages.edit_locked", lang))
+        return
+    if plan:
+        from gulbot.bot.routers.share_page_plan import start_plan_edit
+
+        await start_plan_edit(
+            target, state, lang, page.id, await share_pages.has_plan(session, page_id=page.id)
+        )
         return
     await state.clear()
     await state.update_data(edit_page_id=page.id, edit_field=field)

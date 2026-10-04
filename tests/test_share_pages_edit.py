@@ -255,7 +255,7 @@ async def test_the_same_link_shows_the_new_content_escaped(
     await session.commit()
     app = build_app(
         session_factory=bound_session_factory(db),
-        notify=lambda _id: None,
+        notify=lambda _id, _delay: None,
         public_base_url="http://127.0.0.1:8088",
     )
     async with TestClient(TestServer(app)) as client:

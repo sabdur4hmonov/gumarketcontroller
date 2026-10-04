@@ -17,7 +17,9 @@ written out. User text is NEVER transliterated: a name stays as its owner typed 
 from __future__ import annotations
 
 import re
+from datetime import datetime
 from typing import Final
+from zoneinfo import ZoneInfo
 
 #: Page languages, as stored in share_pages.lang.
 PAGE_LANGUAGES: Final = ("uz", "uz_cyrl", "ru", "en")
@@ -134,6 +136,20 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "program": {"uz": "Dastur", "ru": "Программа", "en": "Programme"},
     "contact": {"uz": "Aloqa uchun", "ru": "Контакт", "en": "Contact"},
     "calendar": {"uz": "Kalendarga qo'shish", "ru": "В календарь", "en": "Add to calendar"},
+    "plan_title": {"uz": "Qayerda va qachon?", "ru": "Где и когда?", "en": "Where and when?"},
+    "plan_place": {"uz": "Qayerga boramiz?", "ru": "Куда пойдём?", "en": "Where shall we go?"},
+    "plan_when": {"uz": "Qachon?", "ru": "Когда?", "en": "When?"},
+    "plan_confirm": {"uz": "Tasdiqlash", "ru": "Подтвердить", "en": "Confirm"},
+    "plan_pick_both": {
+        "uz": "Joy va vaqtni tanlang",
+        "ru": "Выберите место и время",
+        "en": "Please pick a place and a time",
+    },
+    "plan_chosen": {
+        "uz": "Joy: {place} · Vaqt: {when}",
+        "ru": "Место: {place} · Время: {when}",
+        "en": "Place: {place} · Time: {when}",
+    },
     "rsvp_title": {"uz": "Kelasizmi?", "ru": "Вы придёте?", "en": "Will you come?"},
     "rsvp_yes": {"uz": "Kelaman", "ru": "Приду", "en": "I'll be there"},
     "rsvp_no": {"uz": "Kela olmayman", "ru": "Не смогу", "en": "Can't make it"},
@@ -450,6 +466,18 @@ def event_message(event_type: str, lang: str) -> str:
 
 def event_closing(event_type: str, lang: str) -> str:
     return _pick(EVENT_CLOSINGS[event_type], lang)
+
+
+def slot_text(moment: datetime, lang: str, tz_name: str) -> str:
+    """A date-plan time as the RECIPIENT reads it, in the page's language:
+    "Shanba, 12-oktabr, 19:00" / "суббота, 12 октября, 19:00"."""
+    local = moment.astimezone(ZoneInfo(tz_name))
+    day = WEEKDAYS[lang][local.weekday()]
+    month = MONTHS[lang][local.month - 1]
+    clock = local.strftime("%H:%M")
+    if lang in ("uz", "uz_cyrl"):
+        return f"{day}, {local.day}-{month.lower()}, {clock}"
+    return f"{day}, {local.day} {month}, {clock}"
 
 
 def all_text(lang: str) -> dict[str, str]:

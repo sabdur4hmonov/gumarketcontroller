@@ -115,7 +115,31 @@ def _common(theme: str, lang: str, branding: Branding) -> dict[str, Any]:
     }
 
 
-def yesno_view(page: SharePage, branding: Branding, *, yes_url: str) -> dict[str, Any]:
+@dataclass(frozen=True)
+class Plan:
+    """A Ha/Yo'q page's date plan, ready to render: (id, label) pairs."""
+
+    places: list[tuple[int, str]]
+    slots: list[tuple[int, str]]
+
+
+def chosen_line(page: SharePage, tz_name: str) -> str | None:
+    if page.chosen_place is None or page.chosen_slot_at is None:
+        return None
+    return strings.text("plan_chosen", page.lang).format(
+        place=page.chosen_place, when=strings.slot_text(page.chosen_slot_at, page.lang, tz_name)
+    )
+
+
+def yesno_view(
+    page: SharePage,
+    branding: Branding,
+    *,
+    yes_url: str,
+    choose_url: str = "",
+    plan: Plan | None = None,
+    tz_name: str = "Asia/Tashkent",
+) -> dict[str, Any]:
     lang = page.lang
     v = _common(page.template, lang, branding)
     question = page.question or ""
@@ -128,6 +152,9 @@ def yesno_view(page: SharePage, branding: Branding, *, yes_url: str) -> dict[str
         "yes_url": yes_url,
         "no_lines_json": json.dumps(list(strings.NO_LINES[lang]), ensure_ascii=False),
         "celebration": strings.celebration(page.question_preset or "custom", lang),
+        "plan": plan if plan is not None and plan.places and plan.slots else None,
+        "choose_url": choose_url,
+        "chosen": chosen_line(page, tz_name),
     }
     return v
 
@@ -227,10 +254,20 @@ def gallery_view(kind: str, lang: str) -> dict[str, Any]:
     return v
 
 
-def page_html(page: SharePage, branding: Branding, *, tz_name: str, base: str) -> str:
+def page_html(
+    page: SharePage, branding: Branding, *, tz_name: str, base: str, plan: Plan | None = None
+) -> str:
     """The live page. `base` is "/p/<token>", the root of its own endpoints."""
     if page.kind == PageKind.YESNO:
-        return render("yesno.html", yesno_view(page, branding, yes_url=f"{base}/yes"))
+        view = yesno_view(
+            page,
+            branding,
+            yes_url=f"{base}/yes",
+            choose_url=f"{base}/choose",
+            plan=plan,
+            tz_name=tz_name,
+        )
+        return render("yesno.html", view)
     return render(
         "invite.html",
         invite_view(
@@ -294,6 +331,22 @@ def ics(page: SharePage, *, tz_name: str, page_url: str, now: datetime | None = 
 # --- samples, for the gallery and the screenshots -------------------------------
 
 SAMPLE_SHOP: Final = "Namuna"
+
+
+def sample_plan(lang: str, tz_name: str = "Asia/Tashkent") -> Plan:
+    """Three places and three evenings, for the gallery and the screenshots."""
+    places = {
+        "uz": ("Kino", "Bog'da sayr", "Choyxona"),
+        "uz_cyrl": ("Кино", "Боғда сайр", "Чойхона"),
+        "ru": ("Кино", "Прогулка в парке", "Чайхана"),
+        "en": ("Cinema", "A walk in the park", "Tea house"),
+    }[lang]
+    base = datetime.now(ZoneInfo(tz_name)).replace(hour=19, minute=0, second=0, microsecond=0)
+    slots = [base + timedelta(days=d) for d in (2, 3, 5)]
+    return Plan(
+        places=list(enumerate(places, start=1)),
+        slots=[(10 + n, strings.slot_text(s, lang, tz_name)) for n, s in enumerate(slots)],
+    )
 
 
 def sample_page(kind: str, theme: str, lang: str, *, event_type: str = "wedding") -> SharePage:

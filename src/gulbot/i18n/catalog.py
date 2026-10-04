@@ -976,6 +976,98 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Чтобы подключить новый магазин, отправьте /start.",
     },
     "btn.owner.pick_group": {"uz": "👥 Guruhni tanlash", "ru": "👥 Выбрать группу"},
+    # --- the date plan (CP17) ----------------------------------------------
+    "pages.ask_plan": {
+        "uz": (
+            "Uchrashuv rejasini qo'shasizmi? «Ha» deyishsa, joy va vaqtni "
+            "sizning variantlaringizdan tanlashadi."
+        ),
+        "ru": (
+            "Добавить план встречи? Если ответят «Да», выберут место и время из ваших вариантов."
+        ),
+    },
+    "ibtn.pages.plan_add": {
+        "uz": "📍 Ha, joy va vaqt qo'shaman",
+        "ru": "📍 Да, добавлю место и время",
+    },
+    "ibtn.pages.plan_skip": {
+        "uz": "Rejasiz",
+        "ru": "Без плана",
+    },
+    "ibtn.pages.plan_remove": {
+        "uz": "🗑 Rejani olib tashlash",
+        "ru": "🗑 Убрать план",
+    },
+    "pages.enter_place": {
+        "uz": "Joy variantini yozing ({n}/{max}) — masalan, «Kino» yoki «Bog'da sayr».",
+        "ru": ("Напишите вариант места ({n}/{max}) — например, «Кино» или «Прогулка в парке»."),
+    },
+    "pages.place_added": {
+        "uz": "✅ Qo'shildi: {place}",
+        "ru": "✅ Добавлено: {place}",
+    },
+    "pages.place_duplicate": {
+        "uz": "Bu joy allaqachon bor.",
+        "ru": "Такое место уже есть.",
+    },
+    "ibtn.pages.more_place": {
+        "uz": "➕ Yana joy",
+        "ru": "➕ Ещё место",
+    },
+    "ibtn.pages.places_done": {
+        "uz": "➡️ Endi vaqt",
+        "ru": "➡️ Теперь время",
+    },
+    "pages.choose_slot_month": {
+        "uz": "Vaqt varianti ({n}/{max}): qaysi oy?",
+        "ru": "Вариант времени ({n}/{max}): какой месяц?",
+    },
+    "pages.slot_added": {
+        "uz": "✅ Qo'shildi: {when}",
+        "ru": "✅ Добавлено: {when}",
+    },
+    "pages.slot_duplicate": {
+        "uz": "Bu vaqt allaqachon bor.",
+        "ru": "Такое время уже есть.",
+    },
+    "pages.slot_day_over": {
+        "uz": "Bu kunda vaqt qolmadi — boshqa kunni tanlang.",
+        "ru": "В этот день время уже прошло — выберите другой.",
+    },
+    "ibtn.pages.more_slot": {
+        "uz": "➕ Yana vaqt",
+        "ru": "➕ Ещё время",
+    },
+    "ibtn.pages.slots_done": {
+        "uz": "✅ Rejani saqlash",
+        "ru": "✅ Сохранить план",
+    },
+    "ibtn.pages.f_plan": {
+        "uz": "📍 Uchrashuv rejasi",
+        "ru": "📍 План встречи",
+    },
+    "pages.detail_choice": {
+        "uz": "📍 Tanlandi: {place}, {when}",
+        "ru": "📍 Выбрано: {place}, {when}",
+    },
+    "pages.notify_yes_plan": {
+        "uz": "🎉 Ha! Joy: {place}. Sana: {when}.\n\nSavol: «{question}»",
+        "ru": "🎉 Да! Место: {place}. Дата: {when}.\n\nВопрос: «{question}»",
+    },
+    "pages.notify_yes_unchosen": {
+        "uz": (
+            "🎉 «{question}» savolingizga «Ha» deb javob berishdi! Joy va "
+            "vaqtni hali tanlashmadi — tanlashsa, alohida xabar beraman."
+        ),
+        "ru": (
+            "🎉 На вопрос «{question}» ответили «Да»! Место и время пока "
+            "не выбраны — когда выберут, я напишу отдельно."
+        ),
+    },
+    "pages.notify_choice_later": {
+        "uz": "📍 Joy va vaqt tanlandi! Joy: {place}. Sana: {when}.",
+        "ru": "📍 Место и время выбраны! Место: {place}. Дата: {when}.",
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1165,11 +1257,11 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "pages.confirm_yesno": {
         "uz": (
             "Tekshiring:\n\n❓ <b>{question}</b>\n🌐 Til: {lang_name}\n🎨 Dizayn: {template}\n"
-            "🔔 Xabar berish: {notify}\n\nYaratamizmi?"
+            "🔔 Xabar berish: {notify}\n📍 Reja: {plan}\n\nYaratamizmi?"
         ),
         "ru": (
             "Проверьте:\n\n❓ <b>{question}</b>\n🌐 Язык: {lang_name}\n🎨 Дизайн: {template}\n"
-            "🔔 Уведомить: {notify}\n\nСоздаём?"
+            "🔔 Уведомить: {notify}\n📍 План: {plan}\n\nСоздаём?"
         ),
     },
     "ibtn.pages.create": {"uz": "✅ Yaratish", "ru": "✅ Создать"},
@@ -1391,7 +1483,7 @@ _EN: Final[dict[str, str]] = {
     "ibtn.pages.notify_no": "🔕 No need",
     "pages.confirm_yesno": (
         "Please check:\n\n❓ <b>{question}</b>\n🌐 Language: {lang_name}\n🎨 Design: {template}\n"
-        "🔔 Notify me: {notify}\n\nCreate it?"
+        "🔔 Notify me: {notify}\n📍 Plan: {plan}\n\nCreate it?"
     ),
     "ibtn.pages.create": "✅ Create",
     "ibtn.pages.cancel": "❌ Cancel",
@@ -1519,6 +1611,35 @@ _EN["ibtn.pages.f_template"] = "🎨 Design"
 _EN["ibtn.pages.f_lang"] = "🌐 Language"
 _EN["ibtn.pages.f_question"] = "❓ Question"
 _EN["ibtn.pages.f_notify"] = "🔔 Notify: {state}"
+
+# The date plan (CP17).
+_EN["pages.ask_plan"] = (
+    "Add a date plan? If they say «Yes», they will pick a place and a time from your options."
+)
+_EN["ibtn.pages.plan_add"] = "📍 Yes, add places and times"
+_EN["ibtn.pages.plan_skip"] = "No plan"
+_EN["ibtn.pages.plan_remove"] = "🗑 Remove the plan"
+_EN["pages.enter_place"] = (
+    "Write a place option ({n}/{max}) — for example «Cinema» or «A walk in the park»."
+)
+_EN["pages.place_added"] = "✅ Added: {place}"
+_EN["pages.place_duplicate"] = "That place is already there."
+_EN["ibtn.pages.more_place"] = "➕ Another place"
+_EN["ibtn.pages.places_done"] = "➡️ Now the times"
+_EN["pages.choose_slot_month"] = "Time option ({n}/{max}): which month?"
+_EN["pages.slot_added"] = "✅ Added: {when}"
+_EN["pages.slot_duplicate"] = "That time is already there."
+_EN["pages.slot_day_over"] = "That day has no time left — pick another."
+_EN["ibtn.pages.more_slot"] = "➕ Another time"
+_EN["ibtn.pages.slots_done"] = "✅ Save the plan"
+_EN["ibtn.pages.f_plan"] = "📍 Date plan"
+_EN["pages.detail_choice"] = "📍 Chosen: {place}, {when}"
+_EN["pages.notify_yes_plan"] = "🎉 Yes! Place: {place}. Date: {when}.\n\nQuestion: «{question}»"
+_EN["pages.notify_yes_unchosen"] = (
+    "🎉 They answered «Yes» to «{question}»! No place or time is "
+    "chosen yet — I'll write again when they choose."
+)
+_EN["pages.notify_choice_later"] = "📍 Place and time chosen! Place: {place}. Date: {when}."
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

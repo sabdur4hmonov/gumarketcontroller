@@ -28,7 +28,7 @@ from decimal import Decimal
 from typing import Final
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import and_, func, select, text, update
+from sqlalchemy import and_, delete, func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -46,6 +46,8 @@ from gulbot.models.share_page import (
     NAME_MAX,
     PAGE_LANGUAGES,
     PAGE_TEMPLATES,
+    PLACE_MAX,
+    PLAN_MAX,
     PROGRAM_MAX,
     QUESTION_MAX,
     QUESTION_PRESETS,
@@ -53,6 +55,7 @@ from gulbot.models.share_page import (
     VENUE_MAX,
     PageKind,
     SharePage,
+    SharePageOption,
     SharePageReferral,
     SharePageRsvp,
 )
@@ -123,6 +126,9 @@ class YesNoDraft:
     question_preset: str
     question: str
     notify_creator: bool
+    #: CP17: the optional date plan. Both empty, or 1-5 of each.
+    places: tuple[str, ...] = ()
+    slots: tuple[datetime, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -241,6 +247,7 @@ async def create_page(
             "notify_creator": draft.notify_creator,
             "expires_at": now + YESNO_LIFETIME,
         }
+        plan = await _checked_plan(session, shop_id, draft.places, draft.slots, now)
     else:
         if draft.event_type not in EVENT_TYPES:
             raise InvalidDraft(f"unknown event type {draft.event_type!r}")
@@ -279,6 +286,9 @@ async def create_page(
             async with session.begin_nested():
                 session.add(page)
                 await session.flush()
+                if isinstance(draft, YesNoDraft):
+                    _add_plan(session, page, *plan)
+                    await session.flush()
         except IntegrityError as clash:
             # 128 random bits do not collide; this is here so a collision is a
             # retry rather than a customer-facing error if the impossible happens.
@@ -341,6 +351,10 @@ _SCRUB = {
     "program": None,
     "contact": None,
     "closing": None,
+    "chosen_place": None,
+    "chosen_slot_at": None,
+    "chosen_at": None,
+    "choice_notified_at": None,
 }
 
 
@@ -368,6 +382,7 @@ async def delete_page(
     )
     if deleted is None:
         return False
+    await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page_id))
     await session.execute(
         update(SharePageRsvp)
         .where(SharePageRsvp.page_id == page_id, SharePageRsvp.shop_id == shop_id)
@@ -391,6 +406,7 @@ async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -
         await session.execute(
             update(SharePageRsvp).where(SharePageRsvp.page_id.in_(ids)).values(guest_name=None)
         )
+        await session.execute(delete(SharePageOption).where(SharePageOption.page_id.in_(ids)))
     return len(ids)
 
 
@@ -479,6 +495,8 @@ class YesOutcome:
     page_id: int
     first: bool
     notify: bool
+    #: CP17: the page carries a date plan, so the recipient chooses next.
+    has_plan: bool = False
 
 
 async def answer_yes(
@@ -503,11 +521,22 @@ async def answer_yes(
         )
     ).one_or_none()
     if row is not None:
-        return YesOutcome(page_id=int(row[0]), first=True, notify=bool(row[1]))
-    page_id = await session.scalar(select(SharePage.id).where(live))
-    if page_id is None:
+        page_id = int(row[0])
+        return YesOutcome(
+            page_id=page_id,
+            first=True,
+            notify=bool(row[1]),
+            has_plan=await has_plan(session, page_id=page_id),
+        )
+    found = await session.scalar(select(SharePage.id).where(live))
+    if found is None:
         return None
-    return YesOutcome(page_id=int(page_id), first=False, notify=False)
+    return YesOutcome(
+        page_id=int(found),
+        first=False,
+        notify=False,
+        has_plan=await has_plan(session, page_id=int(found)),
+    )
 
 
 class RsvpRefused(Exception):
@@ -594,6 +623,19 @@ async def record_referral(
     return True
 
 
+#: How long a recipient who said Ha has to pick a place and a time before the
+#: creator is told "Ha, but nothing chosen yet". Ten minutes: long enough to
+#: read the options, short enough that the creator is not left wondering.
+CHOICE_WAIT: Final = timedelta(minutes=10)
+
+#: The four messages a creator can get, and the column each one claims:
+#:   yes             -- no plan                                  notified_at
+#:   yes_with_choice -- plan, chosen before the first message    both
+#:   yes_no_choice   -- plan, nothing chosen after CHOICE_WAIT   notified_at
+#:   choice_later    -- the choice, after yes_no_choice went     choice_notified_at
+MESSAGE_KINDS: Final = ("yes", "yes_with_choice", "yes_no_choice", "choice_later")
+
+
 @dataclass(frozen=True)
 class NotifyTarget:
     page_id: int
@@ -601,49 +643,264 @@ class NotifyTarget:
     telegram_user_id: int
     lang: str
     question: str
+    kind: str = "yes"
+    place: str | None = None
+    slot_at: datetime | None = None
+    shop_timezone: str = "Asia/Tashkent"
 
 
-async def claim_notification(session: AsyncSession, *, page_id: int) -> NotifyTarget | None:
-    """Claim the page's single "they said Ha" message. Commit before sending.
+async def claim_notification(
+    session: AsyncSession, *, page_id: int, now: datetime | None = None
+) -> NotifyTarget | None:
+    """Claim whichever creator message is due now, or None if none is.
 
-    Compare-and-swap on notified_at IS NULL, so however many times this runs --
-    a double tap, a retried task, two workers -- one caller gets the target."""
-    row = (
-        await session.execute(
-            update(SharePage)
-            .where(
-                SharePage.id == page_id,
-                SharePage.notify_creator.is_(True),
-                SharePage.answered_at.is_not(None),
-                SharePage.notified_at.is_(None),
-                SharePage.deleted_at.is_(None),
-            )
-            .values(notified_at=func.now())
-            .returning(SharePage.shop_id, SharePage.customer_id, SharePage.question)
+    EXACTLY ONE of each, ever: the page row is locked FOR UPDATE, the due
+    message is decided from its state, and the column that message owns is
+    set in the same transaction -- so a retried task, a second worker or a
+    second Ha finds it claimed. Commit before sending (the CP6 pattern).
+    """
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.notify_creator.is_(True),
+            SharePage.answered_at.is_not(None),
+            SharePage.deleted_at.is_(None),
         )
-    ).one_or_none()
-    if row is None:
+        .with_for_update()
+    )
+    if page is None or page.answered_at is None:
         return None
-    shop_id, customer_id, question = row
+    values: dict[str, object]
+    if page.notified_at is None:
+        if not await has_plan(session, page_id=page.id):
+            kind, values = "yes", {"notified_at": now}
+        elif page.chosen_at is not None:
+            kind, values = "yes_with_choice", {"notified_at": now, "choice_notified_at": now}
+        elif now - page.answered_at >= CHOICE_WAIT:
+            kind, values = "yes_no_choice", {"notified_at": now}
+        else:
+            return None  # the delayed check will come back for it
+    elif page.chosen_at is not None and page.choice_notified_at is None:
+        kind, values = "choice_later", {"choice_notified_at": now}
+    else:
+        return None
+    await session.execute(update(SharePage).where(SharePage.id == page.id).values(**values))
     customer = (
         await session.execute(
             select(Customer.telegram_user_id, Customer.lang).where(
-                Customer.id == customer_id, Customer.shop_id == shop_id
+                Customer.id == page.customer_id, Customer.shop_id == page.shop_id
             )
         )
     ).one()
     return NotifyTarget(
-        page_id=page_id,
-        shop_id=int(shop_id),
+        page_id=page.id,
+        shop_id=page.shop_id,
         telegram_user_id=int(customer[0]),
         lang=str(customer[1]),
-        question=question or "",
+        question=page.question or "",
+        kind=kind,
+        place=page.chosen_place,
+        slot_at=page.chosen_slot_at,
+        shop_timezone=await _shop_timezone_name(session, page.shop_id),
     )
 
 
-async def release_notification(session: AsyncSession, *, page_id: int) -> None:
+async def release_notification(session: AsyncSession, *, page_id: int, kind: str = "yes") -> None:
     """Undo a claim whose send failed for a reason worth retrying."""
-    await session.execute(update(SharePage).where(SharePage.id == page_id).values(notified_at=None))
+    values: dict[str, object] = {}
+    if kind in ("yes", "yes_with_choice", "yes_no_choice"):
+        values["notified_at"] = None
+    if kind in ("yes_with_choice", "choice_later"):
+        values["choice_notified_at"] = None
+    await session.execute(update(SharePage).where(SharePage.id == page_id).values(**values))
+
+
+async def _shop_timezone_name(session: AsyncSession, shop_id: int) -> str:
+    return str(
+        await session.scalar(select(Shop.timezone).where(Shop.id == shop_id)) or "Asia/Tashkent"
+    )
+
+
+# --- the date plan (CP17) ------------------------------------------------------------
+
+
+async def _checked_plan(
+    session: AsyncSession,
+    shop_id: int,
+    places: tuple[str, ...],
+    slots: tuple[datetime, ...],
+    now: datetime,
+) -> tuple[list[str], list[datetime]]:
+    """Both empty, or 1-5 distinct places and 1-5 distinct FUTURE times inside
+    the window the picker offers. Anything else is a draft the bot could not
+    have produced."""
+    if not places and not slots:
+        return [], []
+    cleaned = [clean_text(place, PLACE_MAX) for place in places]
+    if (
+        not 1 <= len(cleaned) <= PLAN_MAX
+        or not 1 <= len(slots) <= PLAN_MAX
+        or any(place is None for place in cleaned)
+        or len(set(cleaned)) != len(cleaned)
+        or len(set(slots)) != len(slots)
+    ):
+        raise InvalidDraft("a date plan needs 1-5 distinct places and 1-5 distinct times")
+    tz = await _shop_timezone(session, shop_id)
+    first, last = event_window(now.astimezone(tz).date())
+    for slot in slots:
+        if slot.tzinfo is None or slot <= now or not first <= slot.astimezone(tz).date() <= last:
+            raise InvalidDraft("a time outside the window the picker offers")
+    return [place for place in cleaned if place is not None], sorted(slots)
+
+
+def _add_plan(
+    session: AsyncSession, page: SharePage, places: list[str], slots: list[datetime]
+) -> None:
+    for n, place in enumerate(places, start=1):
+        session.add(
+            SharePageOption(
+                shop_id=page.shop_id, page_id=page.id, kind="place", position=n, place=place
+            )
+        )
+    for n, slot in enumerate(slots, start=1):
+        session.add(
+            SharePageOption(
+                shop_id=page.shop_id, page_id=page.id, kind="slot", position=n, slot_at=slot
+            )
+        )
+
+
+async def has_plan(session: AsyncSession, *, page_id: int) -> bool:
+    found = await session.scalar(
+        select(SharePageOption.id).where(SharePageOption.page_id == page_id).limit(1)
+    )
+    return found is not None
+
+
+async def plan_of(
+    session: AsyncSession, *, page_id: int
+) -> tuple[list[SharePageOption], list[SharePageOption]]:
+    """(places, slots), each in the creator's order."""
+    rows = list(
+        await session.scalars(
+            select(SharePageOption)
+            .where(SharePageOption.page_id == page_id)
+            .order_by(SharePageOption.kind, SharePageOption.position)
+        )
+    )
+    return [r for r in rows if r.kind == "place"], [r for r in rows if r.kind == "slot"]
+
+
+async def set_plan(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    page_id: int,
+    places: tuple[str, ...],
+    slots: tuple[datetime, ...],
+    now: datetime | None = None,
+) -> SharePage:
+    """Replace (or, with both empty, remove) the plan of this customer's own
+    Ha/Yo'q page -- refused once it has been answered, like every other edit."""
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.kind == PageKind.YESNO.value,
+            SharePage.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if page is None or page.expires_at <= now:
+        raise EditRefused("gone")
+    if page.answered_at is not None:
+        raise EditRefused("locked")
+    try:
+        plan = await _checked_plan(session, shop_id, places, slots, now)
+    except InvalidDraft:
+        raise EditRefused("invalid") from None
+    await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page.id))
+    _add_plan(session, page, *plan)
+    await session.execute(update(SharePage).where(SharePage.id == page.id).values(edited_at=now))
+    await session.flush()
+    await session.refresh(page)
+    return page
+
+
+class ChoiceRefused(Exception):
+    """`reason`: "page" (no live, answered page with a plan at this token) or
+    "options" (ids that are not this page's place and slot)."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+@dataclass(frozen=True)
+class ChoiceOutcome:
+    page_id: int
+    first: bool
+    place: str
+    slot_at: datetime
+    shop_timezone: str
+
+
+async def choose(
+    session: AsyncSession,
+    token: str,
+    *,
+    place_id: int,
+    slot_id: int,
+    now: datetime | None = None,
+) -> ChoiceOutcome:
+    """The recipient's pick. The FIRST pick is kept -- compare-and-swap on
+    chosen_at -- and a later one gets that first pick back, unchanged."""
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.token == token,
+            SharePage.kind == PageKind.YESNO.value,
+            SharePage.answered_at.is_not(None),
+            SharePage.deleted_at.is_(None),
+            SharePage.expires_at > now,
+        )
+        .with_for_update()
+    )
+    if page is None:
+        raise ChoiceRefused("page")
+    tz = await _shop_timezone_name(session, page.shop_id)
+    if page.chosen_at is not None:
+        assert page.chosen_place is not None and page.chosen_slot_at is not None
+        return ChoiceOutcome(page.id, False, page.chosen_place, page.chosen_slot_at, tz)
+    place = await session.scalar(
+        select(SharePageOption).where(
+            SharePageOption.id == place_id,
+            SharePageOption.page_id == page.id,
+            SharePageOption.kind == "place",
+        )
+    )
+    slot = await session.scalar(
+        select(SharePageOption).where(
+            SharePageOption.id == slot_id,
+            SharePageOption.page_id == page.id,
+            SharePageOption.kind == "slot",
+        )
+    )
+    if place is None or slot is None or place.place is None or slot.slot_at is None:
+        raise ChoiceRefused("options")
+    await session.execute(
+        update(SharePage)
+        .where(SharePage.id == page.id, SharePage.chosen_at.is_(None))
+        .values(chosen_place=place.place, chosen_slot_at=slot.slot_at, chosen_at=now)
+    )
+    return ChoiceOutcome(page.id, True, place.place, slot.slot_at, tz)
 
 
 @dataclass(frozen=True)

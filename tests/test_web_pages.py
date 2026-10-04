@@ -56,8 +56,9 @@ class World:
 async def world(db: AsyncConnection) -> AsyncIterator[World]:
     notified: list[int] = []
 
-    async def notify(page_id: int) -> None:
-        notified.append(page_id)
+    async def notify(page_id: int, delay: float = 0) -> None:
+        if not delay:
+            notified.append(page_id)
 
     app = build_app(
         session_factory=bound_session_factory(db),

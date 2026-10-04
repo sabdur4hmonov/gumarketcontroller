@@ -17,7 +17,12 @@ from gulbot.models.product import (
     ProductSource,
 )
 from gulbot.models.recipient import Recipient
-from gulbot.models.share_page import SharePage, SharePageReferral, SharePageRsvp
+from gulbot.models.share_page import (
+    SharePage,
+    SharePageOption,
+    SharePageReferral,
+    SharePageRsvp,
+)
 from gulbot.models.shop import Shop
 
 __all__ = [
@@ -44,6 +49,7 @@ __all__ = [
     "Recipient",
     "ScheduledNotification",
     "SharePage",
+    "SharePageOption",
     "SharePageReferral",
     "SharePageRsvp",
     "Shop",

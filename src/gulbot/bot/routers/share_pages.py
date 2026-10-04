@@ -97,6 +97,8 @@ from gulbot.web.render import THEME_NAMES
 
 log = logging.getLogger("gulbot.bot.share_pages")
 
+NL_ = chr(10)
+
 PAGES_LABELS = set(CATALOG["btn.menu.pages"].values())
 
 LANG_NAMES = {
@@ -269,7 +271,9 @@ async def yesno_question(
         )
         return
     await state.update_data(preset=preset, question=strings.question(preset, page_lang))
-    await _ask_template(_target(callback), state, lang, YesNoPage.choosing_template, "yesno")
+    from gulbot.bot.routers.share_page_plan import ask_plan
+
+    await ask_plan(_target(callback), state, lang)
 
 
 async def yesno_enter_question(message: Message, state: FSMContext, lang: str) -> None:
@@ -278,7 +282,9 @@ async def yesno_enter_question(message: Message, state: FSMContext, lang: str) -
         return
     await state.update_data(question=question)
     await message.answer("✍️", reply_markup=main_menu_keyboard(lang))
-    await _ask_template(message, state, lang, YesNoPage.choosing_template, "yesno")
+    from gulbot.bot.routers.share_page_plan import ask_plan
+
+    await ask_plan(message, state, lang)
 
 
 async def _ask_template(
@@ -308,7 +314,12 @@ async def yesno_template(
 
 
 async def yesno_notify(
-    callback: CallbackQuery, callback_data: PageChoiceCB, state: FSMContext, lang: str
+    callback: CallbackQuery,
+    callback_data: PageChoiceCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
 ) -> None:
     await callback.answer()
     if callback_data.field != "notify" or callback_data.value not in ("yes", "no"):
@@ -328,9 +339,21 @@ async def yesno_notify(
             lang_name=LANG_NAMES[data["page_lang"]],
             template=THEME_NAMES[data["template"]],
             notify=t("pages.word_yes" if data["notify"] else "pages.word_no", lang),
+            plan=plan_summary(data, lang, await _shop_zone(session, customer.shop_id)),
         ),
         reply_markup=confirm_keyboard(lang),
     )
+
+
+async def _shop_zone(session: AsyncSession, shop_id: int) -> ZoneInfo:
+    name = await session.scalar(select(Shop.timezone).where(Shop.id == shop_id))
+    return ZoneInfo(name or "Asia/Tashkent")
+
+
+def plan_summary(data: dict[str, Any], lang: str, tz: ZoneInfo) -> str:
+    from gulbot.bot.routers import share_page_plan
+
+    return share_page_plan.plan_summary(data, lang, tz)
 
 
 def _yesno_ready(data: dict[str, Any]) -> bool:
@@ -646,12 +669,16 @@ async def confirm(
 
     draft: YesNoDraft | InviteDraft | None
     if data.get("kind") == PageKind.YESNO and _yesno_ready(data):
+        from gulbot.bot.routers.share_page_plan import slot_times
+
         draft = YesNoDraft(
             template=data["template"],
             lang=data["page_lang"],
             question_preset=data["preset"],
             question=data["question"],
             notify_creator=data["notify"],
+            places=tuple(data.get("places") or ()),
+            slots=slot_times(data),
         )
     elif data.get("kind") == PageKind.INVITE:
         draft = _invite_draft(data)
@@ -761,6 +788,15 @@ async def _detail(session: AsyncSession, page: SharePage, lang: str) -> str:
             if page.answered_at
             else t("pages.answer_none", lang)
         )
+        if page.chosen_place and page.chosen_slot_at:
+            from gulbot.sending.page_notify import when_text
+
+            answer += NL_ + t(
+                "pages.detail_choice",
+                lang,
+                place=escape(page.chosen_place),
+                when=when_text(page.chosen_slot_at, lang, str(tz)),
+            )
         return t(
             "pages.detail_yesno",
             lang,

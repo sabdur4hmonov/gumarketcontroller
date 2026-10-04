@@ -29,6 +29,7 @@ from gulbot.bot.callbacks import (
     PageQuestionCB,
     PageSkipCB,
     PageTemplateCB,
+    PlanCB,
 )
 from gulbot.bot.states import InvitePage, YesNoPage
 from gulbot.i18n.catalog import CATALOG
@@ -68,6 +69,7 @@ async def yesno_up_to_confirm(bot: ShopBot, user: int = USER) -> None:
     await bot.tap(PageMenuCB(action="yesno").pack(), user=user)
     await bot.tap(PageLangCB(lang="uz").pack(), user=user)
     await bot.tap(PageQuestionCB(preset="marry").pack(), user=user)
+    await bot.tap(PlanCB(action="skip").pack(), user=user)  # no date plan (CP17)
     await bot.tap(PageTemplateCB(template="romantik").pack(), user=user)
     await bot.tap(PageChoiceCB(field="notify", value="yes").pack(), user=user)
 
@@ -99,6 +101,7 @@ async def test_a_custom_question(db: AsyncConnection, shop_bot: ShopBot) -> None
     await shop_bot.tap(PageQuestionCB(preset="custom").pack(), user=USER)
     assert await state_of(shop_bot) == YesNoPage.entering_question.state
     await shop_bot.say("Пойдём в кино в субботу?", user=USER)
+    await shop_bot.tap(PlanCB(action="skip").pack(), user=USER)
     await shop_bot.tap(PageTemplateCB(template="tungi").pack(), user=USER)
     await shop_bot.tap(PageChoiceCB(field="notify", value="no").pack(), user=USER)
     await shop_bot.tap(PageConfirmCB(action="create").pack(), user=USER)
@@ -186,6 +189,7 @@ async def test_values_no_keyboard_offered_change_nothing(
     await shop_bot.tap(PageMenuCB(action="yesno").pack(), user=USER)
     await shop_bot.tap(PageLangCB(lang="uz").pack(), user=USER)
     await shop_bot.tap(PageQuestionCB(preset="date").pack(), user=USER)
+    await shop_bot.tap(PlanCB(action="skip").pack(), user=USER)
     before = await state_of(shop_bot)
     await shop_bot.tap(crafted, user=USER)
     assert await state_of(shop_bot) == before == YesNoPage.choosing_template.state

@@ -190,18 +190,67 @@
     no.addEventListener("touchstart", dodge, { passive: false });
     no.addEventListener("click", dodge);
 
+    var celebrate = function (line) {
+      byId("celebrate").hidden = false;
+      if (line) {
+        var chosen = byId("chosen-line");
+        chosen.textContent = line;
+        chosen.hidden = false;
+      }
+      burst();
+    };
+
     yes.addEventListener("click", function () {
       if (yes.disabled) return;
       yes.disabled = true;
       no.classList.add("is-gone");
       byId("ask").hidden = true;
       byId("answers").hidden = true;
-      byId("celebrate").hidden = false;
-      burst();
       post(yes.getAttribute("data-post")).catch(function () {
-        /* the celebration does not depend on the server */
+        /* the answer is recorded on the next try; the page does not wait */
       });
+      var already = yes.getAttribute("data-chosen");
+      // A date plan: the recipient picks where and when first, then celebrates.
+      if (yes.getAttribute("data-plan") === "1" && !already) {
+        byId("plan").hidden = false;
+        return;
+      }
+      celebrate(already);
     });
+
+    var planForm = byId("plan-form");
+    if (planForm) {
+      planForm.addEventListener("submit", function (event) {
+        event.preventDefault();
+        var place = planForm.querySelector("input[name=place]:checked");
+        var slot = planForm.querySelector("input[name=slot]:checked");
+        var error = byId("plan-error");
+        if (!place || !slot) {
+          error.hidden = false;
+          return;
+        }
+        error.hidden = true;
+        var button = planForm.querySelector("button[type=submit]");
+        button.disabled = true;
+        post(planForm.getAttribute("data-post"), {
+          place: parseInt(place.value, 10),
+          slot: parseInt(slot.value, 10),
+        })
+          .then(function (response) {
+            if (!response.ok) throw new Error(String(response.status));
+            return response.json();
+          })
+          .then(function (data) {
+            byId("plan").hidden = true;
+            celebrate(data.line);
+          })
+          .catch(function () {
+            button.disabled = false;
+            error.textContent = planForm.getAttribute("data-failed");
+            error.hidden = false;
+          });
+      });
+    }
   }
 
   /* --- RSVP ----------------------------------------------------------- */

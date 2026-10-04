@@ -104,6 +104,10 @@ DRESS_CODE_MAX = 120
 PROGRAM_MAX = 400
 CONTACT_MAX = 120
 CLOSING_MAX = 200
+#: CP17: a Ha/Yo'q page's date plan -- up to five places, up to five times.
+PLACE_MAX = 80
+PLAN_MAX = 5
+OPTION_KINDS: Final = ("place", "slot")
 #: secrets.token_urlsafe(16) is 22 characters; the column allows some room.
 TOKEN_PATTERN = "^[A-Za-z0-9_-]{20,32}$"
 MAX_GUESTS = 10
@@ -139,6 +143,16 @@ class SharePage(IdMixin, TimestampMixin, Base):
     #: The single "they said Ha" message to the creator, claimed before it is
     #: sent. Never set without answered_at.
     notified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: CP17. The recipient's pick from the date plan, as a SNAPSHOT: the place
+    #: text and the instant, so the creator's message and the celebration say
+    #: the same thing. Set once, by compare-and-swap on chosen_at.
+    chosen_place: Mapped[str | None] = mapped_column(String(PLACE_MAX), nullable=True)
+    chosen_slot_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    chosen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    #: The ONE follow-up when the choice arrives after the first message went.
+    choice_notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # --- invite ----------------------------------------------------------
     event_type: Mapped[str | None] = mapped_column(String(16), nullable=True)
@@ -215,6 +229,16 @@ class SharePage(IdMixin, TimestampMixin, Base):
             name="location_pair",
         ),
         CheckConstraint("notified_at IS NULL OR answered_at IS NOT NULL", name="notified_after_ha"),
+        CheckConstraint(
+            "(chosen_at IS NULL AND chosen_place IS NULL AND chosen_slot_at IS NULL) "
+            "OR (chosen_at IS NOT NULL AND chosen_place IS NOT NULL AND chosen_slot_at IS NOT NULL "
+            "AND answered_at IS NOT NULL)",
+            name="choice_complete",
+        ),
+        CheckConstraint(
+            "choice_notified_at IS NULL OR chosen_at IS NOT NULL",
+            name="choice_notified_after_choice",
+        ),
         CheckConstraint("view_count >= 0 AND cta_click_count >= 0", name="counts_not_negative"),
     )
 
@@ -225,6 +249,36 @@ class SharePage(IdMixin, TimestampMixin, Base):
     def __repr__(self) -> str:
         # Never the token: it is the page's only secret.
         return f"<SharePage id={getattr(self, 'id', None)} kind={self.kind} shop={self.shop_id}>"
+
+
+class SharePageOption(Base):
+    """One of the creator's offers in a Ha/Yo'q page's date plan (CP17)."""
+
+    __tablename__ = "share_page_options"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    place: Mapped[str | None] = mapped_column(String(PLACE_MAX), nullable=True)
+    slot_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["page_id", "shop_id"],
+            ["share_pages.id", "share_pages.shop_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("page_id", "kind", "position"),
+        CheckConstraint(f"kind IN ({_sql_list(OPTION_KINDS)})", name="kind_known"),
+        CheckConstraint(f"position BETWEEN 1 AND {PLAN_MAX}", name="position_range"),
+        CheckConstraint(
+            "(kind = 'place' AND place IS NOT NULL AND slot_at IS NULL) "
+            "OR (kind = 'slot' AND slot_at IS NOT NULL AND place IS NULL)",
+            name="one_value",
+        ),
+    )
 
 
 class SharePageRsvp(IdMixin, TimestampMixin, Base):

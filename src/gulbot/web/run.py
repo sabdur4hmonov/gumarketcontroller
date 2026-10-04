@@ -25,12 +25,15 @@ from gulbot.web.app import build_app
 log = logging.getLogger("gulbot.web")
 
 
-async def queue_notification(page_id: int) -> None:
-    """Hand the creator's "they said Ha" message to the worker. Sending it is
-    a Telegram call, which does not belong in a web request."""
+async def queue_notification(page_id: int, delay: float = 0) -> None:
+    """Hand the creator's message to the worker -- now, or `delay` seconds
+    from now (the "nothing chosen yet" check). Sending is a Telegram call,
+    which does not belong in a web request."""
     from gulbot.worker.tasks import notify_page_answer
 
-    await asyncio.to_thread(notify_page_answer.delay, page_id)
+    await asyncio.to_thread(
+        notify_page_answer.apply_async, args=(page_id,), countdown=max(0, int(delay))
+    )
 
 
 async def main() -> None:

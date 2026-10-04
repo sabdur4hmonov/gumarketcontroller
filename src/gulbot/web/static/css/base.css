@@ -284,6 +284,82 @@ body {
   }
 }
 
+/* --- The date plan (CP17) ----------------------------------------------- */
+
+.plan {
+  margin-top: 18px;
+  animation: pop-in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.plan-title {
+  font-size: clamp(26px, 7.5vw, 34px);
+}
+
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.choices legend {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.choices input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.choices label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.choices input:checked + label {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.choices input:focus-visible + label {
+  outline: 3px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.plan .btn {
+  margin-top: 20px;
+}
+
+.chosen {
+  margin: 14px auto 0;
+  max-width: 32ch;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--cell-bg, rgba(0, 0, 0, 0.04));
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* --- Taklifnoma ----------------------------------------------------------- */
 
 .names {
