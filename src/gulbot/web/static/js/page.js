@@ -141,10 +141,19 @@
 
     var dodge = function (event) {
       if (event && event.cancelable) event.preventDefault();
+      if (no.classList.contains("is-gone")) return;
       tries += 1;
-      yes.style.setProperty("--yes-scale", String(Math.min(1.6, 1 + tries * 0.08)));
-      no.style.setProperty("--no-scale", String(Math.max(0.62, 1 - tries * 0.05)));
-      if (lines.length) no.textContent = lines[Math.min(tries, lines.length - 1)];
+      yes.style.setProperty("--yes-scale", String(Math.min(1.6, 1 + tries * 0.05)));
+      no.style.setProperty("--no-scale", String(Math.max(0.62, 1 - tries * 0.03)));
+      // Each line once, in order -- never the same one twice in a visit. When
+      // they run out, Yo'q has nothing left to say and leaves.
+      if (tries >= lines.length) {
+        no.classList.add("is-gone");
+        no.setAttribute("aria-hidden", "true");
+        no.tabIndex = -1;
+        return;
+      }
+      no.textContent = lines[tries];
       if (reduce) return;
 
       var w = no.offsetWidth;

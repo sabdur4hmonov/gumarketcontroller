@@ -193,14 +193,57 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     },
 }
 
-#: What the Yo'q button says as it runs away. The first entry is its label.
+#: What the Yo'q button says as it runs away. The first entry is its label;
+#: every later one is shown ONCE, in order, a little warmer each time, and when
+#: they run out the button leaves (static/js/page.js). Teasing, never pressure:
+#: nothing here threatens, guilts or pushes -- tests/test_web_strings.py keeps
+#: at least ten, all different, in every language.
 NO_LINES: Final[dict[str, tuple[str, ...]]] = {
-    "uz": ("Yo'q", "Rostdanmi?", "Aniqmi?", "Yana bir o'ylab ko'r", "Iltimos-da 🥺",
-           "Bu tugma ishlamaydi 😅", "Faqat «Ha» qoldi 💕"),
-    "ru": ("Нет", "Точно?", "Уверен(а)?", "Подумай ещё раз", "Ну пожалуйста 🥺",
-           "Эта кнопка не работает 😅", "Остаётся только «Да» 💕"),
-    "en": ("No", "Really?", "Are you sure?", "Think again", "Pretty please 🥺",
-           "This button is broken 😅", "Only “Yes” is left 💕"),
+    "uz": (
+        "Yo'q",
+        "Yaxshilab o'ylab ko'r 🙂",
+        "Aniqmi?",
+        "Rostdanmi?",
+        "Yana bir bor o'ylab ko'r...",
+        "Balki baribir «Ha»? 😊",
+        "Men shoshilmayman, kutaman ⏳",
+        "Yuragimni sindirasanmi? 💔",
+        "Bu tugma biroz uyatchan 🙈",
+        "Ko'ryapsanmi, u qochyapti 🏃",
+        "Oxirgi imkoniyat 😇",
+        "Mayli, «Ha»ni bosaqol 💕",
+        "«Yo'q» tugmasi ta'tilga chiqdi 🌴",
+    ),
+    "ru": (
+        "Нет",
+        "Подумай хорошенько 🙂",
+        "Точно?",
+        "Правда?",
+        "Подумай ещё разок...",
+        "Может, всё-таки «Да»? 😊",
+        "Я не тороплю, подожду ⏳",
+        "Разобьёшь мне сердце? 💔",
+        "Эта кнопка немного стесняется 🙈",
+        "Видишь, она убегает 🏃",
+        "Последний шанс 😇",
+        "Ладно, нажимай «Да» 💕",
+        "Кнопка «Нет» ушла в отпуск 🌴",
+    ),
+    "en": (
+        "No",
+        "Think it over 🙂",
+        "Are you sure?",
+        "Really?",
+        "Think once more...",
+        "Maybe «Yes» after all? 😊",
+        "No rush, I'll wait ⏳",
+        "Will you break my heart? 💔",
+        "This button is a little shy 🙈",
+        "See? It's running away 🏃",
+        "Last chance 😇",
+        "Okay, just press «Yes» 💕",
+        "The «No» button went on holiday 🌴",
+    ),
 }  # fmt: skip
 NO_LINES["uz_cyrl"] = tuple(to_cyrillic(line) for line in NO_LINES["uz"])
 

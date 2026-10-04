@@ -75,11 +75,22 @@ def test_every_question_and_event_has_text_in_every_language() -> None:
             assert strings.event_message(event, lang)
 
 
-def test_the_no_button_has_somewhere_to_go_in_every_language() -> None:
+def test_the_no_button_has_at_least_ten_different_things_to_say() -> None:
+    """CP17: every press shows a NEW line, never repeating within a visit,
+    so the list itself must hold ten distinct lines after the label."""
     for lang in PAGE_LANGUAGES:
         lines = strings.NO_LINES[lang]
-        assert lines[0] == strings.text("no", lang)
-        assert len(lines) >= 5
+        assert lines[0] == strings.text("no", lang), lang
+        escalation = lines[1:]
+        assert len(escalation) >= 10, (lang, len(escalation))
+        assert len(set(escalation)) == len(escalation), f"{lang} repeats a line"
+        assert lines[0] not in escalation, f"{lang} shows its label again"
+
+
+def test_the_four_languages_escalate_in_step() -> None:
+    """Same number of lines everywhere, so the button leaves after the same
+    number of presses whatever the page language."""
+    assert len({len(strings.NO_LINES[lang]) for lang in PAGE_LANGUAGES}) == 1
 
 
 def test_calendar_words_cover_the_year_and_the_week() -> None:
