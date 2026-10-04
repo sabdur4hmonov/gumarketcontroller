@@ -37,6 +37,15 @@
     </div>
   </div>
 
+  {%- if v.details %}
+  <div class="divider" aria-hidden="true"><span></span></div>
+  <dl class="details">
+    {%- for item in v.details %}
+    <div class="detail"><dt>{{ item.label }}</dt><dd>{{ item.text }}</dd></div>
+    {%- endfor %}
+  </dl>
+  {%- endif %}
+
   {%- if v.rsvp %}
   <section class="rsvp" aria-labelledby="rsvp-title">
     <h2 id="rsvp-title">{{ v.s.rsvp_title }}</h2>
@@ -61,6 +70,8 @@
     <noscript><p class="fine">{{ v.s.rsvp_noscript }}</p></noscript>
   </section>
   {%- endif %}
+
+  <p class="closing">{{ v.closing }}</p>
 
   {{ ornament(v.theme, bottom=True) }}
 </article>

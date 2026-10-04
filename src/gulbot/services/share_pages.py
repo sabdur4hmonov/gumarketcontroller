@@ -36,6 +36,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gulbot.models.customer import Customer
 from gulbot.models.order import Order
 from gulbot.models.share_page import (
+    CLOSING_MAX,
+    CONTACT_MAX,
+    DRESS_CODE_MAX,
     EVENT_TYPES,
     GUEST_NAME_MAX,
     MAX_GUESTS,
@@ -43,8 +46,10 @@ from gulbot.models.share_page import (
     NAME_MAX,
     PAGE_LANGUAGES,
     PAGE_TEMPLATES,
+    PROGRAM_MAX,
     QUESTION_MAX,
     QUESTION_PRESETS,
+    TITLE_MAX,
     VENUE_MAX,
     PageKind,
     SharePage,
@@ -331,6 +336,11 @@ _SCRUB = {
     "location_lat": None,
     "location_lon": None,
     "message": None,
+    "title": None,
+    "dress_code": None,
+    "program": None,
+    "contact": None,
+    "closing": None,
 }
 
 
@@ -683,3 +693,177 @@ async def shop_page_stats(session: AsyncSession, *, shop_id: int) -> PageStats:
         referred_customers=int(referred or 0),
         referred_orders=int(orders or 0),
     )
+
+
+# --- editing (CP17) ------------------------------------------------------------
+
+#: What a creator may change, per kind. Anything else is refused outright,
+#: whatever a crafted callback asks for.
+EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
+    PageKind.INVITE.value: frozenset(
+        {
+            "title",
+            "name_1",
+            "name_2",
+            "message",
+            "event_at",
+            "venue",
+            "location",
+            "dress_code",
+            "program",
+            "contact",
+            "closing",
+            "rsvp_enabled",
+            "template",
+            "lang",
+        }
+    ),
+    PageKind.YESNO.value: frozenset({"question", "template", "lang", "notify_creator"}),
+}
+
+#: Text fields: (cap, multi-line, may be emptied). Emptying title, message or
+#: closing returns them to the event type's preset; emptying an extra line
+#: removes it. A name, the venue and the question can never be empty.
+TEXT_FIELDS: Final[dict[str, tuple[int, bool, bool]]] = {
+    "title": (TITLE_MAX, False, True),
+    "name_1": (NAME_MAX, False, False),
+    "name_2": (NAME_MAX, False, True),
+    "message": (MESSAGE_MAX, True, True),
+    "venue": (VENUE_MAX, False, False),
+    "dress_code": (DRESS_CODE_MAX, False, True),
+    "program": (PROGRAM_MAX, True, True),
+    "contact": (CONTACT_MAX, False, True),
+    "closing": (CLOSING_MAX, False, True),
+    "question": (QUESTION_MAX, False, False),
+}
+
+
+class EditRefused(Exception):
+    """`reason` is "gone" (not this customer's live page), "locked" (a Ha/Yo'q
+    page someone has answered) or "invalid" (a value no keyboard offers)."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+def effective_text(page: SharePage, field: str) -> str | None:
+    """What the page SHOWS for a text field: the creator's words, or the
+    event type's preset where they wrote none."""
+    from gulbot.web import strings
+
+    value: str | None = getattr(page, field)
+    if value or page.kind != PageKind.INVITE or page.event_type is None:
+        return value
+    if field == "title":
+        return strings.event_label(page.event_type, page.lang)
+    if field == "message":
+        return strings.event_message(page.event_type, page.lang)
+    if field == "closing":
+        return strings.event_closing(page.event_type, page.lang)
+    return value
+
+
+async def update_page(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    page_id: int,
+    changes: dict[str, object],
+    now: datetime | None = None,
+) -> SharePage:
+    """Change a page IN PLACE: same row, same token, same link.
+
+    Scoped like every customer-side call: this shop, this customer, a live page.
+    A Ha/Yo'q page is LOCKED once answered -- the answer was given to exactly
+    that question, and changing it afterwards would rewrite what was agreed to.
+    The row is locked FOR UPDATE first, so an edit and a Ha cannot interleave:
+    whichever commits first wins, and the other sees it.
+    """
+    from gulbot.web import strings
+
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if page is None or page.expires_at <= now:
+        raise EditRefused("gone")
+    if not changes or set(changes) - EDITABLE_FIELDS[page.kind]:
+        raise EditRefused("invalid")
+    if page.kind == PageKind.YESNO and page.answered_at is not None:
+        raise EditRefused("locked")
+
+    values: dict[str, object] = {}
+    for field, value in changes.items():
+        if field in TEXT_FIELDS:
+            cap, multiline, may_empty = TEXT_FIELDS[field]
+            if value is not None and not isinstance(value, str):
+                raise EditRefused("invalid")
+            cleaned = clean_text(value, cap, multiline=multiline)
+            if cleaned is None and not may_empty:
+                raise EditRefused("invalid")
+            values[field] = cleaned
+            if field == "question":
+                values["question_preset"] = "custom"
+        elif field == "template":
+            if value not in PAGE_TEMPLATES:
+                raise EditRefused("invalid")
+            values[field] = value
+        elif field == "lang":
+            if value not in PAGE_LANGUAGES:
+                raise EditRefused("invalid")
+            values[field] = value
+            # A ready-made question follows the page into its new language.
+            if (
+                page.kind == PageKind.YESNO
+                and page.question_preset in strings.QUESTIONS
+                and "question" not in changes
+            ):
+                values["question"] = strings.question(page.question_preset, str(value))
+        elif field in ("rsvp_enabled", "notify_creator"):
+            if not isinstance(value, bool):
+                raise EditRefused("invalid")
+            values[field] = value
+        elif field == "location":
+            if value is None:
+                values["location_lat"] = values["location_lon"] = None
+            else:
+                if not isinstance(value, (tuple, list)) or len(value) != 2:
+                    raise EditRefused("invalid")
+                try:
+                    lat, lon = Decimal(str(value[0])), Decimal(str(value[1]))
+                except (TypeError, ValueError, ArithmeticError):
+                    raise EditRefused("invalid") from None
+                if not (lat.is_finite() and lon.is_finite()):
+                    raise EditRefused("invalid")
+                if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                    raise EditRefused("invalid")
+                values["location_lat"], values["location_lon"] = lat, lon
+        elif field == "event_at":
+            if not (
+                isinstance(value, tuple)
+                and len(value) == 2
+                and isinstance(value[0], date)
+                and isinstance(value[1], time)
+            ):
+                raise EditRefused("invalid")
+            event_date, event_time = value
+            tz = await _shop_timezone(session, shop_id)
+            first, last = event_window(now.astimezone(tz).date())
+            if not first <= event_date <= last:
+                raise EditRefused("invalid")
+            values["event_date"], values["event_time"] = event_date, event_time
+            values["expires_at"] = invite_expiry(event_date, tz)
+    values["edited_at"] = now
+
+    await session.execute(update(SharePage).where(SharePage.id == page.id).values(**values))
+    await session.refresh(page)
+    return page

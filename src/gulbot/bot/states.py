@@ -171,3 +171,18 @@ class InvitePage(StatesGroup):
     choosing_rsvp = State()
     choosing_template = State()
     confirming = State()
+
+
+class EditPage(StatesGroup):
+    """Changing a page after it is made (CP17). One text step, shared by every
+    text field; the rest are pickers, a location share, or a toggle that saves
+    on the tap."""
+
+    entering_text = State()
+    choosing_month = State()
+    choosing_day = State()
+    choosing_hour = State()
+    choosing_minute = State()
+    sending_location = State()
+    choosing_template = State()
+    choosing_lang = State()

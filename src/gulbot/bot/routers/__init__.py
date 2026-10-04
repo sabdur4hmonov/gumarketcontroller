@@ -21,6 +21,7 @@ from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
+from gulbot.bot.routers.share_page_edit import build_share_page_edit_router
 from gulbot.bot.routers.share_pages import build_share_pages_router
 from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
 
@@ -65,6 +66,8 @@ def build_routers() -> tuple[Router, ...]:
         # state-scoped catch_all, so after nav and onboarding like every
         # other flow; its menu entry is StateFilter(None).
         build_share_pages_router(),
+        # CP17: editing a page in place. Its own states and callback prefixes.
+        build_share_page_edit_router(),
         build_menu_router(),
         build_fallback_router(),
     )

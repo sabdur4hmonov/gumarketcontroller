@@ -130,6 +130,9 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "minutes": {"uz": "daqiqa", "ru": "минут", "en": "min"},
     "seconds": {"uz": "soniya", "ru": "секунд", "en": "sec"},
     "venue": {"uz": "Manzil", "ru": "Место", "en": "Venue"},
+    "dress_code": {"uz": "Kiyinish uslubi", "ru": "Дресс-код", "en": "Dress code"},
+    "program": {"uz": "Dastur", "ru": "Программа", "en": "Programme"},
+    "contact": {"uz": "Aloqa uchun", "ru": "Контакт", "en": "Contact"},
     "calendar": {"uz": "Kalendarga qo'shish", "ru": "В календарь", "en": "Add to calendar"},
     "rsvp_title": {"uz": "Kelasizmi?", "ru": "Вы придёте?", "en": "Will you come?"},
     "rsvp_yes": {"uz": "Kelaman", "ru": "Приду", "en": "I'll be there"},
@@ -380,6 +383,40 @@ EVENT_MESSAGES: Final[dict[str, dict[str, str]]] = {
     },
 }
 
+_CLOSING_COUPLE = {
+    "uz": "Sizni intizorlik bilan kutamiz!",
+    "ru": "С нетерпением ждём вас!",
+    "en": "We can't wait to celebrate with you!",
+}
+_CLOSING_FAMILY = {
+    "uz": "Kelib, quvonchimizga sherik bo'ling!",
+    "ru": "Приходите разделить нашу радость!",
+    "en": "Come and share our joy!",
+}
+_CLOSING_PLAIN = {
+    "uz": "Sizni kutib qolamiz!",
+    "ru": "Будем рады вас видеть!",
+    "en": "We look forward to seeing you!",
+}
+#: The invitation's last line, per event type (CP17). A preset like the
+#: message: shown until the creator writes their own.
+EVENT_CLOSINGS: Final[dict[str, dict[str, str]]] = {
+    "wedding": _CLOSING_COUPLE,
+    "nikoh": _CLOSING_COUPLE,
+    "fotiha": _CLOSING_COUPLE,
+    "birthday": _CLOSING_FAMILY,
+    "beshik": _CLOSING_FAMILY,
+    "sunnat": _CLOSING_FAMILY,
+    "anniversary": _CLOSING_PLAIN,
+    "graduation": _CLOSING_PLAIN,
+    "other": _CLOSING_PLAIN,
+    "corporate": {
+        "uz": "Tashrifingizdan mamnun bo'lamiz.",
+        "ru": "Будем рады вашему участию.",
+        "en": "We would be glad to see you there.",
+    },
+}
+
 #: Events with TWO names on the card -- a couple. Everything else names one
 #: person, or one host.
 COUPLE_EVENTS: Final = frozenset({"wedding", "nikoh", "fotiha"})
@@ -409,6 +446,10 @@ def event_label(event_type: str, lang: str) -> str:
 
 def event_message(event_type: str, lang: str) -> str:
     return _pick(EVENT_MESSAGES[event_type], lang)
+
+
+def event_closing(event_type: str, lang: str) -> str:
+    return _pick(EVENT_CLOSINGS[event_type], lang)
 
 
 def all_text(lang: str) -> dict[str, str]:

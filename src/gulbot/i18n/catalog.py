@@ -976,6 +976,138 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Чтобы подключить новый магазин, отправьте /start.",
     },
     "btn.owner.pick_group": {"uz": "👥 Guruhni tanlash", "ru": "👥 Выбрать группу"},
+    # --- editing a page (CP17) ---------------------------------------------
+    "ibtn.pages.edit": {
+        "uz": "✏️ Tahrirlash",
+        "ru": "✏️ Изменить",
+    },
+    "pages.edit_menu": {
+        "uz": "Nimani o'zgartiramiz? Havola o'zgarmaydi — uni olganlar yangisini ko'radi.",
+        "ru": "Что меняем? Ссылка останется прежней — у кого она есть, увидят новое.",
+    },
+    "pages.edit_locked": {
+        "uz": (
+            "🔒 Bu sahifaga javob berildi, endi uni o'zgartirib bo'lmaydi: "
+            "javob aynan shu savolga berilgan."
+        ),
+        "ru": (
+            "🔒 На эту страницу уже ответили, менять её больше нельзя: "
+            "ответ дан именно на этот вопрос."
+        ),
+    },
+    "pages.edit_current": {
+        "uz": "Hozir:\n<i>{current}</i>\n\nYangisini yozing ({max} belgigacha).",
+        "ru": "Сейчас:\n<i>{current}</i>\n\nНапишите новый вариант (до {max} символов).",
+    },
+    "pages.edit_empty_now": {
+        "uz": "(bo'sh)",
+        "ru": "(пусто)",
+    },
+    "pages.edit_contact_hint": {
+        "uz": (
+            "Bu matnni sahifada hamma ko'radi. Telefon raqamni faqat o'zingiz xohlasangiz yozing."
+        ),
+        "ru": (
+            "Этот текст видят все, у кого есть ссылка. Номер телефона "
+            "пишите, только если сами этого хотите."
+        ),
+    },
+    "pages.edit_location": {
+        "uz": "Yangi nuqtani 📎 → «Joylashuv» orqali yuboring yoki xaritani olib tashlang.",
+        "ru": "Отправьте новую точку через 📎 → «Геопозиция» или уберите карту.",
+    },
+    "pages.edit_saved": {
+        "uz": "✅ Saqlandi. Havola o'sha:\n{url}",
+        "ru": "✅ Сохранено. Ссылка та же:\n{url}",
+    },
+    "pages.edit_invalid": {
+        "uz": "Buni saqlab bo'lmadi.",
+        "ru": "Это сохранить не получилось.",
+    },
+    "ibtn.pages.edit_reset": {
+        "uz": "↩️ Tayyor matnga qaytarish",
+        "ru": "↩️ Вернуть готовый текст",
+    },
+    "ibtn.pages.edit_clear": {
+        "uz": "🧹 Olib tashlash",
+        "ru": "🧹 Убрать",
+    },
+    "ibtn.pages.edit_back": {
+        "uz": "↩️ Orqaga",
+        "ru": "↩️ Назад",
+    },
+    "ibtn.pages.edit_done": {
+        "uz": "✅ Tayyor",
+        "ru": "✅ Готово",
+    },
+    "ibtn.pages.f_title": {
+        "uz": "📝 Sarlavha",
+        "ru": "📝 Заголовок",
+    },
+    "ibtn.pages.f_name_1": {
+        "uz": "👤 Ism",
+        "ru": "👤 Имя",
+    },
+    "ibtn.pages.f_groom": {
+        "uz": "🤵 Kuyov ismi",
+        "ru": "🤵 Имя жениха",
+    },
+    "ibtn.pages.f_bride": {
+        "uz": "👰 Kelin ismi",
+        "ru": "👰 Имя невесты",
+    },
+    "ibtn.pages.f_message": {
+        "uz": "💬 Matn",
+        "ru": "💬 Текст",
+    },
+    "ibtn.pages.f_event_at": {
+        "uz": "📅 Sana va vaqt",
+        "ru": "📅 Дата и время",
+    },
+    "ibtn.pages.f_venue": {
+        "uz": "📍 Manzil",
+        "ru": "📍 Место",
+    },
+    "ibtn.pages.f_location": {
+        "uz": "🗺 Xarita",
+        "ru": "🗺 Карта",
+    },
+    "ibtn.pages.f_dress_code": {
+        "uz": "👗 Kiyinish uslubi",
+        "ru": "👗 Дресс-код",
+    },
+    "ibtn.pages.f_program": {
+        "uz": "📋 Dastur",
+        "ru": "📋 Программа",
+    },
+    "ibtn.pages.f_contact": {
+        "uz": "📞 Aloqa",
+        "ru": "📞 Контакт",
+    },
+    "ibtn.pages.f_closing": {
+        "uz": "✨ Yakuniy so'z",
+        "ru": "✨ Финальная строка",
+    },
+    "ibtn.pages.f_rsvp": {
+        "uz": "✅ RSVP: {state}",
+        "ru": "✅ RSVP: {state}",
+    },
+    "ibtn.pages.f_template": {
+        "uz": "🎨 Dizayn",
+        "ru": "🎨 Дизайн",
+    },
+    "ibtn.pages.f_lang": {
+        "uz": "🌐 Til",
+        "ru": "🌐 Язык",
+    },
+    "ibtn.pages.f_question": {
+        "uz": "❓ Savol",
+        "ru": "❓ Вопрос",
+    },
+    "ibtn.pages.f_notify": {
+        "uz": "🔔 Xabar: {state}",
+        "ru": "🔔 Уведомить: {state}",
+    },
     # --- Ha/Yo'q pages and taklifnomas -------------------------------------
     "btn.menu.pages": {"uz": "💌 Taklifnoma · Ha/Yo'q", "ru": "💌 Приглашения · Да/Нет"},
     "pages.menu": {
@@ -1348,6 +1480,45 @@ _EN: Final[dict[str, str]] = {
         "Celebrate the day with flowers 🌸"
     ),
 }
+
+# Editing a page (CP17).
+_EN["ibtn.pages.edit"] = "✏️ Edit"
+_EN["pages.edit_menu"] = (
+    "What shall we change? The link stays the same — everyone who has it sees the new version."
+)
+_EN["pages.edit_locked"] = (
+    "🔒 This page has been answered, so it can no longer be "
+    "changed: the answer was given to exactly this question."
+)
+_EN["pages.edit_current"] = "Now:\n<i>{current}</i>\n\nWrite the new text (up to {max} characters)."
+_EN["pages.edit_empty_now"] = "(empty)"
+_EN["pages.edit_contact_hint"] = (
+    "Everyone with the link sees this text. Add a phone number only if you want to."
+)
+_EN["pages.edit_location"] = "Send the new point through 📎 → «Location», or remove the map."
+_EN["pages.edit_saved"] = "✅ Saved. Same link:\n{url}"
+_EN["pages.edit_invalid"] = "That could not be saved."
+_EN["ibtn.pages.edit_reset"] = "↩️ Back to the ready text"
+_EN["ibtn.pages.edit_clear"] = "🧹 Remove"
+_EN["ibtn.pages.edit_back"] = "↩️ Back"
+_EN["ibtn.pages.edit_done"] = "✅ Done"
+_EN["ibtn.pages.f_title"] = "📝 Title"
+_EN["ibtn.pages.f_name_1"] = "👤 Name"
+_EN["ibtn.pages.f_groom"] = "🤵 Groom's name"
+_EN["ibtn.pages.f_bride"] = "👰 Bride's name"
+_EN["ibtn.pages.f_message"] = "💬 Message"
+_EN["ibtn.pages.f_event_at"] = "📅 Date and time"
+_EN["ibtn.pages.f_venue"] = "📍 Venue"
+_EN["ibtn.pages.f_location"] = "🗺 Map"
+_EN["ibtn.pages.f_dress_code"] = "👗 Dress code"
+_EN["ibtn.pages.f_program"] = "📋 Programme"
+_EN["ibtn.pages.f_contact"] = "📞 Contact"
+_EN["ibtn.pages.f_closing"] = "✨ Closing line"
+_EN["ibtn.pages.f_rsvp"] = "✅ RSVP: {state}"
+_EN["ibtn.pages.f_template"] = "🎨 Design"
+_EN["ibtn.pages.f_lang"] = "🌐 Language"
+_EN["ibtn.pages.f_question"] = "❓ Question"
+_EN["ibtn.pages.f_notify"] = "🔔 Notify: {state}"
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

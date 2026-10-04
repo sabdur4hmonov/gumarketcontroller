@@ -310,9 +310,13 @@ def my_page_keyboard(
         rows.append(
             [
                 InlineKeyboardButton(
+                    text=t("ibtn.pages.edit", lang),
+                    callback_data=MyPageCB(action="edit", page_id=page_id).pack(),
+                ),
+                InlineKeyboardButton(
                     text=t("ibtn.pages.delete", lang),
                     callback_data=MyPageCB(action="delete", page_id=page_id).pack(),
-                )
+                ),
             ]
         )
     rows.append(

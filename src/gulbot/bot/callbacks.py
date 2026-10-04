@@ -429,8 +429,34 @@ class MyPageCB(CallbackData, prefix="pgmine"):
     @classmethod
     def samples(cls) -> list[str]:
         return [
-            cls(action=a, page_id=1).pack() for a in ("list", "open", "delete", "really_delete")
+            cls(action=a, page_id=1).pack()
+            for a in ("list", "open", "edit", "delete", "really_delete")
         ]
+
+
+class EditFieldCB(CallbackData, prefix="pged"):
+    """Edit one field of a page. `page_id` is re-loaded with this shop and
+    customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
+
+    page_id: int
+    field: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(page_id=1, field=f).pack()
+            for f in ("title", "event_at", "location", "rsvp_enabled", "template", "question")
+        ]
+
+
+class EditValueCB(CallbackData, prefix="pgedv"):
+    """Inside a field edit: back to the preset, remove the line, or go back."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=a).pack() for a in ("reset", "clear", "back")]
 
 
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
@@ -473,6 +499,8 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     PageSkipCB,
     PageConfirmCB,
     MyPageCB,
+    EditFieldCB,
+    EditValueCB,
 )
 
 

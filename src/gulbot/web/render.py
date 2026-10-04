@@ -156,7 +156,7 @@ def invite_view(
     names = page.name_1 or ""
     if page.name_2:
         names = f"{names} & {page.name_2}"
-    label = strings.event_label(page.event_type, lang)
+    label = page.title or strings.event_label(page.event_type, lang)
     month_year = f"{strings.MONTHS[lang][when.month - 1]} {when.year}"
     v |= {
         "title": f"{label} · {names}",
@@ -176,6 +176,16 @@ def invite_view(
         "ics_url": ics_url,
         "rsvp": page.rsvp_enabled,
         "rsvp_url": rsvp_url,
+        "details": [
+            {"label": v["s"][field], "text": value}
+            for field, value in (
+                ("dress_code", page.dress_code),
+                ("program", page.program),
+                ("contact", page.contact),
+            )
+            if value
+        ],
+        "closing": page.closing or strings.event_closing(page.event_type, lang),
         "seal_letter": _initial(page.name_1 or ""),
     }
     return v

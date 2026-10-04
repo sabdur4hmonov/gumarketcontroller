@@ -708,6 +708,12 @@ async def my_page(
     if callback_data.action == "list":
         await _show_list(target, session, customer, lang)
         return
+    if callback_data.action == "edit":
+        # Imported here: the edit router imports this module's helpers.
+        from gulbot.bot.routers.share_page_edit import open_edit_menu
+
+        await open_edit_menu(target, state, session, customer, lang, callback_data.page_id)
+        return
     page = await share_pages.get_own_page(
         session, shop_id=customer.shop_id, customer_id=customer.id, page_id=callback_data.page_id
     )

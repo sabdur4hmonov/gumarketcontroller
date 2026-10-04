@@ -98,6 +98,12 @@ NAME_MAX = 60
 VENUE_MAX = 160
 MESSAGE_MAX = 400
 GUEST_NAME_MAX = 60
+#: CP17: the taklifnoma's other text blocks, every one editable.
+TITLE_MAX = 80
+DRESS_CODE_MAX = 120
+PROGRAM_MAX = 400
+CONTACT_MAX = 120
+CLOSING_MAX = 200
 #: secrets.token_urlsafe(16) is 22 characters; the column allows some room.
 TOKEN_PATTERN = "^[A-Za-z0-9_-]{20,32}$"
 MAX_GUESTS = 10
@@ -149,6 +155,15 @@ class SharePage(IdMixin, TimestampMixin, Base):
     rsvp_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    #: CP17. NULL title / closing / message mean "the event type's preset, in
+    #: the page's language" -- so a language switch carries them along, and
+    #: the creator can always go back to them.
+    title: Mapped[str | None] = mapped_column(String(TITLE_MAX), nullable=True)
+    dress_code: Mapped[str | None] = mapped_column(String(DRESS_CODE_MAX), nullable=True)
+    program: Mapped[str | None] = mapped_column(String(PROGRAM_MAX), nullable=True)
+    #: Free text. A phone number is on the page only if the creator types one.
+    contact: Mapped[str | None] = mapped_column(String(CONTACT_MAX), nullable=True)
+    closing: Mapped[str | None] = mapped_column(String(CLOSING_MAX), nullable=True)
 
     # --- lifecycle and attribution ---------------------------------------
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -156,6 +171,9 @@ class SharePage(IdMixin, TimestampMixin, Base):
     view_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     #: Taps on "Gul buyurtma qilish" -- the shop's payoff for the feature.
     cta_click_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    #: The last edit. The link never changes on edit; this records that the
+    #: content did.
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
