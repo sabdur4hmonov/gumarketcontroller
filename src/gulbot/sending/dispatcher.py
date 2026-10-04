@@ -40,9 +40,10 @@ from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import and_, delete, func, or_, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from gulbot.models.customer import Customer, CustomerStatus
 from gulbot.models.message_log import (
@@ -167,23 +168,77 @@ def transition_key_for(row: ScheduledNotification) -> str:
 async def select_due_rows(
     session: AsyncSession, *, now_utc: datetime, limit: int = BATCH_SIZE
 ) -> Sequence[ScheduledNotification]:
-    """Lock a batch of due rows, skipping any another worker already holds.
+    """Lock a batch of due rows, skipping any another worker already holds --
+    and never HALF a merge group.
 
     SKIP LOCKED is what makes two workers cooperative rather than competitive:
     the second one does not block and does not fail, it just works on different
     rows.
+
+    THE UNIT OF LOCKING IS THE GROUP, NOT THE ROW. Row-at-a-time SKIP LOCKED
+    let two workers split one merge group: A locked row 1, B skipped it and took
+    rows 2 and 3, each built a "group" from what it held, one of them won the
+    ledger claim and sent a reminder covering part of the dates, and the rest
+    stayed pending behind a key that was already claimed. The batch LIMIT cut
+    groups the same way with one worker. Found by the CP16 F4 gate; reproduced
+    on purpose by tests/test_merge_group_claim.py.
+
+    So a worker SKIP-LOCKs only each group's ANCHOR -- its lowest-id due row; a
+    row with no merge_key is its own anchor -- and then locks the rest of the
+    group, waiting for it if it must. Workers never lock a non-anchor row any
+    other way, so whoever holds the anchor is the only one that can be asking
+    for the members: there is no second worker to split with, and nothing a
+    worker waits on here can be waiting on it. A worker that does not get the
+    anchor takes none of the group. The LIMIT counts anchors, so it cannot cut
+    a group either.
     """
-    result = await session.scalars(
+    sendable = and_(
+        ScheduledNotification.state.in_(SENDABLE_STATES),
+        ScheduledNotification.due_at_utc <= now_utc,
+    )
+    peer = aliased(ScheduledNotification)
+    group_anchor = (
+        select(func.min(peer.id))
+        .where(
+            peer.customer_id == ScheduledNotification.customer_id,
+            peer.merge_key == ScheduledNotification.merge_key,
+            peer.state.in_(SENDABLE_STATES),
+            peer.due_at_utc <= now_utc,
+        )
+        .scalar_subquery()
+    )
+    anchors = list(
+        await session.scalars(
+            select(ScheduledNotification)
+            .where(
+                sendable,
+                or_(
+                    ScheduledNotification.merge_key.is_(None),
+                    ScheduledNotification.id == group_anchor,
+                ),
+            )
+            .order_by(ScheduledNotification.due_at_utc, ScheduledNotification.id)
+            .limit(limit)
+            .with_for_update(skip_locked=True)
+        )
+    )
+    groups = {(a.customer_id, a.merge_key) for a in anchors if a.merge_key is not None}
+    if not groups:
+        return anchors
+    members = await session.scalars(
         select(ScheduledNotification)
         .where(
-            ScheduledNotification.state.in_(SENDABLE_STATES),
-            ScheduledNotification.due_at_utc <= now_utc,
+            sendable,
+            tuple_(ScheduledNotification.customer_id, ScheduledNotification.merge_key).in_(
+                list(groups)
+            ),
+            ScheduledNotification.id.not_in([a.id for a in anchors]),
         )
-        .order_by(ScheduledNotification.due_at_utc, ScheduledNotification.id)
-        .limit(limit)
-        .with_for_update(skip_locked=True)
+        .order_by(ScheduledNotification.id)
+        # NOT skip_locked: a member held elsewhere is waited for, never left out.
+        .with_for_update()
     )
-    return list(result)
+    return anchors + list(members)
 
 
 async def _load_group_context(

@@ -423,6 +423,60 @@ Note that the SAME full-suite loop turned up a real, reproducible flake in
 `test_order_pings` (see the section above), which the isolated 100-run loop
 never would have. Load-sensitive failures need the loaded workload.
 
+### A third occurrence, 2026-10-03 -- and this one was a real defect, now fixed
+
+`test_two_processes_racing_a_merged_group_send_it_once_and_whole` failed in
+the CP16 F4 gate with a snapshot nobody had seen before:
+
+- three rows of one merge group;
+- row 1 `sent`, rows 2 and 3 `pending`;
+- all three at `attempts = 1`;
+- one claim in the ledger, marked sent.
+
+That is not the harness and not pollution. **It is the invariant failing.**
+CP6 promised "a partially-sent group is not a state the database can hold".
+
+**The mechanism.**
+- `select_due_rows` SKIP-LOCKed row by row. Worker A locked row 1, and B
+  skipped it and took rows 2 and 3.
+- Each built a "group" from what it held, and both claimed the same
+  merge_key.
+- The winner sent a reminder covering only ITS dates. The loser's rows went
+  back to pending, behind a key that was already claimed.
+- The batch LIMIT could cut a group the same way with a single worker.
+
+**Why the random race never pinned it down.** Two real ticks only land in
+that window by luck, and a later rerun passed. Following the rule above, the
+rerun was not taken as evidence.
+
+**Reproduced deterministically** in `tests/test_merge_group_claim.py`:
+- A real second process (`tests/lock_holder.py`) holds the row a worker locks
+  first, while a real tick process runs. That is deterministic, not lucky.
+- A batch of one meets a group of three, in one process.
+- All three tests failed on assertions against the old code. Each waits by
+  polling `pg_stat_activity` for a lock wait, never by a fixed sleep: Windows
+  process start-up outlasted a 3 s sleep, and the first version of one test
+  passed for exactly that reason.
+
+**The fix: the unit of locking is the group.**
+- A worker SKIP-LOCKs only each group's ANCHOR (its lowest-id due row), then
+  locks the rest of the group, waiting if it must.
+- Non-anchor rows are never locked any other way. So whoever holds the anchor
+  is the only worker asking for the members: there is nobody to split with,
+  and no lock cycle to deadlock on.
+- The LIMIT counts anchors.
+
+Mutation, 3/3 caught on assertions:
+- members locked SKIP LOCKED;
+- the anchor-only filter removed;
+- the members never fetched.
+
+**What this means for the September occurrences.** The 2026-09-06 failure (a
+row missing) is still unexplained. It is a different signature and the fix
+does not claim it. The 2026-09-09 one was the harness. The merged-group test
+now asserts something structurally guaranteed rather than probabilistically
+likely.
+
 ## Time-dependent tests: never capture `now` before you insert the row
 
 Found 2026-09-07, after a full-suite run on a loaded machine took 1818s instead

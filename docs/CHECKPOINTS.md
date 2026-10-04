@@ -438,7 +438,7 @@ row.
 - Headless Chrome cannot make a 360 px window. The screenshots come from
   DevTools device emulation.
 
-### Found by the gate during CP16, outside it, and still OPEN
+### Found by the gate during CP16, outside it -- FIXED at the start of CP17
 
 `test_concurrency::test_two_processes_racing_a_merged_group_send_it_once_and_whole`
 failed once in a full-suite run on 2026-10-03, in the F4 gate. This is a new
@@ -460,8 +460,12 @@ That breaks CP6's "no partially-sent group" guarantee. It is not caused by
 anything in CP16 or CP-MT, which touch neither the selection nor the claim,
 and the test passed in every earlier gate today.
 
-A rerun is not evidence that it is gone. A follow-up task is filed: write a
-deterministic reproduction, then make a group claimable only as a whole.
+A rerun was not taken as evidence that it was gone.
+
+**Fixed in CP17's first commit.** It is reproduced deterministically with
+real processes, and a group is now claimed as one unit: the anchor row is
+SKIP-LOCKed and the members are locked behind it. See CONTRIBUTING, "A third
+occurrence".
 
 ### Live evidence, 2026-10-03, through the real dev bot (@Flowersmarketcontroller_bot)
 
