@@ -181,3 +181,77 @@ building:
 Instagram and TikTok feeds need a signed-in session. They were surveyed
 through their public search and discover pages and the sites those point to,
 not by scrolling a logged-in feed.
+
+---
+
+# CP17 addendum: date plans, editable invitations, ten more designs
+
+Researched 2026-10-04. Inspiration only, as before. No layout, artwork,
+ornament, photo or copy is taken from any source below, e-taklif.uz
+included.
+
+## What the second round of research found
+
+**Uzbek invitation services.**
+- e-taklif.uz advertises about 500 templates across nikoh, qiz uzatish,
+  sunnat, beshik, yubiley and nahor oshi. e-taklifnoma.uz and
+  e-taklifnomachi.uz lead with "your own photo and music", a map and a
+  timer.
+- e-taklifnomachi.uz sorts its catalogue into four moods: light modern,
+  bright-but-subtle festive (for children), warm and intimate, and premium
+  formal.
+- Printed-template shops (soff.uz) sell the same two families again and
+  again: modern floral, and black-and-gold luxury.
+
+**What our ten designs do not yet cover:**
+- a photo of the couple or the child, the strongest single request in this
+  market;
+- a children's style;
+- a "premium formal" style that is not gold.
+
+**Date proposal pages** (planyour.date, askfordate.app, pickourdate.co,
+ourlittle.date). After Yes, the recipient picks from the CREATOR's options,
+never free text: a time from the creator's slots, a place or activity from
+the creator's list. The creator then gets the plan in one message.
+ourlittle.date says it outright: the tone is confident and low-pressure,
+the No button teases but is never manipulative, and it can be switched off.
+That matches the brief for Part 2.
+
+**General trends** (Vistaprint 2026 categories, The Knot, Paperlust):
+- "graphic and editorial" typography;
+- abstract watercolour;
+- minimal black and white;
+- photo-led layouts;
+- vintage paper;
+- Art Deco geometry, gold or bronze on jewel tones;
+- Islamic geometric motifs used sparingly, as a border or watermark in
+  ivory, gold and sage;
+- for children: bold colour and a single story, such as balloons or animals,
+  instead of all-white.
+
+**Platforms not reached.**
+- Instagram: the in-app browser refused the site, so it was skipped as
+  instructed. No login was attempted.
+- TikTok: a fetch was reset.
+- Pinterest: idea pages returned no readable content.
+- YouTube: search surfaced only tutorials for the same Uzbek services.
+
+## Ten new designs (original CSS/SVG; fonts checked glyph by glyph)
+
+| Key | Name | Gap it fills | Drawn as |
+|---|---|---|---|
+| `foto` | Foto | photo-led, the top local request | The creator's one photo in an arched frame. Re-encoded server-side, metadata stripped, size-capped, stored per shop. |
+| `bold` | Bold | editorial typography | Huge condensed type (Oswald), one accent colour, a hard rule. |
+| `geometrik` | Geometrik | Islamic geometric | An original interlaced star tiling as a watermark border, ivory, gold and sage. |
+| `akvarel` | Akvarel | watercolour | Soft blurred colour blobs in CSS, with a handwritten heading (Caveat). |
+| `vintaj` | Vintaj | vintage letter | Aged paper, a postmark and a stamp drawn in SVG, typewriter-era serif. |
+| `oqqora` | Oq-qora | minimal black and white | High-contrast didone headline, black on white, nothing else. |
+| `bolalar` | Bolalar | children's party | Balloons and confetti in SVG, rounded bold type (Balsamiq Sans). |
+| `suzani` | Suzani | Uzbek embroidery, not gold | Original concentric "sun" medallions in madder, indigo and saffron, as a border. |
+| `neon` | Neon | night party, graduation | Dark brick-black ground, glowing outlined type. |
+| `deco` | Deco | Art Deco | Fan and step geometry in brushed bronze on deep teal. |
+
+**New fonts, all OFL:** Oswald, Balsamiq Sans and Caveat have the complete
+Uzbek Cyrillic set. Poiret One, El Messiri, Prata, Old Standard TT and Kurale
+are each used only with a `:lang(uz-Cyrl)` fallback to a complete face, the
+same rule as CP16.
