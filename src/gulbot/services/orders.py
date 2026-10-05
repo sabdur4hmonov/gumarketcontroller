@@ -195,7 +195,10 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
         return existing, False
 
     await session.flush()
-    return await session.get(Order, order_id), True
+    order = await session.scalar(
+        select(Order).where(Order.id == order_id, Order.shop_id == shop_id)
+    )
+    return order, True
 
 
 async def announce_order(

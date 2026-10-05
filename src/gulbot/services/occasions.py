@@ -96,10 +96,15 @@ async def create_occasion(
     new_id = await session.scalar(stmt)
     if new_id is None:
         return None
-    return await session.get(Occasion, new_id)
+    occasion: Occasion | None = await session.scalar(
+        select(Occasion).where(Occasion.id == new_id, Occasion.shop_id == shop_id)
+    )
+    return occasion
 
 
-async def discard_pending_reminders(session: AsyncSession, *, occasion_ids: Sequence[int]) -> int:
+async def discard_pending_reminders(
+    session: AsyncSession, *, shop_id: int, occasion_ids: Sequence[int]
+) -> int:
     """Delete the reminders still scheduled for these dates. Returns how many.
 
     THE MOMENT A DATE STOPS MATTERING, NOT AT 03:00. `materialize-nightly`
@@ -119,6 +124,7 @@ async def discard_pending_reminders(session: AsyncSession, *, occasion_ids: Sequ
     result = await session.execute(
         delete(ScheduledNotification)
         .where(
+            ScheduledNotification.shop_id == shop_id,
             ScheduledNotification.occasion_id.in_(occasion_ids),
             ScheduledNotification.state.in_(RECONCILABLE_STATES),
         )
@@ -149,7 +155,7 @@ async def deactivate_occasion(
     row = result.first()
     if row is None:
         return None
-    await discard_pending_reminders(session, occasion_ids=[occasion_id])
+    await discard_pending_reminders(session, shop_id=shop_id, occasion_ids=[occasion_id])
     return str(row[0])
 
 
@@ -163,6 +169,7 @@ async def record_store_dates_consent(
     """
     already = await session.scalar(
         select(ConsentEvent.id).where(
+            ConsentEvent.shop_id == shop_id,
             ConsentEvent.customer_id == customer_id,
             ConsentEvent.type == ConsentType.STORE_DATES.value,
         )

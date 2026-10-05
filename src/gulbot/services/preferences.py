@@ -57,7 +57,9 @@ async def set_send_time(session: AsyncSession, *, customer: Customer, slot: str)
     return chosen
 
 
-async def has_answered_reminder_preferences(session: AsyncSession, *, customer_id: int) -> bool:
+async def has_answered_reminder_preferences(
+    session: AsyncSession, *, shop_id: int, customer_id: int
+) -> bool:
     """True once either question has been answered.
 
     Used to ask the pair ONCE. A customer who skipped both is asked again on a
@@ -65,7 +67,7 @@ async def has_answered_reminder_preferences(session: AsyncSession, *, customer_i
     """
     row = await session.execute(
         select(Customer.reminder_count, Customer.preferred_send_time).where(
-            Customer.id == customer_id
+            Customer.id == customer_id, Customer.shop_id == shop_id
         )
     )
     count, send_time = row.one()

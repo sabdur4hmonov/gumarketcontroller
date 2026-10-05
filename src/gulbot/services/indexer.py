@@ -390,6 +390,7 @@ async def _sync_hashtags(session: AsyncSession, product: Product, tags: tuple[st
     # An edit can REMOVE a tag, so the sync has to be two-sided.
     await session.execute(
         delete(ProductHashtag).where(
+            ProductHashtag.shop_id == product.shop_id,
             ProductHashtag.product_id == product.id,
             ProductHashtag.hashtag_normalized.notin_(tags),
         )

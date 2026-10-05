@@ -304,7 +304,7 @@ starts polling without a restart. One bot is never polled for two shops.
 
 Still open from the audit, recorded rather than forgotten:
 
-- **M1, L1** (the `live_*` scripts), **L2 and L3.**
+- **L1** (the `live_*` scripts), **L2 and L3.**
 
 ## What CP-MT2 guarantees
 
@@ -388,6 +388,31 @@ query; a shop with no group lets no group in. Mutations: 3/3 caught
   owners' private chats. For a GROUP update the owners can never match --
   they are users, not groups -- so the two agree, and the gate does not log
   `ping_targets`' owner-fallback warning on every tap.
+
+**Every query in the audited services names its shop (M1).** The eleven
+statements that reached tenant rows only through a parent key the caller had
+already checked now carry their own `shop_id` predicate; three functions gained
+a `shop_id` argument to make that possible (`list_recipient_occasions`,
+`discard_pending_reminders`, `has_answered_reminder_preferences`). A structural
+fence, `tests/test_query_shop_scope.py`, walks the AST of the six modules the
+audit named and fails on any query statement without a shop scope, and on any
+`session.get` (a primary-key fetch has no WHERE of its own). It was red on the
+old code, naming all eleven. Database tests show what it buys: another shop's
+ids now reach nothing. Mutations: 9/9 caught, one per restored unscoped query.
+
+- *The audit's fourteen, accounted for.* Eleven fixed. Three are not queries
+  the fence can or should change: `session.add(recipient)` (the object carries
+  its `shop_id`), `announce_order`'s INSERT (its `shop_id` comes from the order
+  row; the fence accepts a `shop_id=` value), and `_drop_untagged`'s
+  `session.delete(product)` -- an ORM delete of an instance already loaded by a
+  shop-scoped query, listed in the fence's `UNSCOPED_ON_PURPOSE` with that
+  reason, and checked to still exist so the exception cannot outlive its code.
+- *Decision: a wrong-shop customer in `has_answered_reminder_preferences`
+  raises.* Answering "not answered yet" would hide a caller bug behind a
+  repeated question.
+- *Fence scope: the six audited modules, not all of `services/`.* The CP16/CP17
+  share-page services were not part of the audit and are outside this branch's
+  remit; widening the fence to them is a follow-up for after CP17 merges.
 
 ## What CP16 guarantees
 

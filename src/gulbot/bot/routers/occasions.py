@@ -156,7 +156,9 @@ async def _render_recipient_detail(
     if recipient is None:
         await target.answer(t("recipients.not_found", lang))
         return
-    occasions = await list_recipient_occasions(session, recipient_id=recipient.id)
+    occasions = await list_recipient_occasions(
+        session, shop_id=customer.shop_id, customer_id=customer.id, recipient_id=recipient.id
+    )
     shown = [(o.id, format_date_long(o.day, o.month, o.year, lang)) for o in occasions]
     dates = "\n".join(f"• {label}" for _, label in shown) or t("recipients.no_dates", lang)
     await target.answer(
@@ -641,7 +643,9 @@ async def more_people_no(
     """Ask the customer-level preferences once, then finish."""
     await callback.answer()
     target = _reply_target(callback)
-    if await has_answered_reminder_preferences(session, customer_id=customer.id):
+    if await has_answered_reminder_preferences(
+        session, shop_id=customer.shop_id, customer_id=customer.id
+    ):
         await _finish_chain(target, state, lang, customer)
         return
     await state.set_state(AddOccasion.asking_reminder_count)

@@ -195,7 +195,7 @@ async def materialize_shop(
     channel: str = NotificationChannel.TELEGRAM.value,
 ) -> MaterializeResult:
     """Bring the outbox up to date for one shop. Safe to run repeatedly."""
-    shop = await session.get(Shop, shop_id)
+    shop = await session.scalar(select(Shop).where(Shop.id == shop_id))
     if shop is None:
         raise ValueError(f"no such shop: {shop_id}")
 
@@ -207,7 +207,7 @@ async def materialize_shop(
     customers = {
         customer.id: customer
         for customer in await session.scalars(
-            select(Customer).where(Customer.id.in_(grouped.keys()))
+            select(Customer).where(Customer.shop_id == shop_id, Customer.id.in_(grouped.keys()))
         )
     }
 

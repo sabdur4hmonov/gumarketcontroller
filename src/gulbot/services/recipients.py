@@ -58,11 +58,18 @@ async def list_recipients(
 
 
 async def list_recipient_occasions(
-    session: AsyncSession, *, recipient_id: int
+    session: AsyncSession, *, shop_id: int, customer_id: int, recipient_id: int
 ) -> Sequence[Occasion]:
+    """Scoped by shop AND customer in the query itself, not only by the caller
+    having looked the recipient up first (M1 of AUDIT_MULTI_TENANT.md)."""
     result = await session.scalars(
         select(Occasion)
-        .where(Occasion.recipient_id == recipient_id, Occasion.active.is_(True))
+        .where(
+            Occasion.recipient_id == recipient_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer_id,
+            Occasion.active.is_(True),
+        )
         .order_by(Occasion.month, Occasion.day)
     )
     return list(result)
@@ -99,7 +106,11 @@ async def rename_recipient(
         return None
     await session.execute(
         update(Occasion)
-        .where(Occasion.recipient_id == recipient_id)
+        .where(
+            Occasion.recipient_id == recipient_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer_id,
+        )
         .values(label=label, type=type_)
     )
     return str(row[0])
@@ -125,13 +136,17 @@ async def deactivate_recipient(
         return None
     deactivated = await session.scalars(
         update(Occasion)
-        .where(Occasion.recipient_id == recipient_id)
+        .where(
+            Occasion.recipient_id == recipient_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer_id,
+        )
         .values(active=False)
         .returning(Occasion.id)
     )
     # And what was already scheduled for them, now rather than at the nightly
     # prune. See `discard_pending_reminders`.
-    await discard_pending_reminders(session, occasion_ids=list(deactivated))
+    await discard_pending_reminders(session, shop_id=shop_id, occasion_ids=list(deactivated))
     return str(row[0])
 
 
