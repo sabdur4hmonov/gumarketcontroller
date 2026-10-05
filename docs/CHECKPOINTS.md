@@ -305,7 +305,6 @@ starts polling without a restart. One bot is never polled for two shops.
 Still open from the audit, recorded rather than forgotten:
 
 - **H3:** the indexer does not compare a post's chat with `shops.channel_id`.
-- **H4:** the rate limiter is one 28 msg/s budget per process, not per bot.
 - **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
 
 ## What CP-MT2 guarantees
@@ -337,6 +336,19 @@ never answers (`tests/test_breaker_per_shop.py`). Mutations: 7/7 caught.
 - *Accepted:* a shop whose bot stays silent costs each tick up to 3 timeouts
   (45 s) until its rows dead-letter. That was already true; it no longer
   delays anyone else.
+
+**Each shop's bot is paced against its own ceiling (H4).** The limiter's
+global bucket and its per-chat buckets are keyed by the shop, whose bot is the
+sender, because Telegram's limits are per bot token. Before, one tick's limiter
+throttled the whole fleet to one bot's 28 msg/s, and a person who is a customer
+of two shops was paced as one chat. `acquire()` now REQUIRES `shop_id`: a
+default would put any caller that forgot it back in one shared bucket. One shop
+on its own is still held to 28 msg/s, and that half is asserted too
+(`tests/test_rate_limit_per_bot.py`). Mutations: 4/4 caught.
+
+- *Not changed:* the order-ping tick and the health alerts never went through
+  the limiter and still do not. The audit named only the reminder tick's
+  limiter, and both of those send a handful of messages per shop.
 
 ## What CP16 guarantees
 

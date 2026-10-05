@@ -56,6 +56,7 @@ async def _send_due_reminders() -> dict[str, int]:
 
     from gulbot.sending.attach import attach_bouquet
 
+    # One limiter for the tick; its buckets are per shop's bot (H4).
     limiter = RateLimiter(clock=lambda: asyncio.get_event_loop().time())
     async with task_session_factory() as factory, factory() as session:
         # Each shop's own stored token (or the logged legacy fallback), loaded

@@ -75,7 +75,7 @@ def test_a_bucket_refills_no_further_than_its_burst() -> None:
 async def test_the_first_send_to_a_chat_does_not_wait() -> None:
     clock = FakeClock()
     limiter = RateLimiter(clock=clock, sleeper=clock.sleep)
-    assert await limiter.acquire(chat_id=1) == 0.0
+    assert await limiter.acquire(chat_id=1, shop_id=1) == 0.0
     assert clock.sleeps == []
 
 
@@ -83,27 +83,27 @@ async def test_a_second_send_to_the_same_chat_waits_a_second() -> None:
     """~1 message/second per chat is Telegram's published per-chat ceiling."""
     clock = FakeClock()
     limiter = RateLimiter(clock=clock, sleeper=clock.sleep)
-    await limiter.acquire(chat_id=1)
-    waited = await limiter.acquire(chat_id=1)
+    await limiter.acquire(chat_id=1, shop_id=1)
+    waited = await limiter.acquire(chat_id=1, shop_id=1)
     assert waited == pytest.approx(1.0 / PER_CHAT_RATE_PER_SECOND, rel=1e-3)
 
 
 async def test_different_chats_do_not_wait_on_each_other() -> None:
-    """The per-chat limit is per chat; only the global bucket is shared."""
+    """The per-chat limit is per chat; only the bot's global bucket is shared."""
     clock = FakeClock()
     limiter = RateLimiter(clock=clock, sleeper=clock.sleep)
     for chat_id in range(1, 11):
-        assert await limiter.acquire(chat_id=chat_id) == 0.0
+        assert await limiter.acquire(chat_id=chat_id, shop_id=1) == 0.0
 
 
 async def test_the_global_ceiling_eventually_paces_a_burst() -> None:
     clock = FakeClock()
     limiter = RateLimiter(clock=clock, sleeper=clock.sleep)
     for chat_id in range(1, int(GLOBAL_RATE_PER_SECOND) + 1):
-        await limiter.acquire(chat_id=chat_id)
+        await limiter.acquire(chat_id=chat_id, shop_id=1)
 
     # The global burst is spent; the next distinct chat must wait for a refill.
-    waited = await limiter.acquire(chat_id=9999)
+    waited = await limiter.acquire(chat_id=9999, shop_id=1)
     assert waited > 0.0
     assert waited == pytest.approx(1.0 / GLOBAL_RATE_PER_SECOND, rel=1e-2)
 
@@ -112,7 +112,7 @@ async def test_waiting_is_bounded_and_terminates() -> None:
     clock = FakeClock()
     limiter = RateLimiter(clock=clock, sleeper=clock.sleep)
     for _ in range(5):
-        await limiter.acquire(chat_id=1)
+        await limiter.acquire(chat_id=1, shop_id=1)
     assert clock.now == pytest.approx(4.0, rel=1e-3)
 
 

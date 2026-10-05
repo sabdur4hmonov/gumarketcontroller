@@ -5,6 +5,12 @@ Two independent buckets, both of which must admit a send:
 * GLOBAL  ~30 messages/second across the whole bot
 * PER CHAT ~1 message/second to any single chat
 
+BOTH ARE PER BOT, because Telegram's are: every shop has its own bot, so every
+bucket is keyed by the shop it sends for. One limiter serves a whole tick, and
+the tick sends for every shop; a single global bucket throttled the entire
+fleet to one bot's 28 msg/s (H4 of AUDIT_MULTI_TENANT.md), and a shared
+per-chat bucket paced a person who is a customer of two shops as one chat.
+
 Pure except for the clock and the sleeper, both injectable, so the tests assert
 actual waits instead of watching the wall clock.
 
@@ -63,7 +69,8 @@ class TokenBucket:
 
 
 class RateLimiter:
-    """Global + per-chat pacing for outbound sends."""
+    """Per-bot global + per-chat pacing for outbound sends. See the module
+    docstring: `shop_id` names the bot, because each shop has exactly one."""
 
     def __init__(
         self,
@@ -75,29 +82,41 @@ class RateLimiter:
     ) -> None:
         self._clock = clock
         self._sleep = sleeper or asyncio.sleep
-        self._global = TokenBucket(rate=global_rate, burst=GLOBAL_BURST)
-        self._per_chat: dict[int, TokenBucket] = {}
+        self._global_rate = global_rate
         self._per_chat_rate = per_chat_rate
+        self._per_bot: dict[int, TokenBucket] = {}
+        self._per_chat: dict[tuple[int, int], TokenBucket] = {}
 
-    def _chat_bucket(self, chat_id: int) -> TokenBucket:
-        if chat_id not in self._per_chat:
-            self._per_chat[chat_id] = TokenBucket(rate=self._per_chat_rate, burst=PER_CHAT_BURST)
-        return self._per_chat[chat_id]
+    def _bot_bucket(self, shop_id: int) -> TokenBucket:
+        if shop_id not in self._per_bot:
+            self._per_bot[shop_id] = TokenBucket(rate=self._global_rate, burst=GLOBAL_BURST)
+        return self._per_bot[shop_id]
 
-    def wait_time(self, chat_id: int) -> float:
+    def _chat_bucket(self, shop_id: int, chat_id: int) -> TokenBucket:
+        key = (shop_id, chat_id)
+        if key not in self._per_chat:
+            self._per_chat[key] = TokenBucket(rate=self._per_chat_rate, burst=PER_CHAT_BURST)
+        return self._per_chat[key]
+
+    def wait_time(self, chat_id: int, *, shop_id: int) -> float:
         now = self._clock()
-        return max(self._global.wait_time(now), self._chat_bucket(chat_id).wait_time(now))
+        return max(
+            self._bot_bucket(shop_id).wait_time(now),
+            self._chat_bucket(shop_id, chat_id).wait_time(now),
+        )
 
-    async def acquire(self, chat_id: int) -> float:
-        """Block until this chat may be sent to. Returns how long it waited."""
+    async def acquire(self, chat_id: int, *, shop_id: int) -> float:
+        """Block until THIS SHOP'S BOT may send to this chat. Returns how long
+        it waited. `shop_id` is required: a default would put every caller
+        that forgot it back into one shared bucket."""
         waited = 0.0
         while True:
-            delay = self.wait_time(chat_id)
+            delay = self.wait_time(chat_id, shop_id=shop_id)
             if delay <= 0.0:
                 break
             await self._sleep(delay)
             waited += delay
         now = self._clock()
-        self._global.consume(now)
-        self._chat_bucket(chat_id).consume(now)
+        self._bot_bucket(shop_id).consume(now)
+        self._chat_bucket(shop_id, chat_id).consume(now)
         return waited

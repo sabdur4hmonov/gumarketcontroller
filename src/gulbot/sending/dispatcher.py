@@ -96,8 +96,9 @@ Renderer = Callable[["DueGroup"], str]
 #: retrying, 403, 429 and dead-lettering were not disturbed by CP9.
 Attacher = Callable[["DueGroup"], Awaitable["Attachment | None"]]
 
-#: Rows examined per tick. One minute is plenty for this many sends at ~28/s,
-#: and it bounds how long a tick holds its locks.
+#: Rows examined per tick. One minute is plenty for this many sends at ~28/s
+#: -- one bot's ceiling, so the worst case, a batch all from one shop -- and it
+#: bounds how long a tick holds its locks.
 BATCH_SIZE = 100
 
 #: A row that has been claimed this many times without succeeding is parked.
@@ -596,7 +597,10 @@ async def run_tick(
             continue
 
         if limiter is not None:
-            result.waited_seconds += await limiter.acquire(group.telegram_user_id)
+            # Paced as THIS shop's bot: Telegram's limits are per bot (H4).
+            result.waited_seconds += await limiter.acquire(
+                group.telegram_user_id, shop_id=group.shop_id
+            )
 
         # ONE call either way. A bouquet rides along as the photo's caption
         # rather than as a second message, so the group is still atomic.

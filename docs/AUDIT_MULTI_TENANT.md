@@ -13,7 +13,7 @@
 > | H2: `resolve_single_shop` | **fixed**: one process polls every shop |
 > | H5: one breaker across shops | **fixed** (CP-MT2): a breaker per shop; a failing shop's rows are handed back while the others send. A shop with no usable bot fails alone, as before |
 > | H3: `shops.channel_id` never read by the indexer | **open** |
-> | H4: global 28 msg/s limiter | **open** |
+> | H4: global 28 msg/s limiter | **fixed** (CP-MT2): the global and per-chat buckets are per shop's bot |
 > | M1, M3, L1 (scripts other than verify_group), L2, L3 | **open** |
 
 **Target:** convert Gulbot from one flower shop to ~1000 independent shops, each
