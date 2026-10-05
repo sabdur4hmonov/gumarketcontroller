@@ -302,9 +302,9 @@ bot id. This was reproduced against real Redis before it was fixed.
 **One process serves every shop**, and a shop added through the platform bot
 starts polling without a restart. One bot is never polled for two shops.
 
-Still open from the audit, recorded rather than forgotten:
+Still open from the audit, recorded rather than forgotten (everything else
+was closed by CP-MT2, below):
 
-- **L3.**
 - **L2, the column:** `shops.lang` needs a migration; planned below
   (CP-MT2, "Follow-up: `shops.lang`").
 
@@ -447,6 +447,21 @@ assertions before the change). Mutations: 4/4 caught.
 The part NOT done is the part that needs a migration: there is no
 `shops.lang` column, so `shop_language` answers DEFAULT_LANGUAGE for every
 shop -- what every path hardcoded before, so no behaviour changes today.
+
+**The seed makes more than one shop (L3).** `python -m gulbot.cli.seed` takes
+`--name` (the dev shop's name stays the default), `--channel-id`,
+`--group-chat-id` and `--owner-id`. Still idempotent and still never
+overwrites: a rerun fills only what is unset and refuses (`SeedConflict`) a
+value that disagrees with what is stored. Since H3 a seeded shop needs its
+`channel_id` to show a catalogue, so the seed is where a dev shop gets wired.
+Red first on an assertion: the CLI ignored its arguments entirely
+(`tests/test_seed_shops.py`). Mutations: 4/4 caught.
+
+- *Decision: no bot token argument.* A token on a command line ends up in
+  shell history and process listings. The platform bot's onboarding is the
+  provisioning path for a real shop -- token, channel and group as a unit --
+  which the audit's L3 asked for and CP-MT already built; the dev shop speaks
+  through `BOT_TOKEN`.
 
 ### Follow-up: `shops.lang` (needs a migration; planned, not made)
 
