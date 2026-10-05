@@ -85,8 +85,8 @@ async def ensure_shop(
             )
         wanted["owner_telegram_ids"] = list(owner_ids)
 
-    for field, value in wanted.items():
-        setattr(shop, field, value)
+    for field, filled in wanted.items():
+        setattr(shop, field, filled)
     await session.flush()
     return int(shop.id), False
 
