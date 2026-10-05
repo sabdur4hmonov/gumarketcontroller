@@ -86,6 +86,26 @@ PLATFORM_BOT_TOKEN=<the onboarding bot's token; leave unset to run without onboa
 - **The pilot shop** may keep using `BOT_TOKEN`, and the bot logs a WARNING
   every time it does. Store its own token to retire the fallback.
 
+## 0c. Every shop's catalogue channel is recorded (CP-MT2, H3)
+
+Since CP-MT2 the indexer takes a channel post only from the shop's own
+`shops.channel_id`, and **a shop whose `channel_id` is NULL indexes nothing.**
+Shops onboarded through the platform bot always have it. The pilot shop
+predates onboarding and, on the dev database at least, does not. Set it
+**before** deploying CP-MT2, or the pilot's new and edited posts stop reaching
+the catalogue. Products already indexed are not affected.
+
+Find the channel id: post anything with a photo in the channel. The bot logs
+`shop N has no channel_id ... set shops.channel_id = <id>`, naming the exact id.
+Then:
+
+```
+UPDATE shops SET channel_id = <that id> WHERE id = <the pilot shop's id> AND channel_id IS NULL;
+```
+
+Verify: a new hashtagged post appears in the catalogue, and the log says
+`indexed message=...`, not `ignored`.
+
 ## 1. Before stopping anything
 
 - **Migrations at head, checked, not assumed.** Compare the database with the

@@ -113,6 +113,12 @@ class World:
 
 @pytest_asyncio.fixture
 async def world(db: AsyncConnection, shop_id: int) -> World:
+    # The shop's catalogue is CHANNEL_ID, where every post here comes from.
+    # Since H3 a shop indexes only its own channel_id; see
+    # test_indexer_channel_scope.py for the posts that must be refused.
+    await db.execute(
+        text("UPDATE shops SET channel_id = :c WHERE id = :s"), {"c": CHANNEL_ID, "s": shop_id}
+    )
     sessions = bound_session_factory(db)
     bot, _ = make_bot()
     built = World(None, bot, sessions, db, shop_id)  # type: ignore[arg-type]

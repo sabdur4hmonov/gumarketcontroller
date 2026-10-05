@@ -26,6 +26,7 @@ from pathlib import Path
 
 import psycopg
 import pytest
+from tests.bot_harness import CHANNEL_ID
 
 from gulbot.config import Settings
 
@@ -65,9 +66,12 @@ def committed_shop(settings: Settings, tmp_path: Path) -> Iterator[dict]:
     )
     with psycopg.connect(dsn, autocommit=True) as conn:
         _purge(conn)
+        # Connected to the channel the posts come from: since H3 a shop
+        # indexes only its own channel_id.
         shop = conn.execute(
-            "INSERT INTO shops (name, working_hours) VALUES (%s, '{}'::jsonb) RETURNING id",
-            (SHOP_NAME,),
+            "INSERT INTO shops (name, working_hours, channel_id) "
+            "VALUES (%s, '{}'::jsonb, %s) RETURNING id",
+            (SHOP_NAME, CHANNEL_ID),
         ).fetchone()[0]
         try:
             yield {"conn": conn, "shop": shop, "tmp": tmp_path}

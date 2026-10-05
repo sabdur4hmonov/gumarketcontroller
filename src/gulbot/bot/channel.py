@@ -88,7 +88,7 @@ async def on_channel_post(
         log.info(
             "ignored message=%s reason=%s",
             post.message_id,
-            "no_photo" if not post.has_photo else "no_hashtag",
+            result.reason or ("no_photo" if not post.has_photo else "no_hashtag"),
         )
         return
 

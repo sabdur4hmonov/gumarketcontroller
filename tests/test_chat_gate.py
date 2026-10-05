@@ -30,6 +30,7 @@ from aiogram.types import CallbackQuery, Chat, Message, Update, User
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection
 from tests.bot_harness import (
+    CHANNEL_ID,
     RecordingSession,
     bound_session_factory,
     channel_post_update,
@@ -93,10 +94,10 @@ async def harness(db: AsyncConnection) -> Harness:
     shop = (
         await db.execute(
             text(
-                "INSERT INTO shops (name, working_hours) "
-                "VALUES ('S', CAST(:wh AS jsonb)) RETURNING id"
+                "INSERT INTO shops (name, working_hours, channel_id) "
+                "VALUES ('S', CAST(:wh AS jsonb), :c) RETURNING id"
             ),
-            {"wh": json.dumps(DEFAULT_WORKING_HOURS)},
+            {"wh": json.dumps(DEFAULT_WORKING_HOURS), "c": CHANNEL_ID},
         )
     ).scalar_one()
     bot, recorder = make_bot()

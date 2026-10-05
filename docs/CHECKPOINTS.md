@@ -304,7 +304,6 @@ starts polling without a restart. One bot is never polled for two shops.
 
 Still open from the audit, recorded rather than forgotten:
 
-- **H3:** the indexer does not compare a post's chat with `shops.channel_id`.
 - **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
 
 ## What CP-MT2 guarantees
@@ -349,6 +348,30 @@ on its own is still held to 28 msg/s, and that half is asserted too
 - *Not changed:* the order-ping tick and the health alerts never went through
   the limiter and still do not. The audit named only the reminder tick's
   limiter, and both of those send a handful of messages per shop.
+
+**Only the shop's own channel is its catalogue (H3).** The indexer takes a
+post, and an edit, only when its chat IS `shops.channel_id`
+(`from_the_shops_channel` in `services/indexer.py`). Before, any channel the
+shop's bot was added to filled its catalogue -- and because products are keyed
+on `(shop_id, channel_message_id)` and message ids are per channel, an EDIT in
+a foreign channel re-priced a real product with the same message id. Both were
+reproduced before the fix (`tests/test_indexer_channel_scope.py`). The check
+sits in the service, in front of the single, album and edit paths, so no route
+in can skip it. Mutations: 4/4 caught -- either path unchecked, NULL
+accepting any channel, a recorded channel not compared.
+
+- *Decision: NULL `channel_id` indexes nothing.* The alternative -- accept any
+  channel until one is recorded, or adopt the first one that posts -- is the
+  defect with a delay on it. The pilot shop predates onboarding and has no
+  `channel_id` on the dev database, so this needs one operator step before
+  deploying: `docs/DEPLOY.md` step 0c. The refusal is logged with the chat id
+  to copy. Existing products are not touched.
+- *CONTRIBUTING sweep (a value changed meaning):* `shops.channel_id` NULL used
+  to mean nothing at all; it now means "indexes nothing". Every reader was
+  checked: before this change there were none in `src/`, the onboarding
+  service is the only writer, and the test fixtures that post to a channel
+  (`test_indexer.py`, `test_chat_gate.py`, `test_indexer_concurrency.py`) now
+  connect their shop to `CHANNEL_ID`, as an onboarded shop would be.
 
 ## What CP16 guarantees
 

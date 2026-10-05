@@ -38,6 +38,15 @@ So the gate moves to finalize, and a group that turns out to have no usable
 hashtag is DELETED. That has a useful consequence -- a caption arriving after
 its own album was dropped simply re-creates the row and finalizes correctly.
 
+ONLY THE SHOP'S OWN CHANNEL
+
+A post is indexed only when its chat IS `shops.channel_id` (H3 of
+AUDIT_MULTI_TENANT.md). The bot can be added to any channel, and products are
+keyed on `(shop_id, channel_message_id)` -- message ids are per channel -- so
+without the check a second channel's posts became this shop's products, and an
+edit there could re-price a real one. A shop with no channel recorded indexes
+nothing: not connected yet is not "any channel".
+
 WHAT THIS MODULE DOES NOT DO
 
 * No alias resolution. Tags are stored exactly as `normalize_hashtag` returns
@@ -50,6 +59,7 @@ WHAT THIS MODULE DOES NOT DO
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -62,6 +72,12 @@ from gulbot.catalog.hashtags import extract_hashtags
 from gulbot.catalog.naming import product_name
 from gulbot.catalog.prices import PriceConfidence, parse_price
 from gulbot.models.product import Product, ProductHashtag, ProductSource
+from gulbot.models.shop import Shop
+
+log = logging.getLogger("gulbot.indexer")
+
+#: IngestResult.reason for a post from a chat that is not the shop's channel.
+NOT_THE_SHOPS_CHANNEL = "not_the_shops_channel"
 
 #: Rendered into the partial unique index inference. It has to match
 #: `uq_products_shop_media_group` exactly or Postgres refuses to use the index.
@@ -116,6 +132,8 @@ class IngestResult:
     product_id: int | None = None
     #: Album arrivals need the debounce; a single settles immediately.
     needs_debounce: bool = False
+    #: Why an IGNORED post was ignored, when it is not the obvious gate.
+    reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -133,10 +151,42 @@ def _provisional_name(caption: str | None) -> str:
     return product_name(caption)
 
 
+async def from_the_shops_channel(session: AsyncSession, post: ChannelPost) -> bool:
+    """Is this post from the channel the shop registered as its catalogue?
+
+    Logged when not, with the chat id, so an operator can tell a stray channel
+    from a shop whose `channel_id` was never set -- and copy the id if it is the
+    latter. See the module docstring.
+    """
+    channel_id = await session.scalar(select(Shop.channel_id).where(Shop.id == post.shop_id))
+    if channel_id is None:
+        log.warning(
+            "shop %s has no channel_id, so it indexes nothing: ignored message=%s from "
+            "chat %s. If that chat is its catalogue, set shops.channel_id = %s",
+            post.shop_id,
+            post.message_id,
+            post.chat_id,
+            post.chat_id,
+        )
+        return False
+    if channel_id != post.chat_id:
+        log.warning(
+            "ignored message=%s from chat %s: shop %s's catalogue is channel %s",
+            post.message_id,
+            post.chat_id,
+            post.shop_id,
+            channel_id,
+        )
+        return False
+    return True
+
+
 async def ingest_post(session: AsyncSession, post: ChannelPost) -> IngestResult:
     """Record one channel post. Returns what happened and whether to debounce."""
     if not post.has_photo:
         return IngestResult(Ingest.IGNORED)
+    if not await from_the_shops_channel(session, post):
+        return IngestResult(Ingest.IGNORED, reason=NOT_THE_SHOPS_CHANNEL)
 
     if post.is_album_member:
         return await _ingest_album_member(session, post)
@@ -362,6 +412,10 @@ async def apply_edit(
     That is the same gate, applied at the moment it first passes.
     """
     if not post.has_photo:
+        return FinalizeResult(Finalize.MISSING)
+    # BEFORE the lookup: message ids are per channel, so another channel's
+    # message 101 would find this shop's product 101 and rewrite it.
+    if not await from_the_shops_channel(session, post):
         return FinalizeResult(Finalize.MISSING)
 
     query = select(Product).where(Product.shop_id == post.shop_id)
