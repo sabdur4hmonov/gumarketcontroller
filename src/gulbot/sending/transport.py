@@ -83,6 +83,9 @@ class CircuitBreaker:
     Per tick, never shared: a tick that trips stops, and the next tick starts
     with a closed breaker and tries again. That is the whole recovery path --
     no half-open state, no timers, because the beat already is one.
+
+    ONE PER SHOP since H5 of AUDIT_MULTI_TENANT.md: the ticks hold these
+    through `ShopBreakers`, never one across the whole batch.
     """
 
     def __init__(self, threshold: int = BREAKER_THRESHOLD) -> None:
@@ -95,6 +98,86 @@ class CircuitBreaker:
     @property
     def open(self) -> bool:
         return self.consecutive >= self.threshold
+
+
+#: Different shops that must go unanswered in a row -- nothing answering any
+#: shop in between -- before a tick reads it as Telegram (or our network) being
+#: down rather than as one shop's bot.
+FLEET_BREAKER_SHOPS = 3
+
+
+class ShopBreakers:
+    """A `CircuitBreaker` per shop, and one rule across them. Per tick.
+
+    H5 of AUDIT_MULTI_TENANT.md. The outbox spans every shop, and one breaker
+    for the batch let three timeouts from ONE shop's bot hand back every other
+    shop's rows -- each tick, for as long as that bot stayed broken. Now a shop
+    that trips has only its own rows handed back, and the rest keep sending.
+
+    THE FLEET TRIP keeps pass 5's guarantee. Per-shop breakers alone would make
+    a real Telegram outage cost BREAKER_THRESHOLD timeouts PER SHOP -- hours,
+    at a thousand shops, on a worker that runs one task at a time. So when
+    FLEET_BREAKER_SHOPS different shops have each gone unanswered with nothing
+    answering in between, every shop is treated as tripped. One or two broken
+    bots can never cause that; an outage reaches it within at most
+    (FLEET_BREAKER_SHOPS - 1) x BREAKER_THRESHOLD + 1 sends.
+    """
+
+    def __init__(
+        self, threshold: int = BREAKER_THRESHOLD, fleet_shops: int = FLEET_BREAKER_SHOPS
+    ) -> None:
+        self.threshold = threshold
+        self.fleet_shops = fleet_shops
+        self._by_shop: dict[int, CircuitBreaker] = {}
+        #: Shops with a network failure since anything last answered.
+        self._unanswered: set[int] = set()
+
+    def record(self, shop_id: int, outcome: SendResult) -> str | None:
+        """Count one outcome. Returns "shop" or "fleet" when THIS outcome is
+        the one that tripped it, so the caller logs each trip exactly once."""
+        shop = self._by_shop.setdefault(shop_id, CircuitBreaker(self.threshold))
+        was_shop, was_fleet = shop.open, self.fleet_open
+        shop.record(outcome)
+        if outcome.network:
+            self._unanswered.add(shop_id)
+        else:
+            self._unanswered.clear()
+        if self.fleet_open and not was_fleet:
+            return "fleet"
+        if shop.open and not was_shop:
+            return "shop"
+        return None
+
+    @property
+    def fleet_open(self) -> bool:
+        return len(self._unanswered) >= self.fleet_shops
+
+    def open_for(self, shop_id: int) -> bool:
+        if self.fleet_open:
+            return True
+        shop = self._by_shop.get(shop_id)
+        return shop is not None and shop.open
+
+    def for_shop(self, shop_id: int) -> ShopBreaker:
+        return ShopBreaker(self, shop_id)
+
+
+class ShopBreaker:
+    """One shop's view of `ShopBreakers`, shaped like a `CircuitBreaker`, for
+    code that sends several messages for one shop (the order-ping fan-out)."""
+
+    def __init__(self, breakers: ShopBreakers, shop_id: int) -> None:
+        self._breakers = breakers
+        self._shop_id = shop_id
+        #: What the last `record` tripped, if anything; see ShopBreakers.record.
+        self.tripped: str | None = None
+
+    def record(self, outcome: SendResult) -> None:
+        self.tripped = self._breakers.record(self._shop_id, outcome) or self.tripped
+
+    @property
+    def open(self) -> bool:
+        return self._breakers.open_for(self._shop_id)
 
 
 #: Telegram's limit for a photo caption. A reminder longer than this cannot be

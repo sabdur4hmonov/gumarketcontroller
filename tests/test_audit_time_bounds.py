@@ -17,7 +17,7 @@ import yaml
 
 import gulbot.worker.tasks  # noqa: F401  -- registers the tasks on the app
 from gulbot.bot.factory import TELEGRAM_REQUEST_TIMEOUT
-from gulbot.sending.transport import BREAKER_THRESHOLD
+from gulbot.sending.transport import BREAKER_THRESHOLD, FLEET_BREAKER_SHOPS
 from gulbot.worker.app import TICK_SOFT_LIMIT, app
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -49,9 +49,16 @@ def test_every_task_has_a_soft_and_a_hard_time_limit() -> None:
 
 def test_a_tick_limit_leaves_room_for_the_worst_outage_tick() -> None:
     """The limit is a backstop for what nothing else bounds. It must not cut off
-    a tick that the circuit breaker is already ending on its own."""
-    outage_tick = BREAKER_THRESHOLD * TELEGRAM_REQUEST_TIMEOUT
-    assert 4 * outage_tick <= TICK_SOFT_LIMIT
+    a tick that the circuit breakers are already ending on its own.
+
+    Since H5 the breaker is per shop, with a fleet trip when FLEET_BREAKER_SHOPS
+    different shops go unanswered in a row. The worst outage ordering is two
+    shops tripping in full before a third fails once: 7 sends, 105 s. The margin
+    was 4x for the single 45 s breaker and is 2x for this; see CHECKPOINTS.md,
+    CP-MT2."""
+    worst_sends = (FLEET_BREAKER_SHOPS - 1) * BREAKER_THRESHOLD + 1
+    outage_tick = worst_sends * TELEGRAM_REQUEST_TIMEOUT
+    assert 2 * outage_tick <= TICK_SOFT_LIMIT
 
 
 def test_periodic_ticks_expire_before_the_next_one_is_due() -> None:

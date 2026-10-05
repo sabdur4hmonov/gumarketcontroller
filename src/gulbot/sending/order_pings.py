@@ -51,9 +51,10 @@ from gulbot.scheduling.occurrences import TASHKENT
 from gulbot.sending.order_card import ANNOUNCEMENT, OrderCard, render_card
 from gulbot.sending.transport import (
     CAPTION_LIMIT,
-    CircuitBreaker,
     SendResult,
     ShopBotUnavailable,
+    ShopBreaker,
+    ShopBreakers,
     Transport,
     TransportFor,
     per_shop,
@@ -247,7 +248,7 @@ async def _deliver(
     text: str,
     ping_number: int,
     reply_markup: InlineKeyboardMarkup | None = None,
-    breaker: CircuitBreaker | None = None,
+    breaker: ShopBreaker | None = None,
 ) -> tuple[bool, list[str]]:
     """Send to every target. True if at least one accepted.
 
@@ -349,11 +350,12 @@ async def run_order_ping_tick(
     await session.commit()
 
     targets_by_shop: dict[int, list[int]] = {}
-    breaker = CircuitBreaker()
+    breakers = ShopBreakers()
     for ping in live:
-        if breaker.open:
-            # Telegram has stopped answering; see CircuitBreaker. The rest go
-            # back as they were, for the next tick.
+        if breakers.open_for(ping.shop_id):
+            # This shop's bot -- or, on a fleet trip, Telegram -- has stopped
+            # answering; see ShopBreakers. Its pings go back as they were, for
+            # the next tick, and every other shop's still go out (H5).
             await _hand_back(session, ping)
             result.handed_back += 1
             await session.commit()
@@ -424,6 +426,7 @@ async def run_order_ping_tick(
         # disagreeing about which one is the record. A shop that never
         # answers still gets the pings, which say the delivery is coming --
         # that is the nudge, and it does not need a second button.
+        breaker = breakers.for_shop(ping.shop_id)
         delivered, errors = await _deliver(
             shop_transport,
             targets=targets,
@@ -447,11 +450,18 @@ async def run_order_ping_tick(
                 "order ping order=%s ping=%s failed: %s", ping.order_id, ping.ping_number, errors
             )
         await session.commit()
-        if breaker.open and result.handed_back == 0:
+        if breaker.tripped == "shop":
             log.warning(
-                "order pings: %d consecutive sends got no answer from Telegram; "
-                "handing the rest of the batch back to the next tick",
-                breaker.consecutive,
+                "order pings: shop %s's bot got no answer %d times running; handing "
+                "that shop's pings back to the next tick, every other shop keeps sending",
+                ping.shop_id,
+                breakers.threshold,
+            )
+        elif breaker.tripped == "fleet":
+            log.warning(
+                "order pings: %d different shops got no answer in a row; Telegram looks "
+                "unreachable, handing the rest of the batch back to the next tick",
+                breakers.fleet_shops,
             )
 
     return result

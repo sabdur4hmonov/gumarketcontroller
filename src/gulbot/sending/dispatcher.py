@@ -62,10 +62,12 @@ from gulbot.models.recipient import Recipient
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
 from gulbot.sending.rate_limit import RateLimiter
 from gulbot.sending.transport import (
+    BREAKER_THRESHOLD,
+    FLEET_BREAKER_SHOPS,
     Attachment,
-    CircuitBreaker,
     SendResult,
     ShopBotUnavailable,
+    ShopBreakers,
     Transport,
     TransportFor,
     per_shop,
@@ -550,12 +552,13 @@ async def run_tick(
 
     # --- phase 2: send, one transaction per group ------------------------
     blocked: set[int] = set()
-    breaker = CircuitBreaker()
+    breakers = ShopBreakers()
     for group in claimed:
-        if breaker.open:
-            # Telegram has stopped answering. Every further send would wait out
-            # the full timeout and fail the same way, so the rest of the batch
-            # goes back exactly as it was and the next tick tries again.
+        if breakers.open_for(group.shop_id):
+            # This shop's bot -- or, on a fleet trip, Telegram -- has stopped
+            # answering. Every further send would wait out the full timeout and
+            # fail the same way, so its rows go back exactly as they were and
+            # the next tick tries again. Every other shop keeps sending (H5).
             await _hand_back(session, group)
             result.handed_back += 1
             await session.commit()
@@ -613,15 +616,28 @@ async def run_tick(
         if outcome.blocked:
             blocked.add(group.customer_id)
         await session.commit()
-        breaker.record(outcome)
-        if breaker.open and result.handed_back == 0:
-            log.warning(
-                "tick: %d consecutive sends got no answer from Telegram; "
-                "handing the rest of the batch back to the next tick",
-                breaker.consecutive,
-            )
+        _log_trip(breakers.record(group.shop_id, outcome), group.shop_id, what="tick")
 
     return result
+
+
+def _log_trip(tripped: str | None, shop_id: int, *, what: str) -> None:
+    """One line per trip, at the send that caused it. Shared with order pings."""
+    if tripped == "shop":
+        log.warning(
+            "%s: shop %s's bot got no answer %d times running; handing that shop's "
+            "rows back to the next tick, every other shop keeps sending",
+            what,
+            shop_id,
+            BREAKER_THRESHOLD,
+        )
+    elif tripped == "fleet":
+        log.warning(
+            "%s: %d different shops got no answer in a row; Telegram looks unreachable, "
+            "handing the rest of the batch back to the next tick",
+            what,
+            FLEET_BREAKER_SHOPS,
+        )
 
 
 async def _hand_back(session: AsyncSession, group: DueGroup) -> None:

@@ -151,7 +151,7 @@ them at deploy time:
 | Bound | Value | Where |
 |---|---|---|
 | Bot API request timeout | 15 s | `bot/factory.py` `TELEGRAM_REQUEST_TIMEOUT` |
-| Circuit breaker | 3 consecutive network failures end a tick | `sending/transport.py` |
+| Circuit breaker | per shop: 3 consecutive network failures hand back that shop's rows; 3 different shops unanswered in a row end the tick | `sending/transport.py` |
 | Postgres `statement_timeout` on app connections | 30 s | `db/session.py` |
 | Tick expiry | 55 s (health check 290 s) | `worker/app.py` |
 | Tick time limits | soft 240 s, hard 300 s | `worker/app.py` |

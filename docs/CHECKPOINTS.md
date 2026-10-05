@@ -26,6 +26,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
 | CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
 | CP-MT | Multi-tenant: per-shop bot tokens, per-shop send paths, owner onboarding, one process for every shop | done, 4 commits; open items in `docs/AUDIT_MULTI_TENANT.md` |
+| CP-MT2 | The rest of the multi-tenant audit: H3, H4, H5, M1, M3, L1, L2, L3 | one commit per finding, on branch `mt2-audit`; L2's column is a planned follow-up (below) |
 | CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
 | CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
 
@@ -305,9 +306,37 @@ Still open from the audit, recorded rather than forgotten:
 
 - **H3:** the indexer does not compare a post's chat with `shops.channel_id`.
 - **H4:** the rate limiter is one 28 msg/s budget per process, not per bot.
-- **H5, partly:** a shop with no usable bot no longer trips the breaker, but
-  the breaker is still one per tick across shops.
 - **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
+
+## What CP-MT2 guarantees
+
+The findings CP-MT left open in `docs/AUDIT_MULTI_TENANT.md`, one commit each,
+every one reproduced by a failing test first and mutation-proved after.
+Decisions that were not obvious are recorded with their reasons.
+
+**One shop's outage does not stop the fleet (H5).** Both send ticks hold a
+circuit breaker PER SHOP (`ShopBreakers`). A shop whose bot gets no answer three
+times running has its remaining rows handed back untouched -- no attempt
+counted, no claim held -- and every other shop keeps sending. Proven with two
+real shops in one tick, the failing shop's bot pointed at a TCP listener that
+never answers (`tests/test_breaker_per_shop.py`). Mutations: 7/7 caught.
+
+- *Decision: a fleet-wide trip stays.* Per-shop breakers alone would turn a real
+  Telegram outage into three 15 s timeouts PER SHOP -- hours at a thousand
+  shops, on a worker that runs one task at a time, which is exactly what pass 5
+  of the pre-deployment audit fixed. So when `FLEET_BREAKER_SHOPS` (3) different
+  shops go unanswered in a row with nothing answering in between, the tick
+  stops and hands everything back. One or two broken bots can never cause that.
+  Three, not two: two broken bots adjacent in the batch would otherwise stall
+  everyone, which is the defect again.
+- *Decision: the outage bound moved from 45 s to at most 105 s.* The worst
+  ordering is two shops tripping in full before a third fails once: 7 sends.
+  A batch that mixes shops trips after 3, as before. `test_audit_time_bounds`
+  now derives the worst case from the rule and keeps a 2x margin under the
+  240 s soft limit (it was 4x over the single 45 s breaker).
+- *Accepted:* a shop whose bot stays silent costs each tick up to 3 timeouts
+  (45 s) until its rows dead-letter. That was already true; it no longer
+  delays anyone else.
 
 ## What CP16 guarantees
 

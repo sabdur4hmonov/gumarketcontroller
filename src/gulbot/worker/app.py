@@ -41,9 +41,10 @@ HEALTH_EXPIRES_SECONDS = 290
 # they are retaken after CLAIM_TIMEOUT: the same outcome, and the same accepted
 # duplicate, as a worker that died. Nothing is lost.
 #
-# Sizes. With the circuit breaker a Telegram outage costs a tick about
-# BREAKER_THRESHOLD x TELEGRAM_REQUEST_TIMEOUT = 45 s; a healthy tick of a full
-# batch takes seconds. Four minutes is only reached by something neither bounds.
+# Sizes. With the circuit breakers a Telegram outage costs a tick at most
+# ((FLEET_BREAKER_SHOPS - 1) x BREAKER_THRESHOLD + 1) x TELEGRAM_REQUEST_TIMEOUT
+# = 105 s, and 45 s when the batch mixes shops; a healthy tick of a full batch
+# takes seconds. Four minutes is only reached by something neither bounds.
 TICK_SOFT_LIMIT, TICK_HARD_LIMIT = 240, 300
 HEALTH_SOFT_LIMIT, HEALTH_HARD_LIMIT = 60, 90
 SUMMARY_SOFT_LIMIT, SUMMARY_HARD_LIMIT = 120, 150

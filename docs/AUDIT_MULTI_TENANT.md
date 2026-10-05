@@ -1,7 +1,8 @@
 # Multi-Tenant Conversion Audit
 
-> **Status, 2026-10-03.** This is the audit as written, unchanged below this
-> box. The fixes landed in four commits; see `docs/CHECKPOINTS.md`, "CP-MT".
+> **Status, 2026-10-05.** This is the audit as written, unchanged below this
+> box. The fixes landed in four commits, then one commit per remaining finding;
+> see `docs/CHECKPOINTS.md`, "CP-MT" and "CP-MT2".
 >
 > | Finding | Status |
 > |---|---|
@@ -10,7 +11,7 @@
 > | C4: `verify_group.py` UPDATE with no WHERE | **fixed**: `--shop-id` is required |
 > | H1: one global token | **fixed**: per-shop Fernet-encrypted tokens |
 > | H2: `resolve_single_shop` | **fixed**: one process polls every shop |
-> | H5: one breaker across shops | **partly**: a shop with NO usable bot fails alone and does not trip the breaker; network failures from one shop's bot still end the whole tick (one breaker per tick) |
+> | H5: one breaker across shops | **fixed** (CP-MT2): a breaker per shop; a failing shop's rows are handed back while the others send. A shop with no usable bot fails alone, as before |
 > | H3: `shops.channel_id` never read by the indexer | **open** |
 > | H4: global 28 msg/s limiter | **open** |
 > | M1, M3, L1 (scripts other than verify_group), L2, L3 | **open** |
