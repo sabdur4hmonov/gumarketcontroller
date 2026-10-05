@@ -23,6 +23,7 @@ from gulbot.models.share_page import (
     SharePagePhoto,
     SharePageReferral,
     SharePageRsvp,
+    SharePageWish,
 )
 from gulbot.models.shop import Shop
 
@@ -52,6 +53,7 @@ __all__ = [
     "SharePage",
     "SharePageOption",
     "SharePagePhoto",
+    "SharePageWish",
     "SharePageReferral",
     "SharePageRsvp",
     "Shop",

@@ -478,6 +478,19 @@ class ColorCB(CallbackData, prefix="pgcol"):
         return [cls(color=c).pack() for c in ("oq", "oltin", "none", "done")]
 
 
+class WishCB(CallbackData, prefix="pgwish"):
+    """Hide or show one wish on a page's wall. Both ids are re-checked against
+    this shop and customer (services/share_page_wishes.set_hidden)."""
+
+    page_id: int
+    wish_id: int
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(page_id=1, wish_id=1, action=a).pack() for a in ("hide", "show")]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -501,6 +514,8 @@ class EditFieldCB(CallbackData, prefix="pged"):
                 "dress_colors",
                 "show_countdown",
                 "show_gallery",
+                "wishes_enabled",
+                "wishes",
             )
         ]
 
@@ -560,6 +575,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     PlanCB,
     PhotoCB,
     ColorCB,
+    WishCB,
 )
 
 

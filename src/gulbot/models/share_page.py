@@ -207,6 +207,10 @@ class SharePage(IdMixin, TimestampMixin, Base):
     show_gallery: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     #: Palette keys, "oq,oltin" (web/sections.py). Picked, never typed.
     dress_colors: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    #: The guest wishes wall (off until the creator switches it on).
+    wishes_enabled: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -340,6 +344,41 @@ class SharePagePhoto(Base):
         CheckConstraint("width > 0 AND height > 0", name="dimensions_positive"),
         CheckConstraint(f"position BETWEEN 1 AND {GALLERY_MAX}", name="position_range"),
         UniqueConstraint("page_id", "position"),
+    )
+
+
+#: A wish on a taklifnoma's wall: who, and at most this long.
+WISH_NAME_MAX = 40
+WISH_TEXT_MAX = 300
+
+
+class SharePageWish(Base):
+    """A guest's wish on an invitation's wall (CP17). Public input: cleaned and
+    capped like every other (services/share_page_wishes.py), shown escaped,
+    and hideable by the creator from the bot. Gone with the page."""
+
+    __tablename__ = "share_page_wishes"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    #: The browser's RSVP cookie: how many wishes one guest has left.
+    voter_key: Mapped[str] = mapped_column(String(32), nullable=False)
+    author: Mapped[str] = mapped_column(String(WISH_NAME_MAX), nullable=False)
+    body: Mapped[str] = mapped_column(String(WISH_TEXT_MAX), nullable=False)
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["page_id", "shop_id"],
+            ["share_pages.id", "share_pages.shop_id"],
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("length(author) > 0 AND length(body) > 0", name="not_empty"),
+        Index("ix_share_page_wishes_page_created", "page_id", "created_at"),
     )
 
 

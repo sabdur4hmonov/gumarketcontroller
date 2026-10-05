@@ -131,6 +131,14 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
                 "ibtn.pages.f_show_gallery",
                 state=yes if page.show_gallery else no,
             ),
+            _field_button(
+                lang,
+                page.id,
+                "wishes_enabled",
+                "ibtn.pages.f_wishes",
+                state=yes if page.wishes_enabled else no,
+            )
+            + _field_button(lang, page.id, "wishes", "ibtn.pages.f_wishes_list"),
         ]
     rows.append(
         _field_button(lang, page.id, "template", "ibtn.pages.f_template")
@@ -259,6 +267,12 @@ async def pick_field(
     field = callback_data.field
     plan = field == "plan" and page.kind == PageKind.YESNO
     photo = field == "photo" and (page.kind == PageKind.INVITE or page.template == "foto")
+    if field == "wishes" and page.kind == PageKind.INVITE:
+        from gulbot.bot.routers.share_page_wishes import show_wishes
+
+        await state.clear()
+        await show_wishes(target, session, customer, page.id, lang)
+        return
     if not (plan or photo) and field not in share_pages.EDITABLE_FIELDS[page.kind]:
         return
     if page.kind == PageKind.YESNO and page.answered_at is not None:
@@ -279,7 +293,13 @@ async def pick_field(
     await state.clear()
     await state.update_data(edit_page_id=page.id, edit_field=field)
 
-    if field in ("rsvp_enabled", "notify_creator", "show_countdown", "show_gallery"):
+    if field in (
+        "rsvp_enabled",
+        "notify_creator",
+        "show_countdown",
+        "show_gallery",
+        "wishes_enabled",
+    ):
         await _save(
             target, state, session, customer, lang, page.id, {field: not getattr(page, field)}
         )

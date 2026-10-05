@@ -47,7 +47,7 @@ from gulbot.models.share_page import (
     PageKind,
     SharePage,
 )
-from gulbot.services import share_page_photos, share_pages
+from gulbot.services import share_page_photos, share_page_wishes, share_pages
 from gulbot.web import render, strings
 
 log = logging.getLogger("gulbot.web")
@@ -246,6 +246,11 @@ async def page(request: web.Request) -> web.Response:
             base=f"/p/{token}",
             plan=plan,
             photos=photos,
+            wishes=(
+                await share_page_wishes.visible_wishes(session, page_id=p.id)
+                if p.wishes_enabled
+                else []
+            ),
         )
     return _html(body)
 
@@ -287,6 +292,47 @@ def _option_id(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
         raise web.HTTPBadRequest(text="Bad values")
     return value
+
+
+async def wish(request: web.Request) -> web.Response:
+    """A guest's wish on the wall. Same-origin, rate-limited, capped."""
+    _check_post(request)
+    _limit(request, "wish")
+    token = _token(request)
+    try:
+        body = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise web.HTTPBadRequest(text="Bad JSON") from None
+    if not isinstance(body, dict):
+        raise web.HTTPBadRequest(text="Bad JSON")
+    voter = request.cookies.get(RSVP_COOKIE, "")
+    if not VOTER_RE.match(voter):
+        voter = secrets.token_urlsafe(16)
+    sessions = request.app[KEY_SESSIONS]
+    async with sessions() as session:
+        try:
+            shown = await share_page_wishes.leave_wish(
+                session, token, voter_key=voter, author=body.get("name"), body=body.get("text")
+            )
+        except share_page_wishes.WishRefused as refused:
+            await session.rollback()
+            if refused.reason == "page":
+                raise web.HTTPNotFound(text="Not found") from None
+            if refused.reason == "full":
+                raise web.HTTPTooManyRequests(text="Full") from None
+            raise web.HTTPBadRequest(text="Bad values") from None
+        await session.commit()
+    response = web.json_response({"ok": True, "name": shown.author, "text": shown.body})
+    response.set_cookie(
+        RSVP_COOKIE,
+        voter,
+        path=f"/p/{token}",
+        max_age=180 * 24 * 3600,
+        httponly=True,
+        samesite="Strict",
+        secure=request.app[KEY_SETTINGS].public_base_url.startswith("https://"),
+    )
+    return response
 
 
 async def choose(request: web.Request) -> web.Response:
@@ -470,6 +516,7 @@ def build_app(
     trust_proxy: bool = False,
     yes_limit: int = 30,
     rsvp_limit: int = 12,
+    wish_limit: int = 6,
 ) -> web.Application:
     app = web.Application(middlewares=[secure_headers], client_max_size=4096)
     app[KEY_SESSIONS] = session_factory
@@ -478,11 +525,13 @@ def build_app(
     app[KEY_LIMITER] = {
         "yes": RateLimiter(limit=yes_limit, window=60.0),
         "rsvp": RateLimiter(limit=rsvp_limit, window=60.0),
+        "wish": RateLimiter(limit=wish_limit, window=60.0),
     }
     app.router.add_get("/p/{token}", page)
     app.router.add_post("/p/{token}/yes", answer_yes)
     app.router.add_post("/p/{token}/rsvp", rsvp)
     app.router.add_post("/p/{token}/choose", choose)
+    app.router.add_post("/p/{token}/wish", wish)
     app.router.add_get("/p/{token}/go", go)
     app.router.add_get("/p/{token}/event.ics", event_ics)
     app.router.add_get(r"/p/{token}/photo/{photo_id:\d{1,18}}.jpg", photo)

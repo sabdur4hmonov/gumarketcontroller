@@ -311,4 +311,55 @@
         });
     });
   }
+
+  /* --- wishes wall ------------------------------------------------------ */
+
+  var wishForm = byId("wish-form");
+  if (wishForm) {
+    var wishError = byId("wish-error");
+    var wishDone = byId("wish-done");
+    var wishList = byId("wish-list");
+    wishForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      var name = (byId("wish-name").value || "").trim().slice(0, 40);
+      var text = (byId("wish-text").value || "").trim().slice(0, 300);
+      if (!name || !text) {
+        wishError.textContent = wishForm.getAttribute("data-missing");
+        wishError.hidden = false;
+        return;
+      }
+      wishError.hidden = true;
+      var button = wishForm.querySelector("button[type=submit]");
+      button.disabled = true;
+      post(wishForm.getAttribute("data-post"), { name: name, text: text })
+        .then(function (response) {
+          if (!response.ok) throw new Error(String(response.status));
+          return response.json();
+        })
+        .then(function (saved) {
+          // As stored (cleaned and capped by the server), and as TEXT only.
+          var item = doc.createElement("li");
+          item.className = "wish";
+          var body = doc.createElement("p");
+          body.className = "wish-text";
+          body.textContent = saved.text;
+          var author = doc.createElement("p");
+          author.className = "wish-author";
+          author.textContent = saved.name;
+          item.appendChild(body);
+          item.appendChild(author);
+          var empty = wishList.querySelector(".wish-empty");
+          if (empty) empty.remove();
+          wishList.insertBefore(item, wishList.firstChild);
+          wishForm.hidden = true;
+          wishDone.textContent = wishForm.getAttribute("data-thanks");
+          wishDone.hidden = false;
+        })
+        .catch(function () {
+          button.disabled = false;
+          wishError.textContent = wishForm.getAttribute("data-failed");
+          wishError.hidden = false;
+        });
+    });
+  }
 })();

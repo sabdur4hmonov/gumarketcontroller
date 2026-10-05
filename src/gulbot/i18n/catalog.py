@@ -1188,6 +1188,29 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         ),
         "ru": ("Каждый пункт — с новой строки, со временем: «18:00 Встреча гостей». До 8 строк."),
     },
+    # --- the wishes wall (CP17) ---------------------------------------------
+    "ibtn.pages.f_wishes": {
+        "uz": "💌 Tilaklar: {state}",
+        "ru": "💌 Пожелания: {state}",
+    },
+    "ibtn.pages.f_wishes_list": {
+        "uz": "📖 Tilaklarni ko'rish",
+        "ru": "📖 Смотреть пожелания",
+    },
+    "pages.wishes_list": {
+        "uz": ("💌 Mehmonlar tilaklari (eng yangilari). 🙈 — sahifadan yashirish, 👁 — qaytarish."),
+        "ru": "💌 Пожелания гостей (самые новые). 🙈 — скрыть со страницы, 👁 — вернуть.",
+    },
+    "pages.wishes_none": {
+        "uz": (
+            "💌 Hali tilaklar yo'q. «Tilaklar» yoqilgan bo'lsa, mehmonlar "
+            "sahifada tilak qoldira oladi."
+        ),
+        "ru": (
+            "💌 Пожеланий пока нет. Если «Пожелания» включены, гости "
+            "смогут оставить их на странице."
+        ),
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1799,6 +1822,16 @@ _EN["pages.ask_colors"] = "🎨 Pick the dress-code colours (up to {max}), then 
 _EN["pages.colors_max"] = "You can pick up to {max} colours."
 _EN["pages.edit_program_hint"] = (
     "One item per line, with its time: «18:00 Guests arrive». Up to 8 lines."
+)
+
+# the wishes wall (CP17).
+_EN["ibtn.pages.f_wishes"] = "💌 Wishes: {state}"
+_EN["ibtn.pages.f_wishes_list"] = "📖 Read the wishes"
+_EN["pages.wishes_list"] = (
+    "💌 Your guests' wishes (newest first). 🙈 hides one from the page, 👁 brings it back."
+)
+_EN["pages.wishes_none"] = (
+    "💌 No wishes yet. With «Wishes» switched on, guests can leave them on the page."
 )
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}

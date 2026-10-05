@@ -111,6 +111,26 @@
   </section>
   {%- endif %}
 
+  {%- if v.wishes_on %}
+  <section class="wishes" aria-labelledby="wishes-title">
+    <h2 id="wishes-title" class="venue-label">{{ v.s.wishes_title }}</h2>
+    <form id="wish-form" data-post="{{ v.wish_url }}" data-thanks="{{ v.s.wish_thanks }}" data-failed="{{ v.s.wish_failed }}" data-missing="{{ v.s.wish_missing }}" novalidate>
+      <label class="field">{{ v.s.wish_name }}<input id="wish-name" name="name" maxlength="40" autocomplete="name"></label>
+      <label class="field">{{ v.s.wish_text }}<textarea id="wish-text" name="text" maxlength="300" rows="3"></textarea></label>
+      <p class="form-error" id="wish-error" hidden></p>
+      <button class="btn btn-yes" type="submit">{{ v.s.wish_send }}</button>
+    </form>
+    <p class="rsvp-done" id="wish-done" hidden></p>
+    <ul class="wish-list" id="wish-list" data-empty="{{ v.s.wishes_empty }}">
+      {%- for w in v.wishes %}
+      <li class="wish"><p class="wish-text">{{ w.body }}</p><p class="wish-author">{{ w.author }}</p></li>
+      {%- else %}
+      <li class="wish wish-empty">{{ v.s.wishes_empty }}</li>
+      {%- endfor %}
+    </ul>
+  </section>
+  {%- endif %}
+
   <p class="closing">{{ v.closing }}</p>
 
   {{ ornament(v.theme, bottom=True) }}

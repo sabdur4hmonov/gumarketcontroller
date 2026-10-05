@@ -59,6 +59,7 @@ from gulbot.models.share_page import (
     SharePagePhoto,
     SharePageReferral,
     SharePageRsvp,
+    SharePageWish,
 )
 from gulbot.models.shop import Shop
 from gulbot.web import sections
@@ -387,6 +388,7 @@ async def delete_page(
         return False
     await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page_id))
     await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id == page_id))
+    await session.execute(delete(SharePageWish).where(SharePageWish.page_id == page_id))
     await session.execute(
         update(SharePageRsvp)
         .where(SharePageRsvp.page_id == page_id, SharePageRsvp.shop_id == shop_id)
@@ -412,6 +414,7 @@ async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -
         )
         await session.execute(delete(SharePageOption).where(SharePageOption.page_id.in_(ids)))
         await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id.in_(ids)))
+        await session.execute(delete(SharePageWish).where(SharePageWish.page_id.in_(ids)))
     return len(ids)
 
 
@@ -979,6 +982,7 @@ EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
             "show_countdown",
             "show_gallery",
             "dress_colors",
+            "wishes_enabled",
             "template",
             "lang",
         }
@@ -1103,7 +1107,13 @@ async def update_page(
                 values[field] = sections.checked_colors(value)
             except ValueError:
                 raise EditRefused("invalid") from None
-        elif field in ("rsvp_enabled", "notify_creator", "show_countdown", "show_gallery"):
+        elif field in (
+            "rsvp_enabled",
+            "notify_creator",
+            "show_countdown",
+            "show_gallery",
+            "wishes_enabled",
+        ):
             if not isinstance(value, bool):
                 raise EditRefused("invalid")
             values[field] = value

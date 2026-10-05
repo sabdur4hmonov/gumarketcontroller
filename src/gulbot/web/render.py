@@ -306,6 +306,7 @@ def page_html(
     base: str,
     plan: Plan | None = None,
     photos: list[PhotoLink] | None = None,
+    wishes: list[Any] | None = None,
 ) -> str:
     """The live page. `base` is "/p/<token>", the root of its own endpoints."""
     if page.kind == PageKind.YESNO:
@@ -328,6 +329,9 @@ def page_html(
     framed = page.template == "foto" and bool(photos)
     view["photo_url"] = photos[0].url if framed else None
     view["gallery"] = (photos[1:] if framed else photos) if page.show_gallery else []
+    view["wishes_on"] = page.wishes_enabled
+    view["wishes"] = wishes or []
+    view["wish_url"] = f"{base}/wish"
     return render("invite.html", view)
 
 
