@@ -13,11 +13,13 @@ downstream of the tap is production code touching production services: the
 customer's replies really arrive in their DM, and the shop's card really arrives
 in the group.
 
-    python scripts/live_order.py --product 16
-    python scripts/live_order.py --product 16 --pin      # drop a pin instead
-    python scripts/live_order.py --cleanup ORDER_ID      # remove a probe order
+    python scripts/live_order.py --shop-id 1 --product 16
+    python scripts/live_order.py --shop-id 1 --product 16 --pin   # drop a pin instead
+    python scripts/live_order.py --shop-id 1 --cleanup ORDER_ID   # remove a probe order
 
-The token is read through Settings and never printed.
+`--shop-id` is required for every mode: the shop is named, never assumed (L1
+of AUDIT_MULTI_TENANT.md), every query is scoped to it, and its own bot
+speaks. No token is ever printed.
 """
 
 from __future__ import annotations
@@ -45,7 +47,8 @@ from gulbot.bot.callbacks import (  # noqa: E402
     OrderLocationCB,
     OrderStartCB,
 )
-from gulbot.bot.factory import build_bot, build_dispatcher  # noqa: E402
+from gulbot.bot.factory import build_dispatcher  # noqa: E402
+from gulbot.bot.registry import registry_for  # noqa: E402
 from gulbot.config import get_settings  # noqa: E402
 from gulbot.db.session import build_session_factory  # noqa: E402
 
@@ -62,18 +65,20 @@ def show(title: str) -> None:
     print(f"\n{'-' * 68}\n{title}\n{'-' * 68}")
 
 
-def dump_state(order_id: int | None = None) -> None:
+def dump_state(shop_id: int, order_id: int | None = None) -> None:
     with psycopg.connect(dsn(), autocommit=True) as conn:
         orders = conn.execute(
             "SELECT id, status, product_id, product_name_snapshot, price_uzs_snapshot, "
             " delivery_date, delivery_hour, delivery_location_text, delivery_location_lat, "
-            " delivery_location_lon, landmark FROM orders ORDER BY id"
+            " delivery_location_lon, landmark FROM orders WHERE shop_id = %s ORDER BY id",
+            (shop_id,),
         ).fetchall()
         for row in orders:
             print("  order  :", row)
         pings = conn.execute(
             "SELECT id, order_id, ping_number, state, attempts, due_at_utc, sent_at "
-            "FROM order_reminders ORDER BY id"
+            "FROM order_reminders WHERE shop_id = %s ORDER BY id",
+            (shop_id,),
         ).fetchall()
         for row in pings:
             print("  ping   :", row)
@@ -81,16 +86,20 @@ def dump_state(order_id: int | None = None) -> None:
             print("  (no orders)")
 
 
-async def place(product_id: int, *, pin: bool) -> int | None:
+async def place(shop_id: int, product_id: int, *, pin: bool) -> int | None:
     settings = get_settings()
     with psycopg.connect(dsn(), autocommit=True) as conn:
         customer = conn.execute(
-            "SELECT id, telegram_user_id FROM customers WHERE shop_id = 1 ORDER BY id LIMIT 1"
+            "SELECT id, telegram_user_id FROM customers WHERE shop_id = %s ORDER BY id LIMIT 1",
+            (shop_id,),
         ).fetchone()
-        group = conn.execute("SELECT group_chat_id FROM shops WHERE id = 1").fetchone()[0]
+        group = conn.execute(
+            "SELECT group_chat_id FROM shops WHERE id = %s", (shop_id,)
+        ).fetchone()[0]
         product = conn.execute(
-            "SELECT id, name, price_uzs FROM products WHERE id = %s AND finalized_at IS NOT NULL",
-            (product_id,),
+            "SELECT id, name, price_uzs FROM products "
+            "WHERE id = %s AND shop_id = %s AND finalized_at IS NOT NULL",
+            (product_id, shop_id),
         ).fetchone()
     if customer is None or product is None:
         print("no customer, or the product is not a finalized channel row")
@@ -100,13 +109,16 @@ async def place(product_id: int, *, pin: bool) -> int | None:
     print(f"product   : id={product[0]} name={product[1]!r} price_uzs={product[2]}")
     print(f"group     : {group}")
 
-    bot = build_bot()
+    factory = build_session_factory(settings.postgres_db)
+    async with factory() as session:
+        registry = await registry_for(session, shop_ids=[shop_id])
+    bot = registry.bot_for(shop_id)
     me = await bot.get_me()
     print(f"bot       : @{me.username}")
 
     dispatcher = build_dispatcher(
-        session_factory=build_session_factory(settings.postgres_db),
-        shop_id=1,
+        session_factory=factory,
+        shop_id=shop_id,
         storage=MemoryStorage(),
     )
 
@@ -158,22 +170,22 @@ async def place(product_id: int, *, pin: bool) -> int | None:
         await say("Ko'k eshik, dorixona yonida")
 
         show("3. NOTHING is in `orders` yet -- the confirmation has not been tapped")
-        dump_state()
+        dump_state(shop_id)
 
         show("4. submit")
         await tap(OrderConfirmCB(action="submit").pack(), "Ha, tasdiqlayman")
 
         show("5. after submit: the order, its pings, and the announcement's fate")
-        dump_state()
+        dump_state(shop_id)
     finally:
-        await bot.session.close()
+        await registry.close()
 
     with psycopg.connect(dsn(), autocommit=True) as conn:
-        row = conn.execute("SELECT max(id) FROM orders").fetchone()
+        row = conn.execute("SELECT max(id) FROM orders WHERE shop_id = %s", (shop_id,)).fetchone()
     return None if row is None else row[0]
 
 
-def seed_delivery_ping(order_id: int, *, seconds: int) -> None:
+def seed_delivery_ping(shop_id: int, order_id: int, *, seconds: int) -> None:
     """Make a DELIVERY reminder (ping 1) due almost immediately.
 
     Deliberately ping 1, not another 0: the two take different branches in the
@@ -181,46 +193,59 @@ def seed_delivery_ping(order_id: int, *, seconds: int) -> None:
     ping's own due time, so this reports whatever interval it is given.
     """
     with psycopg.connect(dsn(), autocommit=True) as conn:
+        # The composite FK (order_id, shop_id) refuses another shop's order.
         conn.execute(
             "INSERT INTO order_reminders (shop_id, order_id, ping_number, due_at_utc) "
-            "VALUES (1, %s, 1, %s) "
+            "VALUES (%s, %s, 1, %s) "
             "ON CONFLICT (order_id, ping_number) DO UPDATE "
             "SET due_at_utc = EXCLUDED.due_at_utc, state = 'pending', attempts = 0, "
             "    claimed_at = NULL, sent_at = NULL",
-            (order_id, datetime.now(UTC) + timedelta(seconds=seconds)),
+            (shop_id, order_id, datetime.now(UTC) + timedelta(seconds=seconds)),
         )
     print(f"ping 1 for order {order_id} is due in {seconds}s")
 
 
-def cleanup(order_id: int) -> None:
+def cleanup(shop_id: int, order_id: int) -> None:
     with psycopg.connect(dsn(), autocommit=True) as conn:
-        conn.execute("DELETE FROM order_reminders WHERE order_id = %s", (order_id,))
-        conn.execute("DELETE FROM orders WHERE id = %s", (order_id,))
-    print(f"removed probe order {order_id}")
+        conn.execute(
+            "DELETE FROM order_reminders WHERE order_id = %s AND shop_id = %s", (order_id, shop_id)
+        )
+        deleted = conn.execute(
+            "DELETE FROM orders WHERE id = %s AND shop_id = %s RETURNING id", (order_id, shop_id)
+        ).fetchone()
+    print(
+        f"removed probe order {order_id}" if deleted else f"no order {order_id} in shop {shop_id}"
+    )
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser()
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--shop-id", type=int, required=True, help="the shop to act as")
     parser.add_argument("--product", type=int, default=None)
     parser.add_argument("--pin", action="store_true")
     parser.add_argument("--seed-ping", type=int, default=None, metavar="ORDER_ID")
     parser.add_argument("--in-seconds", type=int, default=20)
     parser.add_argument("--cleanup", type=int, default=None, metavar="ORDER_ID")
     parser.add_argument("--state", action="store_true")
+    return parser
+
+
+def main() -> int:
+    parser = build_parser()
     args = parser.parse_args()
 
     if args.cleanup is not None:
-        cleanup(args.cleanup)
+        cleanup(args.shop_id, args.cleanup)
         return 0
     if args.seed_ping is not None:
-        seed_delivery_ping(args.seed_ping, seconds=args.in_seconds)
+        seed_delivery_ping(args.shop_id, args.seed_ping, seconds=args.in_seconds)
         return 0
     if args.state:
-        dump_state()
+        dump_state(args.shop_id)
         return 0
     if args.product is None:
         parser.error("--product is required")
-    order_id = asyncio.run(place(args.product, pin=args.pin))
+    order_id = asyncio.run(place(args.shop_id, args.product, pin=args.pin))
     print(f"\norder id: {order_id}")
     return 0
 

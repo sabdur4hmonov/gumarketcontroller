@@ -14,9 +14,12 @@ Telegram rejects an id it never minted. Everything downstream of the tap is
 production code: the same handler, the same compare-and-swap, the same edit,
 the same notification.
 
-    python scripts/live_confirm.py --customer-tg 123456789 --confirm
-    python scripts/live_confirm.py --customer-tg 123456789 --reject "gul tugadi"
-    python scripts/live_confirm.py --cleanup ORDER_ID
+    python scripts/live_confirm.py --shop-id 1 --customer-tg 123456789 --confirm
+    python scripts/live_confirm.py --shop-id 1 --customer-tg 123456789 --reject "gul tugadi"
+    python scripts/live_confirm.py --shop-id 1 --cleanup ORDER_ID
+
+`--shop-id` is required: the shop is named, never "the first one" (L1 of
+AUDIT_MULTI_TENANT.md), and its own bot posts the card and makes the edits.
 
 THE CUSTOMER YOU NAME WILL RECEIVE A REAL MESSAGE. Pass your own Telegram id.
 
@@ -48,7 +51,8 @@ from aiogram.types import (  # noqa: E402
 )
 
 from gulbot.bot.callbacks import OrderAdminCB  # noqa: E402
-from gulbot.bot.factory import build_bot, build_dispatcher  # noqa: E402
+from gulbot.bot.factory import build_dispatcher  # noqa: E402
+from gulbot.bot.registry import registry_for  # noqa: E402
 from gulbot.config import get_settings  # noqa: E402
 from gulbot.db.session import build_session_factory  # noqa: E402
 from gulbot.sending.order_pings import run_order_ping_tick  # noqa: E402
@@ -97,12 +101,15 @@ def ledger(order_id: int) -> list[tuple]:
         ).fetchall()
 
 
-def make_probe_order(customer_tg: int) -> tuple[int, int, int]:
+def make_probe_order(shop_id: int, customer_tg: int) -> tuple[int, int, int]:
     """A real order for a real customer, marked so cleanup can find it."""
     with psycopg.connect(dsn(), autocommit=True) as conn:
-        shop_id, group_chat_id = conn.execute(
-            "SELECT id, group_chat_id FROM shops ORDER BY id LIMIT 1"
+        found_shop = conn.execute(
+            "SELECT group_chat_id FROM shops WHERE id = %s", (shop_id,)
         ).fetchone()
+        if found_shop is None:
+            raise SystemExit(f"no shop {shop_id}")
+        group_chat_id = found_shop[0]
         if group_chat_id is None:
             raise SystemExit("shop has no group_chat_id; run scripts/verify_group.py first")
 
@@ -262,9 +269,11 @@ async def run(args: argparse.Namespace) -> None:
 
     CallbackQuery.answer = no_op_answer  # type: ignore[method-assign]
 
-    order_id, shop_id, group_id = make_probe_order(args.customer_tg)
-    bot = build_bot()
+    order_id, shop_id, group_id = make_probe_order(args.shop_id, args.customer_tg)
     session_factory = build_session_factory()
+    async with session_factory() as session:
+        registry = await registry_for(session, shop_ids=[shop_id])
+    bot = registry.bot_for(shop_id)
 
     show("1. posting the card to the real group")
     transport = RecordingTransport(TelegramTransport(bot))
@@ -329,35 +338,44 @@ async def run(args: argparse.Namespace) -> None:
     print(f"   status_changed_at {changed_at}")
     print(f"   pings             {ping_states(order_id)}")
     print(f"   message_log       {ledger(order_id)}")
-    print(f"\n   cleanup: python scripts/live_confirm.py --cleanup {order_id}")
+    print(f"\n   cleanup: python scripts/live_confirm.py --shop-id {shop_id} --cleanup {order_id}")
 
-    await bot.session.close()
+    await registry.close()
 
 
-def cleanup(order_id: int) -> None:
+def cleanup(shop_id: int, order_id: int) -> None:
     with psycopg.connect(dsn(), autocommit=True) as conn:
         conn.execute(
             "DELETE FROM message_log WHERE transition_key LIKE %s", (f"order:{order_id}:%",)
         )
-        conn.execute("DELETE FROM order_reminders WHERE order_id = %s", (order_id,))
+        conn.execute(
+            "DELETE FROM order_reminders WHERE order_id = %s AND shop_id = %s", (order_id, shop_id)
+        )
         deleted = conn.execute(
-            "DELETE FROM orders WHERE id = %s AND submit_token LIKE %s RETURNING id",
-            (order_id, f"{PROBE_TOKEN}%"),
+            "DELETE FROM orders WHERE id = %s AND shop_id = %s AND submit_token LIKE %s "
+            "RETURNING id",
+            (order_id, shop_id, f"{PROBE_TOKEN}%"),
         ).fetchone()
     print(f"removed probe order {order_id}" if deleted else f"order {order_id} is not a probe")
 
 
-def main() -> None:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--shop-id", type=int, required=True, help="the shop to act as")
     parser.add_argument("--customer-tg", type=int, help="who receives the real message")
     parser.add_argument("--admin-tg", type=int, help="who taps (defaults to --customer-tg)")
     parser.add_argument("--confirm", action="store_true")
     parser.add_argument("--reject", metavar="REASON")
     parser.add_argument("--cleanup", type=int, metavar="ORDER_ID")
+    return parser
+
+
+def main() -> None:
+    parser = build_parser()
     args = parser.parse_args()
 
     if args.cleanup:
-        cleanup(args.cleanup)
+        cleanup(args.shop_id, args.cleanup)
         return
     if not args.customer_tg:
         parser.error("--customer-tg is required; that account receives a real message")

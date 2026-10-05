@@ -304,7 +304,7 @@ starts polling without a restart. One bot is never polled for two shops.
 
 Still open from the audit, recorded rather than forgotten:
 
-- **L1** (the `live_*` scripts), **L2 and L3.**
+- **L2 and L3.**
 
 ## What CP-MT2 guarantees
 
@@ -413,6 +413,23 @@ ids now reach nothing. Mutations: 9/9 caught, one per restored unscoped query.
 - *Fence scope: the six audited modules, not all of `services/`.* The CP16/CP17
   share-page services were not part of the audit and are outside this branch's
   remit; widening the fence to them is a follow-up for after CP17 merges.
+
+**Every dev and ops tool names its shop (L1).** `force_reminder` needs
+`--shop-id` to send and looks the customer, the date and the person up inside
+that shop; its `--list` filters in SQL. `live_browse`, `live_order` and
+`live_confirm` require `--shop-id` for every mode, scope every query by it, and
+speak through that shop's own bot from the registry -- before, they hardcoded
+shop 1 or took "the first shop", and spoke as the process `BOT_TOKEN`. A fence
+(`tests/test_tools_name_their_shop.py`) reads every script and the CLI for a
+literal shop id in SQL or a keyword, "the first shop" by position, and
+`build_bot()`; it was red on the three scripts. Mutations: 6/6 caught.
+
+- *Not touched:* `scripts/live_pages.py` is CP16/CP17 share-page code; it
+  already took `--shop-id` and the registry, and the fence covers it so it
+  stays that way. `verify_group.py` was fixed by C4 and is fenced too.
+- *Decision: `--shop-id` is required even for `--state` and `--cleanup`.* A
+  cleanup scoped to one shop cannot delete another shop's order by a mistyped
+  id, and a required flag cannot be forgotten on the dangerous path only.
 
 ## What CP16 guarantees
 

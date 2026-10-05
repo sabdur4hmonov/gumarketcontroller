@@ -8,10 +8,12 @@ Same one synthetic part as `live_order.py`: the taps. A CallbackQuery needs an
 id Telegram issued, so the Update objects are built here and
 `CallbackQuery.answer` is stubbed. Everything downstream is production code.
 
-    python scripts/live_browse.py            # list, page, and view one bouquet
-    python scripts/live_browse.py --product 22
+    python scripts/live_browse.py --shop-id 1               # list, page, view one
+    python scripts/live_browse.py --shop-id 1 --product 22
 
-The token is read through Settings and never printed.
+`--shop-id` is required: the shop is named, never assumed (L1 of
+AUDIT_MULTI_TENANT.md), and its own bot speaks -- the registry's stored token,
+or the pilot's logged fallback. No token is ever printed.
 """
 
 from __future__ import annotations
@@ -32,7 +34,8 @@ from aiogram.types import CallbackQuery  # noqa: E402
 from tests.bot_harness import callback_update, text_update  # noqa: E402
 
 from gulbot.bot.callbacks import BrowsePageCB, BrowsePickCB  # noqa: E402
-from gulbot.bot.factory import build_bot, build_dispatcher  # noqa: E402
+from gulbot.bot.factory import build_dispatcher  # noqa: E402
+from gulbot.bot.registry import registry_for  # noqa: E402
 from gulbot.config import get_settings  # noqa: E402
 from gulbot.db.session import build_session_factory  # noqa: E402
 from gulbot.i18n.catalog import CATALOG  # noqa: E402
@@ -43,7 +46,7 @@ def show(title: str) -> None:
     print(f"\n{'-' * 68}\n{title}\n{'-' * 68}")
 
 
-async def main(product_id: int | None) -> None:
+async def main(shop_id: int, product_id: int | None) -> None:
     settings = get_settings()
     dsn = (
         f"host={settings.postgres_host} port={settings.postgres_port} "
@@ -51,23 +54,29 @@ async def main(product_id: int | None) -> None:
         f"dbname={settings.postgres_db}"
     )
     with psycopg.connect(dsn, autocommit=True) as conn:
-        user = conn.execute(
-            "SELECT telegram_user_id FROM customers WHERE shop_id = 1 ORDER BY id LIMIT 1"
-        ).fetchone()[0]
+        row = conn.execute(
+            "SELECT telegram_user_id FROM customers WHERE shop_id = %s ORDER BY id LIMIT 1",
+            (shop_id,),
+        ).fetchone()
+    if row is None:
+        raise SystemExit(f"shop {shop_id} has no customer to browse as")
+    user = row[0]
 
     factory = build_session_factory(settings.postgres_db)
     async with factory() as session:
-        listing = await list_bouquets(session, shop_id=1)
+        listing = await list_bouquets(session, shop_id=shop_id)
         print(f"catalogue page 1: {len(listing.bouquets)} bouquet(s), more={listing.has_more}")
         for b in listing.bouquets:
             print(f"   id={b.product_id:3} {b.name[:46]!r} price={b.price_uzs}")
 
-    bot = build_bot()
+    async with factory() as session:
+        registry = await registry_for(session, shop_ids=[shop_id])
+    bot = registry.bot_for(shop_id)
     me = await bot.get_me()
     print(f"\nbot      : @{me.username}")
     print(f"customer : {user}")
 
-    dispatcher = build_dispatcher(session_factory=factory, shop_id=1, storage=MemoryStorage())
+    dispatcher = build_dispatcher(session_factory=factory, shop_id=shop_id, storage=MemoryStorage())
 
     async def no_op_answer(self: CallbackQuery, *args: Any, **kwargs: Any) -> bool:
         return True
@@ -103,7 +112,7 @@ async def main(product_id: int | None) -> None:
         chosen = product_id
         if chosen is None:
             async with factory() as session:
-                page = await list_bouquets(session, shop_id=1)
+                page = await list_bouquets(session, shop_id=shop_id)
             chosen = page.bouquets[0].product_id
 
         show(f"3. choosing bouquet {chosen} -- the shop's own post, verbatim")
@@ -114,11 +123,16 @@ async def main(product_id: int | None) -> None:
         )
         print("   sent")
     finally:
-        await bot.session.close()
+        await registry.close()
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--shop-id", type=int, required=True, help="the shop to browse")
+    parser.add_argument("--product", type=int, default=None)
+    return parser
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--product", type=int, default=None)
-    args = parser.parse_args()
-    asyncio.run(main(args.product))
+    args = build_parser().parse_args()
+    asyncio.run(main(args.shop_id, args.product))

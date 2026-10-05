@@ -16,7 +16,8 @@
 > | H4: global 28 msg/s limiter | **fixed** (CP-MT2): the global and per-chat buckets are per shop's bot |
 > | M3: admin chat gate does not check the shop's group | **fixed** (CP-MT2): the gate lets in only `shops.group_chat_id` |
 > | M1: derived-scope queries | **fixed** (CP-MT2): each names its shop in the query; a structural fence keeps it so |
-> | L1 (scripts other than verify_group), L2, L3 | **open** |
+> | L1: dev and ops tools assume shop 1 | **fixed** (CP-MT2): every tool requires `--shop-id`, scopes by it and speaks as that shop's bot |
+> | L2, L3 | **open** |
 
 **Target:** convert Gulbot from one flower shop to ~1000 independent shops, each
 with its own bot token, catalogue channel and admin group.

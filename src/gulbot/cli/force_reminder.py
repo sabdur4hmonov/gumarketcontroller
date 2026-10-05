@@ -1,7 +1,13 @@
 """DEV/DEMO TOOL: force-send one reminder right now, bypassing the schedule.
 
     .\\.venv\\Scripts\\python.exe -m gulbot.cli.force_reminder --list
-    .\\.venv\\Scripts\\python.exe -m gulbot.cli.force_reminder --customer-id=3 --occasion-id=7
+    .\\.venv\\Scripts\\python.exe -m gulbot.cli.force_reminder \\
+        --shop-id=1 --customer-id=3 --occasion-id=7
+
+THE SHOP IS NAMED, NOT INFERRED (L1 of AUDIT_MULTI_TENANT.md). Sending needs
+`--shop-id`, and the customer, the date and the person are each looked up
+inside that shop -- so a customer id from another shop is refused rather than
+sent to as whichever shop it happens to belong to.
 
 NOT the production send path, and never imported by it. It builds a transient
 `DueGroup` from one real customer + occasion, then calls the exact same
@@ -68,13 +74,14 @@ def _next_occurrence(month: int, day: int, *, today: date) -> date:
 
 async def _list(shop_id: int | None, customer_id: int | None) -> None:
     async with task_session_factory() as factory, factory() as session:
-        shops = list(await session.scalars(select(Shop)))
+        shop_stmt = select(Shop).order_by(Shop.id)
+        if shop_id is not None:
+            shop_stmt = shop_stmt.where(Shop.id == shop_id)
+        shops = list(await session.scalars(shop_stmt))
         if not shops:
-            print("no shops in this database")
+            print("no shops in this database" if shop_id is None else f"no shop id={shop_id}")
             return
         for shop in shops:
-            if shop_id is not None and shop.id != shop_id:
-                continue
             print(f"shop id={shop.id} {shop.name!r}  reminder_offsets={shop.reminder_offsets}")
             customer_stmt = select(Customer).where(Customer.shop_id == shop.id)
             if customer_id is not None:
@@ -98,7 +105,11 @@ async def _list(shop_id: int | None, customer_id: int | None) -> None:
                 if not occasions:
                     print("      (no active occasions)")
                 for occasion in occasions:
-                    recipient = await session.get(Recipient, occasion.recipient_id)
+                    recipient = await session.scalar(
+                        select(Recipient).where(
+                            Recipient.id == occasion.recipient_id, Recipient.shop_id == shop.id
+                        )
+                    )
                     label = recipient.label if recipient else occasion.label
                     print(
                         f"      occasion id={occasion.id}  {label!r}  kind={occasion.kind}"
@@ -107,17 +118,31 @@ async def _list(shop_id: int | None, customer_id: int | None) -> None:
 
 
 async def _build_group(
-    session: AsyncSession, *, customer_id: int, occasion_id: int, offset_days: int
+    session: AsyncSession, *, shop_id: int, customer_id: int, occasion_id: int, offset_days: int
 ) -> DueGroup:
-    customer = await session.get(Customer, customer_id)
+    """Every lookup inside `shop_id`. See the module docstring."""
+    customer = await session.scalar(
+        select(Customer).where(Customer.id == customer_id, Customer.shop_id == shop_id)
+    )
     if customer is None:
-        raise SystemExit(f"no customer with id={customer_id}")
+        raise SystemExit(f"no customer id={customer_id} in shop {shop_id}")
 
-    occasion = await session.get(Occasion, occasion_id)
-    if occasion is None or occasion.customer_id != customer.id:
-        raise SystemExit(f"occasion id={occasion_id} does not belong to customer id={customer_id}")
+    occasion = await session.scalar(
+        select(Occasion).where(
+            Occasion.id == occasion_id,
+            Occasion.shop_id == shop_id,
+            Occasion.customer_id == customer.id,
+        )
+    )
+    if occasion is None:
+        raise SystemExit(
+            f"occasion id={occasion_id} does not belong to customer id={customer_id} "
+            f"in shop {shop_id}"
+        )
 
-    recipient = await session.get(Recipient, occasion.recipient_id)
+    recipient = await session.scalar(
+        select(Recipient).where(Recipient.id == occasion.recipient_id, Recipient.shop_id == shop_id)
+    )
     if recipient is None:  # pragma: no cover - FK makes this unreachable
         raise SystemExit(f"occasion {occasion_id} has no recipient row")
 
@@ -158,7 +183,7 @@ async def _build_group(
 
 
 async def _render(
-    customer_id: int, occasion_id: int, offset_days: int
+    shop_id: int, customer_id: int, occasion_id: int, offset_days: int
 ) -> tuple[str, Attachment | None, int, int]:
     """Everything that only READS: build the group, render, attach a bouquet.
 
@@ -166,7 +191,11 @@ async def _render(
     """
     async with task_session_factory() as factory, factory() as session:
         group = await _build_group(
-            session, customer_id=customer_id, occasion_id=occasion_id, offset_days=offset_days
+            session,
+            shop_id=shop_id,
+            customer_id=customer_id,
+            occasion_id=occasion_id,
+            offset_days=offset_days,
         )
         attachment = await attach_bouquet(session, group, render=render_reminder)
     return render_reminder(group), attachment, group.telegram_user_id, group.shop_id
@@ -219,7 +248,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--list", action="store_true", help="print shops, customers and their active occasions"
     )
-    parser.add_argument("--shop-id", type=int, default=None, help="with --list: narrow to one shop")
+    parser.add_argument(
+        "--shop-id",
+        type=int,
+        default=None,
+        help="the shop to send as (required to send); with --list, narrows to one shop",
+    )
     parser.add_argument("--customer-id", type=int, default=None)
     parser.add_argument("--occasion-id", type=int, default=None)
     parser.add_argument(
@@ -236,8 +270,8 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     args = parser.parse_args(argv)
 
-    if not args.list and (args.customer_id is None or args.occasion_id is None):
-        parser.error("--customer-id and --occasion-id are required (or use --list)")
+    if not args.list and None in (args.shop_id, args.customer_id, args.occasion_id):
+        parser.error("--shop-id, --customer-id and --occasion-id are required (or use --list)")
     return args
 
 
@@ -262,7 +296,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     text, attachment, chat_id, shop_id = asyncio.run(
-        _render(args.customer_id, args.occasion_id, args.offset_days)
+        _render(args.shop_id, args.customer_id, args.occasion_id, args.offset_days)
     )
 
     print("--- reminder text ---------------------------------------------------")
