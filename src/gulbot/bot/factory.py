@@ -139,7 +139,9 @@ def build_dispatcher(
     # Outer: run once per update, before routing. The chat gate is FIRST so a
     # message in the shop's admin group opens no session and creates no
     # customer -- see ChatGateMiddleware for what it used to do instead.
-    dispatcher.update.outer_middleware(ChatGateMiddleware())
+    dispatcher.update.outer_middleware(
+        ChatGateMiddleware(shop_id=shop_id, session_factory=session_factory)
+    )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))
 

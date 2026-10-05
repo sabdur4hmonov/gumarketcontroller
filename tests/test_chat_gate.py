@@ -110,6 +110,15 @@ async def harness(db: AsyncConnection) -> Harness:
     return Harness(dispatcher, bot, recorder, db, shop)
 
 
+def _gate(harness: Harness) -> ChatGateMiddleware:
+    """The real gate for the harness's shop. These tests exercise its SHAPE
+    checks through `_is_shop_action`; the chat check (M3) is in
+    test_chat_gate_own_group.py."""
+    return ChatGateMiddleware(
+        shop_id=harness.shop, session_factory=bound_session_factory(harness.db)
+    )
+
+
 # --- what must be ignored --------------------------------------------------
 
 
@@ -217,7 +226,7 @@ def group_tap(data: str, *, user_id: int = ADMIN_ID, update_id: int = 1) -> Upda
 async def test_an_order_card_tap_is_let_through(harness: Harness) -> None:
     """The exception, as its own claim, so a later change to the gate cannot
     quietly close it again."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     tap = group_tap(OrderAdminCB(action="confirm", order_id=7).pack())
     assert await gate._is_shop_action(tap, {}) is True
 
@@ -226,7 +235,7 @@ async def test_a_customer_callback_from_a_group_is_still_dropped(harness: Harnes
     """NOT "any callback from a group". A customer-facing button forwarded into
     the group would otherwise be answered there -- the same class of bug the
     gate exists to close, arriving through the hole opened for the shop."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     for payload in (
         OrderStartCB(product_id=1).pack(),
         BrowsePickCB(product_id=1).pack(),
@@ -244,7 +253,7 @@ def test_the_gate_and_the_callback_factory_agree_on_the_prefix() -> None:
 
 async def test_a_rejection_reason_is_let_through(harness: Harness) -> None:
     """Gated on the TYPIST's own FSM state, not on the chat's."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     await context.set_state(AdminOrder.entering_reject_reason)
     reason = message_from("supergroup", "gul tugadi", chat_id=GROUP_ID)
@@ -254,7 +263,7 @@ async def test_a_rejection_reason_is_let_through(harness: Harness) -> None:
 async def test_a_group_message_with_no_reason_pending_is_refused(harness: Harness) -> None:
     """Guards the guard. Without the state check the exception would read "any
     message from a group", which is the original bug verbatim."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     chatter = message_from("supergroup", "salom", chat_id=GROUP_ID)
     assert await gate._is_shop_action(chatter, {"state": context}) is False
@@ -269,7 +278,7 @@ async def test_one_admin_typing_does_not_open_the_gate_for_another(harness: Harn
     USER_IN_CHAT keys by (chat, user) instead. In a private chat the two are
     identical -- chat_id IS the user id -- so no customer conversation changed.
     """
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     rejecting = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     await rejecting.set_state(AdminOrder.entering_reject_reason)
 
@@ -301,7 +310,7 @@ async def test_a_cancel_label_is_never_a_rejection_reason(harness: Harness, labe
     """Otherwise nav answers it -- with `main_menu_keyboard`, a CUSTOMER reply
     keyboard, posted into the shop's own admin group. That is the CP10c bug
     arriving through the door CP13 opened."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     await context.set_state(AdminOrder.entering_reject_reason)
     typed = message_from("supergroup", label, chat_id=GROUP_ID)
@@ -311,7 +320,7 @@ async def test_a_cancel_label_is_never_a_rejection_reason(harness: Harness, labe
 async def test_a_command_is_never_a_rejection_reason(harness: Harness) -> None:
     """Same reason, for onboarding's `/start`: it would return the language
     picker into the group, which is the ORIGINAL reported bug."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     await context.set_state(AdminOrder.entering_reject_reason)
     for command in ("/start", "/help"):
@@ -322,7 +331,7 @@ async def test_a_command_is_never_a_rejection_reason(harness: Harness) -> None:
 async def test_an_ordinary_reason_still_gets_through(harness: Harness) -> None:
     """Guards the guard. A gate that refused everything would pass both tests
     above and ship a Reject button that never finishes."""
-    gate = ChatGateMiddleware()
+    gate = _gate(harness)
     context = harness.dispatcher.fsm.get_context(harness.bot, GROUP_ID, ADMIN_ID)
     await context.set_state(AdminOrder.entering_reject_reason)
     typed = message_from("supergroup", "gul tugadi, uzr", chat_id=GROUP_ID)

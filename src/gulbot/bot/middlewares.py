@@ -17,11 +17,13 @@ from typing import Any
 from aiogram import BaseMiddleware
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Chat, TelegramObject, Update, User
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.bot.states import AdminOrder
 from gulbot.i18n import button_labels
 from gulbot.i18n.catalog import DEFAULT_LANGUAGE
+from gulbot.models.shop import Shop
 from gulbot.services.customers import get_or_create_customer
 
 #: Callback data prefix the shop's order-card buttons carry. The ONE thing
@@ -65,7 +67,18 @@ class ChatGateMiddleware(BaseMiddleware):
     Dropping the update here rather than filtering per router means a router
     added later cannot forget the rule, and means no database session is opened
     for traffic the bot has no business in.
+
+    THE SHOP'S OWN GROUP, not "a group" (M3 of AUDIT_MULTI_TENANT.md). The
+    exception below is for the shop acting on its own order card, so the chat
+    must be `shops.group_chat_id`. Until CP-MT2 only the shape of the update
+    was checked, and the order router's own chat check was the only thing
+    standing between a stranger's group and a handler -- a check every future
+    group-reachable handler would have had to remember.
     """
+
+    def __init__(self, *, shop_id: int, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self.shop_id = shop_id
+        self.session_factory = session_factory
 
     async def __call__(
         self,
@@ -78,9 +91,26 @@ class ChatGateMiddleware(BaseMiddleware):
         chat: Chat | None = data.get("event_chat")
         if chat is None or chat.type in SERVED_CHAT_TYPES:
             return await handler(event, data)
-        if chat.type in GROUP_CHAT_TYPES and await self._is_shop_action(event, data):
+        if (
+            chat.type in GROUP_CHAT_TYPES
+            and await self._is_shop_action(event, data)
+            and await self._is_the_shops_own_group(chat.id)
+        ):
             return await handler(event, data)
         return None
+
+    async def _is_the_shops_own_group(self, chat_id: int) -> bool:
+        """Is this group the one the shop's order cards are posted to?
+
+        Asked LAST, after the shape checks, so ordinary group chatter never
+        costs a query -- only an order-card tap or a pending rejection reason
+        does. A shop with no group lets no group in: NULL is "not set up", not
+        "any group". Own short session: this runs before DbSessionMiddleware,
+        and the update may yet be dropped.
+        """
+        async with self.session_factory() as session:
+            group = await session.scalar(select(Shop.group_chat_id).where(Shop.id == self.shop_id))
+        return group is not None and int(group) == chat_id
 
     async def _is_shop_action(self, event: TelegramObject, data: dict[str, Any]) -> bool:
         """The narrow exception: the shop acting on its own order card.

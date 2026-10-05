@@ -304,7 +304,7 @@ starts polling without a restart. One bot is never polled for two shops.
 
 Still open from the audit, recorded rather than forgotten:
 
-- **M1, M3, L1** (the `live_*` scripts), **L2 and L3.**
+- **M1, L1** (the `live_*` scripts), **L2 and L3.**
 
 ## What CP-MT2 guarantees
 
@@ -372,6 +372,22 @@ accepting any channel, a recorded channel not compared.
   service is the only writer, and the test fixtures that post to a channel
   (`test_indexer.py`, `test_chat_gate.py`, `test_indexer_concurrency.py`) now
   connect their shop to `CHANNEL_ID`, as an onboarded shop would be.
+
+**Only the shop's own group gets past the chat gate (M3).** The gate's
+exception -- an order-card tap, or a rejection reason from someone who just
+tapped Reject -- now also requires the chat to BE `shops.group_chat_id`.
+Before, it checked only the shape of the update, and a stranger's group got as
+far as `admin_orders`, whose own chat check was the only thing refusing it.
+That router check stays: two layers, each enough on its own. The lookup is
+asked last, after the cheap shape checks, so ordinary group chatter costs no
+query; a shop with no group lets no group in. Mutations: 3/3 caught
+(`tests/test_chat_gate_own_group.py`).
+
+- *Decision: `group_chat_id` directly, not `ping_targets`.* `admin_orders`
+  reads its chats back through `ping_targets`, which falls back to the
+  owners' private chats. For a GROUP update the owners can never match --
+  they are users, not groups -- so the two agree, and the gate does not log
+  `ping_targets`' owner-fallback warning on every tap.
 
 ## What CP16 guarantees
 

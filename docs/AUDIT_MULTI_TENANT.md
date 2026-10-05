@@ -14,7 +14,8 @@
 > | H5: one breaker across shops | **fixed** (CP-MT2): a breaker per shop; a failing shop's rows are handed back while the others send. A shop with no usable bot fails alone, as before |
 > | H3: `shops.channel_id` never read by the indexer | **fixed** (CP-MT2): a post or edit is indexed only from the shop's own `channel_id`; NULL indexes nothing (`DEPLOY.md` step 0c) |
 > | H4: global 28 msg/s limiter | **fixed** (CP-MT2): the global and per-chat buckets are per shop's bot |
-> | M1, M3, L1 (scripts other than verify_group), L2, L3 | **open** |
+> | M3: admin chat gate does not check the shop's group | **fixed** (CP-MT2): the gate lets in only `shops.group_chat_id` |
+> | M1, L1 (scripts other than verify_group), L2, L3 | **open** |
 
 **Target:** convert Gulbot from one flower shop to ~1000 independent shops, each
 with its own bot token, catalogue channel and admin group.
