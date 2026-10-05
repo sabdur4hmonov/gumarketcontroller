@@ -1235,6 +1235,39 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "🔏 Muhr harflari",
         "ru": "🔏 Буквы на печати",
     },
+    # --- music (CP17) -------------------------------------------------------
+    "ibtn.pages.f_music": {
+        "uz": "🎵 Musiqa: {state}",
+        "ru": "🎵 Музыка: {state}",
+    },
+    "ibtn.pages.music_none": {
+        "uz": "🔇 Musiqasiz",
+        "ru": "🔇 Без музыки",
+    },
+    "pages.ask_music": {
+        "uz": (
+            "🎵 Sahifa uchun kuy tanlang. U o'z-o'zidan chalinmaydi — "
+            "mehmon tugmani bosgandagina yangraydi. Kuylar Gulbot uchun "
+            "yozilgan, litsenziyasi ochiq."
+        ),
+        "ru": (
+            "🎵 Выберите мелодию для страницы. Она не играет сама — только "
+            "когда гость нажмёт кнопку. Мелодии написаны для Gulbot, "
+            "лицензия открытая."
+        ),
+    },
+    "pages.track_bahor": {
+        "uz": "Bahor",
+        "ru": "Весна",
+    },
+    "pages.track_oqshom": {
+        "uz": "Oqshom",
+        "ru": "Вечер",
+    },
+    "pages.track_tantana": {
+        "uz": "Tantana",
+        "ru": "Торжество",
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1866,6 +1899,18 @@ _EN["pages.ask_seal"] = (
 _EN["ibtn.pages.seal_skip"] = "⏭ Use the initials"
 _EN["pages.seal_invalid"] = "Letters and «&» only, up to {max}. For example: A&M"
 _EN["ibtn.pages.f_seal"] = "🔏 Seal letters"
+
+# music (CP17).
+_EN["ibtn.pages.f_music"] = "🎵 Music: {state}"
+_EN["ibtn.pages.music_none"] = "🔇 No music"
+_EN["pages.ask_music"] = (
+    "🎵 Pick a tune for the page. It never plays by itself — only "
+    "when a guest taps the button. The tunes were written for "
+    "Gulbot and are openly licensed."
+)
+_EN["pages.track_bahor"] = "Spring"
+_EN["pages.track_oqshom"] = "Evening"
+_EN["pages.track_tantana"] = "Celebration"
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

@@ -136,6 +136,7 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "program": {"uz": "Dastur", "ru": "Программа", "en": "Programme"},
     "contact": {"uz": "Aloqa uchun", "ru": "Контакт", "en": "Contact"},
     "gallery": {"uz": "Suratlar", "ru": "Фотографии", "en": "Photos"},
+    "music": {"uz": "Musiqa", "ru": "Музыка", "en": "Music"},
     "wishes_title": {"uz": "Tilaklar", "ru": "Пожелания", "en": "Wishes"},
     "wish_name": {"uz": "Ismingiz", "ru": "Ваше имя", "en": "Your name"},
     "wish_text": {"uz": "Tilagingiz", "ru": "Ваше пожелание", "en": "Your wish"},

@@ -86,6 +86,9 @@ PAGE_TEMPLATES: Final = (
 
 #: The language the PAGE is written in -- not the customer's bot language.
 PAGE_LANGUAGES: Final = ("uz", "uz_cyrl", "ru", "en")
+#: Our own tracks (static/js/music.js, licensed in static/music/LICENSE.md).
+#: A page may play one of these -- never anything a creator brings.
+MUSIC_TRACKS: Final = ("bahor", "oqshom", "tantana")
 
 #: Ready-made questions, plus the customer's own.
 QUESTION_PRESETS: Final = ("marry", "forgive", "date", "valentine", "together", "custom")
@@ -212,6 +215,8 @@ class SharePage(IdMixin, TimestampMixin, Base):
     #: The Konvert seal's monogram, as the creator wrote it ("A&M"). NULL: the
     #: couple's initials.
     seal_monogram: Mapped[str | None] = mapped_column(String(MONOGRAM_MAX), nullable=True)
+    #: One of MUSIC_TRACKS, or NULL: no music (the default).
+    music: Mapped[str | None] = mapped_column(String(16), nullable=True)
     #: The guest wishes wall (off until the creator switches it on).
     wishes_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
@@ -235,6 +240,9 @@ class SharePage(IdMixin, TimestampMixin, Base):
         ),
         CheckConstraint(f"template IN ({_sql_list(PAGE_TEMPLATES)})", name="template_known"),
         CheckConstraint(f"lang IN ({_sql_list(PAGE_LANGUAGES)})", name="lang_known"),
+        CheckConstraint(
+            f"music IS NULL OR music IN ({_sql_list(MUSIC_TRACKS)})", name="music_known"
+        ),
         CheckConstraint(
             f"question_preset IS NULL OR question_preset IN ({_sql_list(QUESTION_PRESETS)})",
             name="question_preset_known",

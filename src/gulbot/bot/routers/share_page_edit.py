@@ -32,6 +32,7 @@ from gulbot.bot.callbacks import (
     InviteHourCB,
     InviteMinuteCB,
     InviteMonthCB,
+    MusicCB,
     MyPageCB,
     PageLangCB,
     PageTemplateCB,
@@ -52,7 +53,7 @@ from gulbot.bot.routers.share_pages import _days, _months, _shop_today, _take_te
 from gulbot.bot.states import EditPage
 from gulbot.i18n import t
 from gulbot.models.customer import Customer
-from gulbot.models.share_page import PageKind, SharePage
+from gulbot.models.share_page import MUSIC_TRACKS, PageKind, SharePage
 from gulbot.services import share_pages
 from gulbot.services.share_pages import TEXT_FIELDS, EditRefused, effective_text
 from gulbot.utils.render import escape
@@ -143,6 +144,15 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
     rows.append(
         _field_button(lang, page.id, "template", "ibtn.pages.f_template")
         + _field_button(lang, page.id, "lang", "ibtn.pages.f_lang")
+    )
+    rows.append(
+        _field_button(
+            lang,
+            page.id,
+            "music",
+            "ibtn.pages.f_music",
+            state=t(f"pages.track_{page.music}", lang) if page.music else no,
+        )
     )
     if page.kind == PageKind.INVITE:
         rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_gallery"))
@@ -321,6 +331,9 @@ async def pick_field(
         await state.set_state(EditPage.entering_text)
         await target.answer("✍️", reply_markup=cancel_reply_keyboard(lang))
         await target.answer(prompt, reply_markup=_value_keyboard(lang, field))
+    elif field == "music":
+        await state.set_state(EditPage.choosing_music)
+        await target.answer(t("pages.ask_music", lang), reply_markup=music_keyboard(lang))
     elif field == "dress_colors":
         from gulbot.bot.routers.share_page_colors import start_color_edit
 
@@ -350,6 +363,42 @@ async def pick_field(
     elif field == "lang":
         await state.set_state(EditPage.choosing_lang)
         await target.answer(t("pages.choose_lang", lang), reply_markup=page_lang_keyboard())
+
+
+def music_keyboard(lang: str) -> InlineKeyboardMarkup:
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=f"🎵 {t(f'pages.track_{track}', lang)}",
+                callback_data=MusicCB(track=track).pack(),
+            )
+        ]
+        for track in MUSIC_TRACKS
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=t("ibtn.pages.music_none", lang), callback_data=MusicCB(track="none").pack()
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def pick_music(
+    callback: CallbackQuery,
+    callback_data: MusicCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+) -> None:
+    await callback.answer()
+    editing = await _editing(state)
+    if editing is None or editing[1] != "music":
+        return
+    track = None if callback_data.track == "none" else callback_data.track
+    await _save(_target(callback), state, session, customer, lang, editing[0], {"music": track})
 
 
 async def _editing(state: FSMContext) -> tuple[int, str] | None:
@@ -553,4 +602,5 @@ def build_share_page_edit_router() -> Router:
         edit_template, EditPage.choosing_template, PageTemplateCB.filter()
     )
     router.callback_query.register(edit_lang, EditPage.choosing_lang, PageLangCB.filter())
+    router.callback_query.register(pick_music, EditPage.choosing_music, MusicCB.filter())
     return router

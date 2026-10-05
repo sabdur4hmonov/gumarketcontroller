@@ -205,3 +205,5 @@ class EditPage(StatesGroup):
     sending_photo = State()
     #: CP17: the dress-code palette is open.
     choosing_colors = State()
+    #: CP17: the music picker is open.
+    choosing_music = State()

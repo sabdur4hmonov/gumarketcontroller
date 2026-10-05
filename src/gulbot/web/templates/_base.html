@@ -21,6 +21,9 @@
 <link rel="stylesheet" href="{{ static('css/theme-' ~ v.theme ~ '.css') }}">
 <noscript><link rel="stylesheet" href="{{ static('css/noscript.css') }}"></noscript>
 <script src="{{ static('js/page.js') }}" defer></script>
+{%- if v.music %}
+<script src="{{ static('js/music.js') }}" defer></script>
+{%- endif %}
 </head>
 <body class="theme-{{ v.theme }}{% if v.theme == 'konvert' %} has-envelope{% endif %}">
 {%- if v.theme == "konvert" %}
@@ -34,6 +37,9 @@
 {%- endif %}
 {%- if v.theme == "romantik" %}
 <div class="floaters" aria-hidden="true">{{ heart() }}{{ heart() }}{{ heart() }}{{ heart() }}{{ heart() }}</div>
+{%- endif %}
+{%- if v.music %}
+<button type="button" class="music" id="music" data-track="{{ v.music }}" aria-pressed="false" hidden><span aria-hidden="true">&#9835;</span> {{ v.s.music }}</button>
 {%- endif %}
 <main class="stage">
 {% block card %}{% endblock %}

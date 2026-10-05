@@ -18,7 +18,7 @@ from pathlib import Path
 
 import pytest
 
-from gulbot.models.share_page import PAGE_LANGUAGES
+from gulbot.models.share_page import MUSIC_TRACKS, PAGE_LANGUAGES
 from gulbot.web import strings
 from gulbot.web.render import STATIC
 
@@ -61,6 +61,24 @@ def run(harness: str, *args: str) -> dict[str, object]:
         check=True,
     ).stdout
     return dict(json.loads(out.strip().splitlines()[-1]))
+
+
+@pytest.mark.parametrize("track", MUSIC_TRACKS)
+def test_music_never_plays_until_the_visitor_taps(track: str) -> None:
+    result = run("music.mjs", str(STATIC / "js" / "music.js"), track)
+    before, tap, second = result["before"], result["afterTap"], result["afterSecond"]
+    assert isinstance(before, dict) and isinstance(tap, dict) and isinstance(second, dict)
+    # Not even an audio context before the tap: nothing can sound.
+    assert before["contexts"] == 0 and before["notes"] == 0 and before["shown"] is True
+    assert tap["contexts"] == 1 and tap["notes"] > 0 and tap["pressed"] == "true"
+    assert second["suspended"] == 1 and second["pressed"] == "false"
+
+
+def test_a_track_we_do_not_ship_is_never_played() -> None:
+    result = run("music.mjs", str(STATIC / "js" / "music.js"), "someones-song")
+    before, tap = result["before"], result["afterTap"]
+    assert isinstance(before, dict) and isinstance(tap, dict)
+    assert before["shown"] is False and tap["contexts"] == 0
 
 
 def test_the_konvert_letter_opens_section_by_section() -> None:

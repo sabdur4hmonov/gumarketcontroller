@@ -44,6 +44,7 @@ from gulbot.models.share_page import (
     MAX_GUESTS,
     MESSAGE_MAX,
     MONOGRAM_MAX,
+    MUSIC_TRACKS,
     NAME_MAX,
     PAGE_LANGUAGES,
     PAGE_TEMPLATES,
@@ -1015,11 +1016,12 @@ EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
             "dress_colors",
             "wishes_enabled",
             "seal_monogram",
+            "music",
             "template",
             "lang",
         }
     ),
-    PageKind.YESNO.value: frozenset({"question", "template", "lang", "notify_creator"}),
+    PageKind.YESNO.value: frozenset({"question", "template", "lang", "notify_creator", "music"}),
 }
 
 #: Text fields: (cap, multi-line, may be emptied). Emptying title, message or
@@ -1140,6 +1142,10 @@ async def update_page(
                 and "question" not in changes
             ):
                 values["question"] = strings.question(page.question_preset, str(value))
+        elif field == "music":
+            if value is not None and value not in MUSIC_TRACKS:
+                raise EditRefused("invalid")
+            values[field] = value
         elif field == "dress_colors":
             try:
                 values[field] = sections.checked_colors(value)

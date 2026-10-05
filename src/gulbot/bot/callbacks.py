@@ -502,6 +502,17 @@ class SealCB(CallbackData, prefix="pgseal"):
         return [cls(action="skip").pack()]
 
 
+class MusicCB(CallbackData, prefix="pgmus"):
+    """A track from MUSIC_TRACKS, or "none". Honoured only while the music
+    picker is open, and checked again by share_pages.update_page."""
+
+    track: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(track=t).pack() for t in ("bahor", "none")]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -528,6 +539,7 @@ class EditFieldCB(CallbackData, prefix="pged"):
                 "wishes_enabled",
                 "wishes",
                 "seal_monogram",
+                "music",
             )
         ]
 
@@ -589,6 +601,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     ColorCB,
     WishCB,
     SealCB,
+    MusicCB,
 )
 
 

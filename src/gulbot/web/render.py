@@ -134,6 +134,7 @@ def _common(theme: str, lang: str, branding: Branding) -> dict[str, Any]:
         "seal_letter": None,
         "photo_url": None,
         "gallery": [],
+        "music": None,
         #: The Foto design without a photo: a heart on a Ha/Yo'q page, the
         #: couple's initials on an invitation (invite_view) -- never the
         #: shop's letter, which would put the florist in the frame.
@@ -320,6 +321,7 @@ def page_html(
             tz_name=tz_name,
         )
         view["photo_url"] = photos[0].url if photos else None
+        view["music"] = page.music
         return render("yesno.html", view)
     view = invite_view(
         page, branding, tz_name=tz_name, rsvp_url=f"{base}/rsvp", ics_url=f"{base}/event.ics"
@@ -330,6 +332,7 @@ def page_html(
     framed = page.template == "foto" and bool(photos)
     view["photo_url"] = photos[0].url if framed else None
     view["gallery"] = (photos[1:] if framed else photos) if page.show_gallery else []
+    view["music"] = page.music
     view["wishes_on"] = page.wishes_enabled
     view["wishes"] = wishes or []
     view["wish_url"] = f"{base}/wish"
