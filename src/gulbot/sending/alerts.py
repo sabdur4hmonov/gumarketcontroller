@@ -30,6 +30,7 @@ from gulbot.sending.health import (
 )
 from gulbot.sending.order_pings import ping_targets
 from gulbot.sending.transport import ShopBotUnavailable, Transport, TransportFor
+from gulbot.services.shop_language import shop_language
 
 log = logging.getLogger("gulbot.health")
 
@@ -93,10 +94,10 @@ async def send_daily_summary(
     transport: Transport,
     shop_id: int,
     now_utc: datetime,
-    lang: str = "uz",
 ) -> bool:
     """Once a day. No cooldown: it is meant to arrive every single day, and a
-    missing one is the whole point."""
+    missing one is the whole point. In the shop's own language (L2)."""
+    lang = await shop_language(session, shop_id=shop_id)
     totals = await read_daily_totals(session, shop_id=shop_id, now_utc=now_utc)
     sent = await _announce(session, transport, shop_id=shop_id, body=render_summary(totals, lang))
     log.info(
@@ -116,9 +117,9 @@ async def check_and_alert(
     transport: Transport,
     shop_id: int,
     now_utc: datetime,
-    lang: str = "uz",
 ) -> list[str]:
-    """Look for trouble, and say so at most once per cooldown window.
+    """Look for trouble, and say so at most once per cooldown window, in the
+    shop's own language (L2).
 
     Returns the kinds actually announced, which is what the task logs and the
     tests assert on. An empty list is the ordinary answer.
@@ -126,6 +127,7 @@ async def check_and_alert(
     health = await read_health(session, shop_id=shop_id, now_utc=now_utc)
     if not health.stalled and not health.parked:
         return []
+    lang = await shop_language(session, shop_id=shop_id)
 
     announced: list[str] = []
     async with alert_cooldown() as cooldown:

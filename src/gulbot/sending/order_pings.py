@@ -59,6 +59,7 @@ from gulbot.sending.transport import (
     TransportFor,
     per_shop,
 )
+from gulbot.services.shop_language import shop_language
 
 log = logging.getLogger("gulbot.sending.orders")
 
@@ -309,7 +310,6 @@ async def run_order_ping_tick(
     transport_for: TransportFor | None = None,
     limit: int = BATCH_SIZE,
     only_order_id: int | None = None,
-    lang: str = "uz",
 ) -> PingTickResult:
     """One beat of the shop-facing outbox.
 
@@ -350,6 +350,9 @@ async def run_order_ping_tick(
     await session.commit()
 
     targets_by_shop: dict[int, list[int]] = {}
+    # What each shop's own people read (L2): asked per shop, never once per
+    # tick, because the batch spans every shop.
+    lang_by_shop: dict[int, str] = {}
     breakers = ShopBreakers()
     for ping in live:
         if breakers.open_for(ping.shop_id):
@@ -364,6 +367,9 @@ async def run_order_ping_tick(
         if ping.shop_id not in targets_by_shop:
             targets_by_shop[ping.shop_id] = await ping_targets(session, shop_id=ping.shop_id)
         targets = targets_by_shop[ping.shop_id]
+        if ping.shop_id not in lang_by_shop:
+            lang_by_shop[ping.shop_id] = await shop_language(session, shop_id=ping.shop_id)
+        lang = lang_by_shop[ping.shop_id]
 
         card = await load_card(session, order_id=ping.order_id)
         if card is None:  # pragma: no cover - CASCADE removes pings with orders

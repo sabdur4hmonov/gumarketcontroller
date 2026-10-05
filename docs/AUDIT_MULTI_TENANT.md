@@ -17,7 +17,8 @@
 > | M3: admin chat gate does not check the shop's group | **fixed** (CP-MT2): the gate lets in only `shops.group_chat_id` |
 > | M1: derived-scope queries | **fixed** (CP-MT2): each names its shop in the query; a structural fence keeps it so |
 > | L1: dev and ops tools assume shop 1 | **fixed** (CP-MT2): every tool requires `--shop-id`, scopes by it and speaks as that shop's bot |
-> | L2, L3 | **open** |
+> | L2: shop-facing language hardcoded | **partly** (CP-MT2): every shop-facing path asks `shop_language()` per shop; the `shops.lang` column it should read is a planned migration (CHECKPOINTS.md, CP-MT2) |
+> | L3 | **open** |
 
 **Target:** convert Gulbot from one flower shop to ~1000 independent shops, each
 with its own bot token, catalogue channel and admin group.

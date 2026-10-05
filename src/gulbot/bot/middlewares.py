@@ -25,6 +25,7 @@ from gulbot.i18n import button_labels
 from gulbot.i18n.catalog import DEFAULT_LANGUAGE
 from gulbot.models.shop import Shop
 from gulbot.services.customers import get_or_create_customer
+from gulbot.services.shop_language import shop_language
 
 #: Callback data prefix the shop's order-card buttons carry. The ONE thing
 #: a group may send that is not dropped, so it is compared here against the
@@ -211,9 +212,14 @@ class CustomerMiddleware(BaseMiddleware):
         in_group = chat is not None and chat.type in GROUP_CHAT_TYPES
         if in_group:
             # The shop, not a customer. `lang` is still needed -- the card and
-            # its buttons are rendered in it -- so it comes from the default
-            # rather than from a customer row that must not exist.
-            data.setdefault("lang", DEFAULT_LANGUAGE)
+            # its buttons are rendered in it -- so it is the SHOP's language
+            # (L2), not read from a customer row that must not exist.
+            if "lang" not in data:
+                data["lang"] = (
+                    await shop_language(session, shop_id=self.shop_id)
+                    if session is not None
+                    else DEFAULT_LANGUAGE
+                )
         elif user is not None and session is not None and not user.is_bot:
             customer, created = await get_or_create_customer(
                 session, shop_id=self.shop_id, telegram_user_id=user.id

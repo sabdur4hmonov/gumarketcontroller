@@ -304,7 +304,9 @@ starts polling without a restart. One bot is never polled for two shops.
 
 Still open from the audit, recorded rather than forgotten:
 
-- **L2 and L3.**
+- **L3.**
+- **L2, the column:** `shops.lang` needs a migration; planned below
+  (CP-MT2, "Follow-up: `shops.lang`").
 
 ## What CP-MT2 guarantees
 
@@ -430,6 +432,47 @@ literal shop id in SQL or a keyword, "the first shop" by position, and
 - *Decision: `--shop-id` is required even for `--state` and `--cleanup`.* A
   cleanup scoped to one shop cannot delete another shop's order by a mistyped
   id, and a required flag cannot be forgotten on the dangerous path only.
+
+**What a shop's own people read follows the shop -- except where it is stored
+(L2, partly).** Every shop-facing path now asks one function per shop,
+`services/shop_language.shop_language(session, shop_id=...)`: the order card
+and delivery pings (per ping's shop, not once per tick), the stall and
+dead-letter alerts, the daily summary, and the admin group's `lang` (buttons,
+stamped outcomes). Nothing shop-facing names a language any more; the
+`lang: str = "uz"` defaults on the senders are gone. Proven by replacing the
+function so it answers Russian for shop B only: each path then speaks Russian
+to B and Uzbek to A in the same run (`tests/test_shop_language.py`, red on
+assertions before the change). Mutations: 4/4 caught.
+
+The part NOT done is the part that needs a migration: there is no
+`shops.lang` column, so `shop_language` answers DEFAULT_LANGUAGE for every
+shop -- what every path hardcoded before, so no behaviour changes today.
+
+### Follow-up: `shops.lang` (needs a migration; planned, not made)
+
+Skipped on purpose: CP17 is adding unpushed migrations, and a second Alembic
+head would conflict. Make this AFTER CP17 merges, on top of the single head:
+
+1. **Migration**, additive and one revision:
+   `ALTER TABLE shops ADD COLUMN lang varchar(2) NOT NULL DEFAULT 'uz'`, plus a
+   named CHECK `lang_known` with `lang IN ('uz', 'ru', 'en')` -- the same column
+   shape and CHECK as `customers.lang`, so there is one definition of a
+   language code in the schema. A constant default is a metadata-only change on
+   Postgres 11+, no table rewrite; the CHECK on a column whose every row is
+   the default needs no NOT VALID / VALIDATE split, but the round trip must
+   still run on a throwaway database (CONTRIBUTING, "the migration only runs
+   correctly on a database that does not exist yet").
+2. **Model**: `Shop.lang` mirroring `Customer.lang`, and the CHECK in
+   `__table_args__`; `test_models_match_migrations` and
+   `test_check_constraints.py` then cover it.
+3. **The one line**: `shop_language` becomes
+   `SELECT lang FROM shops WHERE id = :shop_id`. No caller changes.
+4. **Onboarding writes it**: the platform bot already derives the owner's
+   language (`OwnerLanguageMiddleware`); pass it through `NewShop` into
+   `create_onboarded_shop`. The seed CLI gets `--lang`.
+5. **Tests**: `test_shop_language.py` keeps its per-module replacement and
+   gains a database test -- shop B stored as `ru`, no replacement -- plus the
+   onboarding test asserting a Russian-speaking owner's shop is stored `ru`.
 
 ## What CP16 guarantees
 
