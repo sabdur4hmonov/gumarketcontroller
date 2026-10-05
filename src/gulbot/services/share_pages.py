@@ -43,6 +43,7 @@ from gulbot.models.share_page import (
     GUEST_NAME_MAX,
     MAX_GUESTS,
     MESSAGE_MAX,
+    MONOGRAM_MAX,
     NAME_MAX,
     PAGE_LANGUAGES,
     PAGE_TEMPLATES,
@@ -147,6 +148,35 @@ class InviteDraft:
     location: tuple[Decimal, Decimal] | None
     message: str | None
     rsvp_enabled: bool
+    #: The Konvert seal (CP17); None shows the couple's initials.
+    seal_monogram: str | None = None
+
+
+def clean_monogram(value: object) -> str | None:
+    """A seal monogram as stored: letters, "&" and a middle dot, upper-cased,
+    at most MONOGRAM_MAX, with at least one letter. None for nothing; ValueError
+    for anything else -- a seal is pressed, not typed into."""
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("monogram")
+    text = "".join(value.split()).replace(".", "\u00b7").upper()
+    if not text:
+        return None
+    if (
+        len(text) > MONOGRAM_MAX
+        or not any(ch.isalpha() for ch in text)
+        or any(not (ch.isalpha() or ch in "&\u00b7") for ch in text)
+    ):
+        raise ValueError("monogram")
+    return text
+
+
+def _draft_monogram(value: str | None) -> str | None:
+    try:
+        return clean_monogram(value)
+    except ValueError:
+        raise InvalidDraft("a seal monogram the bot could not have taken") from None
 
 
 def _check_common(template: str, lang: str) -> None:
@@ -277,6 +307,7 @@ async def create_page(
             "location_lon": lon,
             "message": clean_text(draft.message, MESSAGE_MAX, multiline=True),
             "rsvp_enabled": draft.rsvp_enabled,
+            "seal_monogram": _draft_monogram(draft.seal_monogram),
             "expires_at": invite_expiry(draft.event_date, tz),
         }
 
@@ -983,6 +1014,7 @@ EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
             "show_gallery",
             "dress_colors",
             "wishes_enabled",
+            "seal_monogram",
             "template",
             "lang",
         }
@@ -1003,6 +1035,7 @@ TEXT_FIELDS: Final[dict[str, tuple[int, bool, bool]]] = {
     "program": (PROGRAM_MAX, True, True),
     "contact": (CONTACT_MAX, False, True),
     "closing": (CLOSING_MAX, False, True),
+    "seal_monogram": (MONOGRAM_MAX, False, True),
     "question": (QUESTION_MAX, False, False),
 }
 
@@ -1079,6 +1112,11 @@ async def update_page(
             cleaned = clean_text(value, cap, multiline=multiline)
             if cleaned is None and not may_empty:
                 raise EditRefused("invalid")
+            if field == "seal_monogram":
+                try:
+                    cleaned = clean_monogram(cleaned)
+                except ValueError:
+                    raise EditRefused("invalid") from None
             if field == "program" and cleaned is not None:
                 try:
                     cleaned = sections.normalise_program(cleaned) or None

@@ -1211,6 +1211,30 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
             "смогут оставить их на странице."
         ),
     },
+    # --- the Konvert seal (CP17) --------------------------------------------
+    "pages.ask_seal": {
+        "uz": (
+            "🔏 Muhrga qanday harflar bosilsin? Masalan: A&M (5 "
+            "belgigacha). Yoki o'tkazib yuboring — ismlarning bosh "
+            "harflari qo'yiladi."
+        ),
+        "ru": (
+            "🔏 Какие буквы выдавить на печати? Например: A&M (до 5 "
+            "знаков). Или пропустите — будут инициалы имён."
+        ),
+    },
+    "ibtn.pages.seal_skip": {
+        "uz": "⏭ Bosh harflar bilan",
+        "ru": "⏭ Инициалы имён",
+    },
+    "pages.seal_invalid": {
+        "uz": "Faqat harflar va «&» belgisi, {max} tagacha. Masalan: A&M",
+        "ru": "Только буквы и знак «&», до {max}. Например: A&M",
+    },
+    "ibtn.pages.f_seal": {
+        "uz": "🔏 Muhr harflari",
+        "ru": "🔏 Буквы на печати",
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1833,6 +1857,15 @@ _EN["pages.wishes_list"] = (
 _EN["pages.wishes_none"] = (
     "💌 No wishes yet. With «Wishes» switched on, guests can leave them on the page."
 )
+
+# the Konvert seal (CP17).
+_EN["pages.ask_seal"] = (
+    "🔏 Which letters should the wax seal carry? For example: A&M "
+    "(up to 5). Or skip, and the names' initials are used."
+)
+_EN["ibtn.pages.seal_skip"] = "⏭ Use the initials"
+_EN["pages.seal_invalid"] = "Letters and «&» only, up to {max}. For example: A&M"
+_EN["ibtn.pages.f_seal"] = "🔏 Seal letters"
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

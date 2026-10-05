@@ -146,6 +146,8 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
     )
     if page.kind == PageKind.INVITE:
         rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_gallery"))
+        if page.template == "konvert":
+            rows.append(_field_button(lang, page.id, "seal_monogram", "ibtn.pages.f_seal"))
     elif page.template == "foto":
         rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_photo"))
     rows.append(

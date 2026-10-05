@@ -127,6 +127,9 @@ async def test_a_taklifnoma_end_to_end(db: AsyncConnection, shop_bot: ShopBot) -
     await shop_bot.say("Сизни кутамиз!", user=USER)
     await shop_bot.tap(PageChoiceCB(field="rsvp", value="yes").pack(), user=USER)
     await shop_bot.tap(PageTemplateCB(template="konvert").pack(), user=USER)
+    # Konvert asks for the seal's letters (CP17); typed in Cyrillic, upper-cased.
+    assert await state_of(shop_bot) == InvitePage.entering_seal.state
+    await shop_bot.say("а&м", user=USER)
     assert await state_of(shop_bot) == InvitePage.confirming.state
     await shop_bot.tap(PageConfirmCB(action="create").pack(), user=USER)
 
@@ -142,6 +145,7 @@ async def test_a_taklifnoma_end_to_end(db: AsyncConnection, shop_bot: ShopBot) -
     assert page["event_time"].strftime("%H:%M") == "18:30"
     assert float(page["location_lat"]) == pytest.approx(41.311081)
     assert page["message"] == "Сизни кутамиз!" and page["rsvp_enabled"] is True
+    assert page["seal_monogram"] == "А&М"
 
 
 async def test_a_birthday_asks_one_name_and_may_skip_the_extras(

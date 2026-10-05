@@ -1058,6 +1058,33 @@ body {
   color: var(--env-hint, var(--muted));
 }
 
+/* A seal with "A&M" on it: the letters set smaller and closer. */
+.seal-long {
+  font-size: 21px;
+  letter-spacing: -0.01em;
+}
+
+/* The letter opens section by section (CP17). Only when the script runs --
+ * it adds .reveal-wait first -- so without JS nothing is ever hidden. */
+.reveal-wait .card > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s ease;
+}
+
+.reveal-wait .card > .is-shown {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-wait .card > * {
+    transition: none;
+  }
+}
+
 .has-envelope .stage {
   animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   animation-play-state: paused;

@@ -255,7 +255,8 @@ def invite_view(
         "show_countdown": page.show_countdown,
         "has_dress_code": bool(page.dress_code),
         "closing": page.closing or strings.event_closing(page.event_type, lang),
-        "seal_letter": _initial(page.name_1 or ""),
+        "seal_letter": page.seal_monogram
+        or _initial(page.name_1 or "") + (f"&{_initial(page.name_2)}" if page.name_2 else ""),
         "monogram": _initial(page.name_1 or "")
         + (f"&{_initial(page.name_2)}" if page.name_2 else ""),
     }

@@ -49,3 +49,26 @@ def test_every_press_says_something_new_and_then_the_button_leaves(lang: str) ->
     assert seen == list(lines[1:]), "the lines must come once each, in order"
     assert len(set(seen)) == len(seen), "a line was repeated within one visit"
     assert result["goneAfter"] == len(lines), "Yo'q must leave exactly when the lines run out"
+
+
+def run(harness: str, *args: str) -> dict[str, object]:
+    assert NODE is not None
+    out = subprocess.run(
+        [NODE, str(REPO_ROOT / "tests" / "js" / harness), *args],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
+    ).stdout
+    return dict(json.loads(out.strip().splitlines()[-1]))
+
+
+def test_the_konvert_letter_opens_section_by_section() -> None:
+    result = run("envelope.mjs", str(STATIC / "js" / "page.js"))
+    sealed, order = result["sealed"], result["order"]
+    assert isinstance(sealed, dict) and isinstance(order, list)
+    assert sealed == {"waiting": True, "shown": 0}, "sealed: every section waits"
+    assert result["opened"] is True and result["allShown"] is True
+    assert [name for name, _ms in order] == ["ornament", "eyebrow", "names", "when", "venue"]
+    delays = [ms for _name, ms in order]
+    assert delays == sorted(delays) and len(set(delays)) == len(delays), "one after another"

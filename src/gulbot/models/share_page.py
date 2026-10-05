@@ -116,6 +116,8 @@ DRESS_CODE_MAX = 120
 PROGRAM_MAX = 400
 CONTACT_MAX = 120
 CLOSING_MAX = 200
+#: The Konvert seal's monogram (CP17): "A&M" and the like.
+MONOGRAM_MAX = 5
 #: CP17: a Ha/Yo'q page's date plan -- up to five places, up to five times.
 PLACE_MAX = 80
 PLAN_MAX = 5
@@ -207,6 +209,9 @@ class SharePage(IdMixin, TimestampMixin, Base):
     show_gallery: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     #: Palette keys, "oq,oltin" (web/sections.py). Picked, never typed.
     dress_colors: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    #: The Konvert seal's monogram, as the creator wrote it ("A&M"). NULL: the
+    #: couple's initials.
+    seal_monogram: Mapped[str | None] = mapped_column(String(MONOGRAM_MAX), nullable=True)
     #: The guest wishes wall (off until the creator switches it on).
     wishes_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")

@@ -37,9 +37,22 @@
   if (envelope) {
     var seal = byId("seal");
     var opened = false;
+    // The letter's sections wait, and rise one after another once it opens.
+    var sections = doc.querySelectorAll(".card > *");
+    doc.body.classList.add("reveal-wait");
+    var reveal = function () {
+      for (var i = 0; i < sections.length; i++) {
+        (function (node, n) {
+          window.setTimeout(function () {
+            node.classList.add("is-shown");
+          }, reduce ? 0 : 650 + n * 140);
+        })(sections[i], i);
+      }
+    };
     var open = function () {
       if (opened) return;
       opened = true;
+      reveal();
       envelope.classList.add("is-open");
       doc.body.classList.add("is-opened");
       window.setTimeout(function () {

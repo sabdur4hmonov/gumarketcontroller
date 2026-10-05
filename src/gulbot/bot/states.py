@@ -185,6 +185,8 @@ class InvitePage(StatesGroup):
     confirming = State()
     #: CP17: the Foto design's photo -- a photo message, or skip.
     sending_photo = State()
+    #: CP17: the Konvert seal's monogram -- typed, or skip.
+    entering_seal = State()
 
 
 class EditPage(StatesGroup):

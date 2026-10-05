@@ -491,6 +491,17 @@ class WishCB(CallbackData, prefix="pgwish"):
         return [cls(page_id=1, wish_id=1, action=a).pack() for a in ("hide", "show")]
 
 
+class SealCB(CallbackData, prefix="pgseal"):
+    """Skip the Konvert seal's monogram (the couple's initials are used).
+    Honoured only in that step."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action="skip").pack()]
+
+
 class EditFieldCB(CallbackData, prefix="pged"):
     """Edit one field of a page. `page_id` is re-loaded with this shop and
     customer; `field` must be one the page's kind has (share_pages.EDITABLE_FIELDS)."""
@@ -516,6 +527,7 @@ class EditFieldCB(CallbackData, prefix="pged"):
                 "show_gallery",
                 "wishes_enabled",
                 "wishes",
+                "seal_monogram",
             )
         ]
 
@@ -576,6 +588,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     PhotoCB,
     ColorCB,
     WishCB,
+    SealCB,
 )
 
 

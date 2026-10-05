@@ -32,7 +32,7 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +50,7 @@ from gulbot.bot.callbacks import (
     PageQuestionCB,
     PageSkipCB,
     PageTemplateCB,
+    SealCB,
 )
 from gulbot.bot.keyboards import main_menu_keyboard
 from gulbot.bot.keyboards_pages import (
@@ -79,6 +80,7 @@ from gulbot.models.customer import Customer
 from gulbot.models.share_page import (
     EVENT_TYPES,
     MESSAGE_MAX,
+    MONOGRAM_MAX,
     NAME_MAX,
     PAGE_LANGUAGES,
     PAGE_TEMPLATES,
@@ -90,7 +92,13 @@ from gulbot.models.share_page import (
 )
 from gulbot.models.shop import Shop
 from gulbot.services import share_pages
-from gulbot.services.share_pages import InviteDraft, PageLimitReached, YesNoDraft, clean_text
+from gulbot.services.share_pages import (
+    InviteDraft,
+    PageLimitReached,
+    YesNoDraft,
+    clean_monogram,
+    clean_text,
+)
 from gulbot.utils.render import escape
 from gulbot.web import links, strings
 from gulbot.web.render import THEME_NAMES
@@ -595,6 +603,45 @@ async def invite_template(
 
         await ask_photo(_target(callback), state, lang, InvitePage.sending_photo)
         return
+    if callback_data.template == "konvert":
+        await state.set_state(InvitePage.entering_seal)
+        await _target(callback).answer(
+            t("pages.ask_seal", lang),
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[
+                    [
+                        InlineKeyboardButton(
+                            text=t("ibtn.pages.seal_skip", lang),
+                            callback_data=SealCB(action="skip").pack(),
+                        )
+                    ]
+                ]
+            ),
+        )
+        return
+    await invite_summary(_target(callback), state, lang)
+
+
+async def invite_seal(message: Message, state: FSMContext, lang: str) -> None:
+    """The Konvert seal's letters: checked as the service checks them."""
+    try:
+        monogram = clean_monogram(message.text or "")
+    except ValueError:
+        monogram = None
+    if monogram is None:
+        await message.answer(t("pages.seal_invalid", lang, max=MONOGRAM_MAX))
+        return
+    await state.update_data(seal_monogram=monogram)
+    await invite_summary(message, state, lang)
+
+
+async def invite_seal_skip(
+    callback: CallbackQuery, callback_data: SealCB, state: FSMContext, lang: str
+) -> None:
+    await callback.answer()
+    if callback_data.action != "skip":
+        return
+    await state.update_data(seal_monogram=None)
     await invite_summary(_target(callback), state, lang)
 
 
@@ -647,6 +694,7 @@ def _invite_draft(data: dict[str, Any]) -> InviteDraft | None:
             location=location,
             message=data.get("message"),
             rsvp_enabled=bool(data.get("rsvp")),
+            seal_monogram=data.get("seal_monogram"),
         )
     except (KeyError, TypeError, ValueError, ArithmeticError):
         return None
@@ -900,6 +948,10 @@ def build_share_pages_router() -> Router:
     router.callback_query.register(invite_rsvp, InvitePage.choosing_rsvp, PageChoiceCB.filter())
     router.callback_query.register(
         invite_template, InvitePage.choosing_template, PageTemplateCB.filter()
+    )
+    router.callback_query.register(invite_seal_skip, InvitePage.entering_seal, SealCB.filter())
+    router.message.register(
+        invite_seal, InvitePage.entering_seal, F.text, flags={"catch_all": True}
     )
 
     router.callback_query.register(

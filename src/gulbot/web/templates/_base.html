@@ -27,7 +27,7 @@
 <div class="envelope" id="envelope">
   <div class="env">
     <div class="env-flap"></div>
-    <button type="button" class="seal" id="seal" aria-label="{{ v.s.open }}">{% if v.seal_letter %}{{ v.seal_letter }}{% else %}{{ heart() }}{% endif %}</button>
+    <button type="button" class="seal{% if v.seal_letter and v.seal_letter|length > 2 %} seal-long{% endif %}" id="seal" aria-label="{{ v.s.open }}">{% if v.seal_letter %}{{ v.seal_letter }}{% else %}{{ heart() }}{% endif %}</button>
     <p class="seal-hint">{{ v.s.open }}</p>
   </div>
 </div>
