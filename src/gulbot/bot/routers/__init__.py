@@ -94,7 +94,11 @@ def build_platform_routers() -> tuple[Router, ...]:
     Never mixed into `build_routers()`: a shop's bot serves its customers, and
     the platform bot serves people who are about to own a shop.
     """
-    return (build_shop_onboarding_router(),)
+    # /admin first: it matches only a listed admin, in any state, so an admin
+    # mid-onboarding can still get a link; everyone else falls through.
+    from gulbot.bot.routers.platform_admin import build_platform_admin_router
+
+    return (build_platform_admin_router(), build_shop_onboarding_router())
 
 
 __all__ = ["build_platform_routers", "build_routers"]

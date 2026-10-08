@@ -48,7 +48,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.services import share_page_photos, share_page_wishes, share_pages
-from gulbot.web import render, strings
+from gulbot.web import admin, render, strings
 
 log = logging.getLogger("gulbot.web")
 
@@ -138,7 +138,8 @@ async def secure_headers(
 def _harden(request: web.Request, response: web.StreamResponse) -> None:
     settings = request.app[KEY_SETTINGS]
     headers = response.headers
-    headers["Content-Security-Policy"] = CSP
+    # The admin panel posts forms to this origin; the public pages never do.
+    headers["Content-Security-Policy"] = admin.CSP if _is_admin(request) else CSP
     headers["X-Content-Type-Options"] = "nosniff"
     headers["Referrer-Policy"] = "no-referrer"
     headers["X-Frame-Options"] = "DENY"
@@ -154,7 +155,11 @@ def _harden(request: web.Request, response: web.StreamResponse) -> None:
         headers.setdefault("Cache-Control", "no-store")
 
 
-def _client(request: web.Request) -> str:
+def _is_admin(request: web.Request) -> bool:
+    return request.path == admin.PREFIX or request.path.startswith(admin.PREFIX + "/")
+
+
+def client_address(request: web.Request) -> str:
     settings = request.app[KEY_SETTINGS]
     if settings.trust_proxy:
         forwarded = request.headers.get("X-Forwarded-For", "")
@@ -163,9 +168,9 @@ def _client(request: web.Request) -> str:
     return request.remote or "?"
 
 
-def _limit(request: web.Request, bucket: str) -> None:
+def limit(request: web.Request, bucket: str) -> None:
     limiter = request.app[KEY_LIMITER]
-    if not limiter[bucket].allow(f"{bucket}:{_client(request)}"):
+    if not limiter[bucket].allow(f"{bucket}:{client_address(request)}"):
         raise web.HTTPTooManyRequests(text="Too many requests")
 
 
@@ -257,7 +262,7 @@ async def page(request: web.Request) -> web.Response:
 
 async def answer_yes(request: web.Request) -> web.Response:
     _check_post(request)
-    _limit(request, "yes")
+    limit(request, "yes")
     token = _token(request)
     sessions = request.app[KEY_SESSIONS]
     async with sessions() as session:
@@ -297,7 +302,7 @@ def _option_id(value: object) -> int:
 async def wish(request: web.Request) -> web.Response:
     """A guest's wish on the wall. Same-origin, rate-limited, capped."""
     _check_post(request)
-    _limit(request, "wish")
+    limit(request, "wish")
     token = _token(request)
     try:
         body = await request.json()
@@ -338,7 +343,7 @@ async def wish(request: web.Request) -> web.Response:
 async def choose(request: web.Request) -> web.Response:
     """After Ha, the recipient's place and time. The first pick is kept."""
     _check_post(request)
-    _limit(request, "yes")
+    limit(request, "yes")
     token = _token(request)
     try:
         body = await request.json()
@@ -368,7 +373,7 @@ async def choose(request: web.Request) -> web.Response:
 
 async def rsvp(request: web.Request) -> web.Response:
     _check_post(request)
-    _limit(request, "rsvp")
+    limit(request, "rsvp")
     token = _token(request)
     try:
         body = await request.json()
@@ -517,8 +522,10 @@ def build_app(
     yes_limit: int = 30,
     rsvp_limit: int = 12,
     wish_limit: int = 6,
+    admin_login_limit: int = 10,
+    admin_ids: Callable[[], frozenset[int]] | None = None,
 ) -> web.Application:
-    app = web.Application(middlewares=[secure_headers], client_max_size=4096)
+    app = web.Application(middlewares=[secure_headers, admin.admin_gate], client_max_size=4096)
     app[KEY_SESSIONS] = session_factory
     app[KEY_NOTIFY] = notify
     app[KEY_SETTINGS] = WebSettings(public_base_url=public_base_url, trust_proxy=trust_proxy)
@@ -526,6 +533,7 @@ def build_app(
         "yes": RateLimiter(limit=yes_limit, window=60.0),
         "rsvp": RateLimiter(limit=rsvp_limit, window=60.0),
         "wish": RateLimiter(limit=wish_limit, window=60.0),
+        "admin_login": RateLimiter(limit=admin_login_limit, window=60.0),
     }
     app.router.add_get("/p/{token}", page)
     app.router.add_post("/p/{token}/yes", answer_yes)
@@ -541,4 +549,8 @@ def build_app(
     app.router.add_get("/robots.txt", robots)
     app.router.add_get("/healthz", healthz)
     app.router.add_static("/static/", render.STATIC, show_index=False, follow_symlinks=False)
+    # CP18: the platform admin panel. Off (no routes at all) unless an admin
+    # list source is given -- the page server's entrypoint always gives one.
+    if admin_ids is not None:
+        admin.add_routes(app, session_factory=session_factory, admin_ids=admin_ids)
     return app

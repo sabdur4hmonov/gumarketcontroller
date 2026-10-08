@@ -20,6 +20,7 @@ from aiohttp import web
 
 from gulbot.config import get_settings
 from gulbot.db.session import build_session_factory
+from gulbot.services import admin_auth
 from gulbot.web.app import build_app
 
 log = logging.getLogger("gulbot.web")
@@ -46,6 +47,7 @@ async def main() -> None:
         notify=queue_notification,
         public_base_url=settings.public_base_url,
         trust_proxy=settings.web_trust_proxy,
+        admin_ids=admin_auth.admin_ids,
     )
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()

@@ -56,6 +56,8 @@ PRODUCTION_ENV = {
     "POSTGRES_HOST": "db.prod.internal",
     "POSTGRES_DB": "gulbot_prod",
     "POSTGRES_PASSWORD": PROD_PASSWORD,
+    # CP18: production refuses to start with nobody able to log into the panel.
+    "PLATFORM_ADMIN_TELEGRAM_IDS": "424242",
 }
 
 #: Written out, not taken from PRODUCTION_REQUIRED_ENV. See the module docstring.
@@ -78,6 +80,7 @@ def production_settings(**overrides: str) -> Settings:
         "postgres_host": "db.prod.internal",
         "postgres_db": "gulbot_prod",
         "postgres_password": PROD_PASSWORD,
+        "platform_admin_telegram_ids": "424242",
     }
     values.update(overrides)
     return Settings(**values)  # type: ignore[arg-type]

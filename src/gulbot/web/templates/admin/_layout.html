@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}Gulbot · Admin{% endblock %}</title>
+<link rel="stylesheet" href="{{ static('css/admin.css') }}">
+</head>
+<body class="admin">
+{% if v.admin is defined and v.admin %}
+<header class="bar">
+  <a class="brand" href="/admin">Gulbot · Admin</a>
+  <nav>
+    <a href="/admin"{% if v.nav == 'shops' %} aria-current="page"{% endif %}>Do‘konlar</a>
+    <a href="/admin/alerts"{% if v.nav == 'alerts' %} aria-current="page"{% endif %}>Ogohlantirishlar</a>
+    <a href="/admin/pages"{% if v.nav == 'pages' %} aria-current="page"{% endif %}>Sahifalar</a>
+    <a href="/admin/audit"{% if v.nav == 'audit' %} aria-current="page"{% endif %}>Jurnal</a>
+  </nav>
+  <form method="post" action="/admin/logout" class="inline">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link">Chiqish</button>
+  </form>
+</header>
+{% endif %}
+<main class="wrap">
+{% block main %}{% endblock %}
+</main>
+</body>
+</html>

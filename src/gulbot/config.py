@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     #: Not any shop's bot. Empty = onboarding is off; the process still serves
     #: every shop it has.
     platform_bot_token: SecretStr = SecretStr("")
+    #: Telegram ids allowed into the platform admin panel (CP18), comma- or
+    #: space-separated. Read only through gulbot.services.admin_auth.admin_ids;
+    #: anything unparsable empties the whole list. Required in production.
+    platform_admin_telegram_ids: str = ""
     #: Where the public Ha/Yo'q and taklifnoma pages are served, as an ORIGIN
     #: (scheme://host[:port], no path). The bot builds every link on it. In
     #: production the bot offers pages only once this is https -- see
@@ -109,6 +113,17 @@ PRODUCTION_REQUIRED_ENV = (
 DEV_DEFAULT_PASSWORD = "gulbot"
 
 
+def parse_admin_ids(raw: str) -> frozenset[int]:
+    """PLATFORM_ADMIN_TELEGRAM_IDS as a set of ids. Anything unparsable, or a
+    non-positive id, makes the WHOLE list empty: a typo must lock everyone
+    out, never let a wrong id in."""
+    try:
+        ids = frozenset(int(part) for part in raw.replace(",", " ").split())
+    except ValueError:
+        return frozenset()
+    return ids if all(i > 0 for i in ids) else frozenset()
+
+
 class ProductionConfigError(RuntimeError):
     """Raised at startup when a production process has non-production config.
 
@@ -137,6 +152,13 @@ def production_config_problems(
     ]
     if settings.postgres_password.get_secret_value() == DEV_DEFAULT_PASSWORD:
         problems.append("POSTGRES_PASSWORD is the dev default password")
+    # CP18: a production panel nobody can log into is a panel nobody watches,
+    # and a typo in the list must be loud, not a silent lock-out.
+    if not parse_admin_ids(settings.platform_admin_telegram_ids):
+        problems.append(
+            "PLATFORM_ADMIN_TELEGRAM_IDS is empty or not a list of Telegram ids "
+            "(nobody could log into the admin panel)"
+        )
     return problems
 
 

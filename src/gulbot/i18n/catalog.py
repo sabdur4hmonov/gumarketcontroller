@@ -733,6 +733,27 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
             "Скопируйте токен из @BotFather заново и отправьте сюда."
         ),
     },
+    "admin.link": {
+        "uz": (
+            "🔐 Boshqaruv paneliga kirish havolasi ({minutes} daqiqa, bir martalik):\n{url}\n\n"
+            "Hech kimga yubormang."
+        ),
+        "ru": (
+            "🔐 Ссылка для входа в панель управления ({minutes} мин, одноразовая):\n{url}\n\n"
+            "Никому её не пересылайте."
+        ),
+        "en": "🔐 Admin panel login link ({minutes} min, single use):\n{url}\n\nDo not forward it.",
+    },
+    "admin.link_refused": {
+        "uz": "Hozircha yangi havola berilmaydi — bir ozdan keyin qayta urinib ko‘ring.",
+        "ru": "Сейчас новую ссылку выдать нельзя — попробуйте чуть позже.",
+        "en": "No new link right now; try again in a few minutes.",
+    },
+    "admin.unavailable": {
+        "uz": "Boshqaruv paneli faqat HTTPS orqali ishlaydi va hali sozlanmagan.",
+        "ru": "Панель управления работает только по HTTPS и ещё не настроена.",
+        "en": "The admin panel works only over HTTPS and is not set up yet.",
+    },
     "shop.paused": {
         "uz": (
             "🌙 Do‘kon vaqtincha ishlamayapti. Tez orada qaytamiz — sanalaringiz va "
