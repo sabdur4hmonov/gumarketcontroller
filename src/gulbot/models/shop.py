@@ -7,13 +7,15 @@ column.
 
 from __future__ import annotations
 
-from datetime import time
+from datetime import datetime, time
+from enum import StrEnum
 from typing import Any
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    DateTime,
     Integer,
     SmallInteger,
     String,
@@ -44,6 +46,19 @@ DEFAULT_WORKING_HOURS: dict[str, list[str] | None] = {
 # it adds a message without adding a decision point. Per-shop only; there is no
 # per-occasion override in v1.
 DEFAULT_REMINDER_OFFSETS = [-7, -1, 0]
+
+
+class ShopStatus(StrEnum):
+    """Where a shop is in its life on the platform (CP18).
+
+    PAUSED is enforced by the workers, not only shown: the reminder tick skips
+    the shop, its bot answers customers with one "paused" line, and its public
+    pages lose the order link (tests/test_shop_pause.py).
+    """
+
+    ONBOARDING = "onboarding"
+    ACTIVE = "active"
+    PAUSED = "paused"
 
 
 class Shop(IdMixin, TimestampMixin, Base):
@@ -88,6 +103,12 @@ class Shop(IdMixin, TimestampMixin, Base):
     # the alerts, the daily summary (services/shop_language.py). Same codes and
     # CHECK as customers.lang. Onboarding stores the owner's language.
     lang: Mapped[str] = mapped_column(String(2), nullable=False, server_default=text("'uz'"))
+
+    # CP18. Set from the platform admin panel; every serving path reads it.
+    status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=text("'active'"))
+    status_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     working_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
@@ -145,6 +166,7 @@ class Shop(IdMixin, TimestampMixin, Base):
 
     __table_args__ = (
         CheckConstraint("lang IN ('uz', 'ru', 'en')", name="lang_known"),
+        CheckConstraint("status IN ('onboarding', 'active', 'paused')", name="status_known"),
         # A pasted plaintext token ("123456:ABC...") starts with digits; every
         # Fernet token starts "gAAAAA" -- version byte 0x80, then the high
         # bytes of a 64-bit timestamp that stay zero until the year 2106.

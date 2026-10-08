@@ -223,7 +223,7 @@ async def page(request: web.Request) -> web.Response:
         if "TelegramBot" not in request.headers.get("User-Agent", ""):
             await share_pages.record_view(session, page_id=p.id)
             await session.commit()
-        cta = f"/p/{token}/go" if p.bot_username else None
+        cta = f"/p/{token}/go" if p.bot_username and not found.shop_paused else None
         plan = None
         if p.kind == PageKind.YESNO:
             places, slots = await share_pages.plan_of(session, page_id=p.id)

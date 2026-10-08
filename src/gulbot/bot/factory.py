@@ -27,6 +27,7 @@ from gulbot.bot.middlewares import (
     DbSessionMiddleware,
     OwnerLanguageMiddleware,
     PrivateOnlyMiddleware,
+    ShopPausedMiddleware,
 )
 from gulbot.bot.routers import build_platform_routers, build_routers
 from gulbot.config import get_settings
@@ -143,6 +144,8 @@ def build_dispatcher(
         ChatGateMiddleware(shop_id=shop_id, session_factory=session_factory)
     )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
+    # CP18: before the customer is resolved, so a paused shop creates no rows.
+    dispatcher.update.outer_middleware(ShopPausedMiddleware(shop_id))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))
 
     # Injected as workflow data so the channel handlers stay plain module-level

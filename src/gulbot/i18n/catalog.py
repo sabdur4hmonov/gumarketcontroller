@@ -733,6 +733,14 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
             "Скопируйте токен из @BotFather заново и отправьте сюда."
         ),
     },
+    "shop.paused": {
+        "uz": (
+            "🌙 Do‘kon vaqtincha ishlamayapti. Tez orada qaytamiz — sanalaringiz va "
+            "sahifalaringiz saqlanib qoladi."
+        ),
+        "ru": ("🌙 Магазин временно не работает. Скоро вернёмся — ваши даты и страницы сохранены."),
+        "en": "🌙 The shop is closed for now. We'll be back soon; your dates and pages are kept.",
+    },
     "owner.not_configured": {
         "uz": (
             "⚠️ Hozircha yangi do‘kon ulab bo‘lmaydi — platforma sozlanmagan. Keyinroq "

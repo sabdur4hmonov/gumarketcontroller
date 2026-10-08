@@ -64,7 +64,7 @@ from gulbot.models.share_page import (
     SharePageRsvp,
     SharePageWish,
 )
-from gulbot.models.shop import Shop
+from gulbot.models.shop import Shop, ShopStatus
 from gulbot.web import sections
 
 #: Pages one customer may create in any rolling 24 hours, deleted ones included.
@@ -500,6 +500,8 @@ class PublicPage:
     shop_name: str
     shop_timezone: str
     live: bool
+    #: CP18: the shop is paused -- the page stays up, the order link goes.
+    shop_paused: bool = False
 
 
 async def load_public_page(
@@ -513,16 +515,22 @@ async def load_public_page(
     now = now or datetime.now(UTC)
     row = (
         await session.execute(
-            select(SharePage, Shop.name, Shop.timezone)
+            select(SharePage, Shop.name, Shop.timezone, Shop.status)
             .join(Shop, Shop.id == SharePage.shop_id)
             .where(SharePage.token == token)
         )
     ).one_or_none()
     if row is None:
         return None
-    page, shop_name, shop_tz = row
+    page, shop_name, shop_tz, shop_status = row
     live = page.deleted_at is None and page.expires_at > now
-    return PublicPage(page=page, shop_name=shop_name, shop_timezone=shop_tz, live=live)
+    return PublicPage(
+        page=page,
+        shop_name=shop_name,
+        shop_timezone=shop_tz,
+        live=live,
+        shop_paused=shop_status == ShopStatus.PAUSED.value,
+    )
 
 
 async def record_view(session: AsyncSession, *, page_id: int) -> None:
@@ -535,19 +543,27 @@ async def record_cta(
     session: AsyncSession, token: str, *, now: datetime | None = None
 ) -> tuple[str | None, bool] | None:
     """Count a tap on the shop's link. Returns (bot_username, live), or None
-    for an unknown token."""
+    for an unknown token. A PAUSED shop's link has no bot to go to (CP18):
+    the username comes back None, so the tap lands on the page again."""
     now = now or datetime.now(UTC)
     row = (
         await session.execute(
             update(SharePage)
             .where(SharePage.token == token)
             .values(cta_click_count=SharePage.cta_click_count + 1)
-            .returning(SharePage.bot_username, SharePage.deleted_at, SharePage.expires_at)
+            .returning(
+                SharePage.bot_username,
+                SharePage.deleted_at,
+                SharePage.expires_at,
+                select(Shop.status).where(Shop.id == SharePage.shop_id).scalar_subquery(),
+            )
         )
     ).one_or_none()
     if row is None:
         return None
-    username, deleted_at, expires_at = row
+    username, deleted_at, expires_at, shop_status = row
+    if shop_status == ShopStatus.PAUSED.value:
+        username = None
     return username, deleted_at is None and expires_at > now
 
 

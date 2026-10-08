@@ -59,6 +59,7 @@ from gulbot.models.notification import (
 )
 from gulbot.models.occasion import Occasion
 from gulbot.models.recipient import Recipient
+from gulbot.models.shop import Shop, ShopStatus
 from gulbot.scheduling.occurrences import DEFAULT_GRACE, TASHKENT
 from gulbot.sending.rate_limit import RateLimiter
 from gulbot.sending.transport import (
@@ -198,6 +199,13 @@ async def select_due_rows(
     sendable = and_(
         ScheduledNotification.state.in_(SENDABLE_STATES),
         ScheduledNotification.due_at_utc <= now_utc,
+        # CP18: a PAUSED shop's reminders wait, untouched -- not claimed, not
+        # attempted, not expired here. On resume the ordinary staleness rule
+        # (6 h past due, or the date gone) decides, at send time, which are
+        # still worth sending, so a resume never fires a backlog.
+        ScheduledNotification.shop_id.not_in(
+            select(Shop.id).where(Shop.status == ShopStatus.PAUSED.value)
+        ),
     )
     peer = aliased(ScheduledNotification)
     group_anchor = (

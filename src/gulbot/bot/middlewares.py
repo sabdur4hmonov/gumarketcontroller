@@ -21,9 +21,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.bot.states import AdminOrder
-from gulbot.i18n import button_labels
+from gulbot.i18n import button_labels, t
 from gulbot.i18n.catalog import DEFAULT_LANGUAGE
-from gulbot.models.shop import Shop
+from gulbot.models.customer import Customer
+from gulbot.models.shop import Shop, ShopStatus
 from gulbot.services.customers import get_or_create_customer
 from gulbot.services.shop_language import shop_language
 
@@ -229,6 +230,47 @@ class CustomerMiddleware(BaseMiddleware):
             data["lang"] = customer.lang
         data.setdefault("shop_id", self.shop_id)
         return await handler(event, data)
+
+
+class ShopPausedMiddleware(BaseMiddleware):
+    """CP18: a PAUSED shop's bot tells its customer so, once per message, and
+    does nothing else -- no customer row, no order, no menu.
+
+    Only private chats are stopped. The shop's own group keeps working, so
+    orders placed before the pause can still be confirmed, and channel posts
+    keep indexing (neither is "serving a customer"). Asked per update: one
+    indexed read, so a resume takes effect on the very next message.
+    """
+
+    def __init__(self, shop_id: int) -> None:
+        self.shop_id = shop_id
+
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: dict[str, Any],
+    ) -> Any:
+        chat: Chat | None = data.get("event_chat")
+        session: AsyncSession | None = data.get("session")
+        if chat is None or chat.type != "private" or session is None:
+            return await handler(event, data)
+        status = await session.scalar(select(Shop.status).where(Shop.id == self.shop_id))
+        if status != ShopStatus.PAUSED.value:
+            return await handler(event, data)
+        user: User | None = data.get("event_from_user")
+        lang = DEFAULT_LANGUAGE
+        if user is not None:
+            stored = await session.scalar(
+                select(Customer.lang).where(
+                    Customer.shop_id == self.shop_id, Customer.telegram_user_id == user.id
+                )
+            )
+            lang = stored or DEFAULT_LANGUAGE
+        bot = data.get("bot")
+        if bot is not None:
+            await bot.send_message(chat_id=chat.id, text=t("shop.paused", lang))
+        return None
 
 
 class PrivateOnlyMiddleware(BaseMiddleware):
