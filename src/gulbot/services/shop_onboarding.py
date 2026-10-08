@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.i18n.catalog import DEFAULT_LANGUAGE
 from gulbot.models.shop import DEFAULT_WORKING_HOURS, Shop
 from gulbot.services.shop_tokens import set_shop_bot_token
 
@@ -35,6 +36,8 @@ class NewShop:
     owner_telegram_id: int
     owner_phone: str
     owner_phone_verified: bool
+    #: The owner's language; the shop's own people read it (shops.lang).
+    lang: str = DEFAULT_LANGUAGE
 
 
 async def bot_is_taken(session: AsyncSession, *, bot_id: int) -> bool:
@@ -63,6 +66,7 @@ async def create_onboarded_shop(session: AsyncSession, new: NewShop) -> int:
         owner_phone=new.owner_phone,
         owner_phone_verified=new.owner_phone_verified,
         uses_process_bot_token=False,
+        lang=new.lang,
     )
     session.add(shop)
     await session.flush()

@@ -378,6 +378,7 @@ async def _finish(
             owner_telegram_id=owner.id,
             owner_phone=phone,
             owner_phone_verified=verified,
+            lang=lang,
         )
     except TokenCipherError as unusable:
         log.error("owner onboarding cannot read its own token: %s", unusable)

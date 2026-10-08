@@ -194,3 +194,46 @@ async def test_the_admin_group_is_spoken_to_in_its_shops_language(
             },
         )
     assert seen["lang"] == "ru"
+
+
+# --- the stored language: shops.lang (the CP-MT2 follow-up) ---------------------
+
+
+async def test_the_stored_language_is_what_each_shop_reads(db: AsyncConnection) -> None:
+    """No replacement here: shop B is STORED as Russian, and shop_language reads
+    it per shop. Before the column existed every shop read the default."""
+    from gulbot.services.shop_language import shop_language
+
+    ids: dict[str, int] = {}
+    for label in ("A", "B"):
+        ids[label] = (
+            await db.execute(
+                text(
+                    "INSERT INTO shops (name, working_hours) "
+                    "VALUES (:n, CAST(:wh AS jsonb)) RETURNING id"
+                ),
+                {"n": f"lang-{label}", "wh": json.dumps(DEFAULT_WORKING_HOURS)},
+            )
+        ).scalar_one()
+    await db.execute(text("UPDATE shops SET lang = 'ru' WHERE id = :b"), {"b": ids["B"]})
+    async with bound_session_factory(db)() as session:
+        read = {label: await shop_language(session, shop_id=ids[label]) for label in ids}
+    assert read == {"A": "uz", "B": "ru"}
+
+
+async def test_a_shop_language_outside_the_known_set_is_refused(db: AsyncConnection) -> None:
+    """The same CHECK as customers.lang: one definition of a language code."""
+    try:
+        async with db.begin_nested():
+            await db.execute(
+                text(
+                    "INSERT INTO shops (name, working_hours, lang) "
+                    "VALUES ('lang-x', CAST(:wh AS jsonb), 'de')"
+                ),
+                {"wh": json.dumps(DEFAULT_WORKING_HOURS)},
+            )
+    except Exception as error:  # noqa: BLE001 - the constraint's name is the assertion
+        refused = str(error)
+    else:
+        refused = ""
+    assert "ck_shops_lang_known" in refused, refused or "a 'de' shop was accepted"

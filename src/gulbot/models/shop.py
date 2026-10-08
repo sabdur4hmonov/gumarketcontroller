@@ -84,6 +84,11 @@ class Shop(IdMixin, TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
 
+    # What the shop's own people read: the order card and pings in its group,
+    # the alerts, the daily summary (services/shop_language.py). Same codes and
+    # CHECK as customers.lang. Onboarding stores the owner's language.
+    lang: Mapped[str] = mapped_column(String(2), nullable=False, server_default=text("'uz'"))
+
     working_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
     # Ordering policy. Both same-day conditions must pass.
@@ -139,6 +144,7 @@ class Shop(IdMixin, TimestampMixin, Base):
     )
 
     __table_args__ = (
+        CheckConstraint("lang IN ('uz', 'ru', 'en')", name="lang_known"),
         # A pasted plaintext token ("123456:ABC...") starts with digits; every
         # Fernet token starts "gAAAAA" -- version byte 0x80, then the high
         # bytes of a 64-bit timestamp that stay zero until the year 2106.

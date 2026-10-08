@@ -6,26 +6,23 @@ delivery pings in its group, the stall and dead-letter alerts, the daily
 summary, and the admin group's buttons and stamped outcomes. Every one of those
 asks this function, per shop, and none of them names a language itself.
 
-THE ONE PLACE THAT CHANGES. There is no `shops.lang` column yet: adding one is
-a migration, planned in docs/CHECKPOINTS.md (CP-MT2, "Follow-up: shops.lang")
-and deliberately not made on the branch that found the need. Until it exists
-every shop reads DEFAULT_LANGUAGE -- exactly what every one of those paths
-hardcoded before -- and the migration replaces this function's body and
-nothing else.
+THE ONE PLACE IT IS READ: `shops.lang` (migration 4b6e1d9c2a07, CP-MT2's
+follow-up). Every existing shop got 'uz' -- what every one of those paths
+hardcoded before -- and onboarding stores the owner's language for a new one.
+A shop that cannot be found reads DEFAULT_LANGUAGE rather than failing: these
+are alerts and summaries, and a missing word is better than a missing alert.
 """
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.i18n.catalog import DEFAULT_LANGUAGE
+from gulbot.models.shop import Shop
 
 
 async def shop_language(session: AsyncSession, *, shop_id: int) -> str:
-    """The language for everything this shop's own people read.
-
-    Takes the session and the shop now, though it reads neither yet, so that
-    every caller is already shaped for the column: the follow-up migration
-    changes this body to `SELECT lang FROM shops WHERE id = :shop_id`.
-    """
-    return DEFAULT_LANGUAGE
+    """The language for everything this shop's own people read."""
+    lang = await session.scalar(select(Shop.lang).where(Shop.id == shop_id))
+    return str(lang) if lang else DEFAULT_LANGUAGE

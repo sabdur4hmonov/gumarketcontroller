@@ -68,6 +68,7 @@ import gulbot.bot.factory as factory_module
 import gulbot.services.shop_tokens as shop_tokens_module
 from gulbot.bot.callbacks import OnboardBrandingCB
 from gulbot.bot.factory import build_platform_dispatcher
+from gulbot.bot.middlewares import OwnerLanguageMiddleware
 from gulbot.bot.routers.shop_onboarding import GROUP_REQUEST_ID
 from gulbot.bot.states import ShopOnboarding
 from gulbot.config import Settings
@@ -296,7 +297,7 @@ async def _shops(db: AsyncConnection) -> list[Any]:
                 text(
                     "SELECT id, name, channel_id, group_chat_id, owner_telegram_ids, "
                     " owner_phone, owner_phone_verified, uses_process_bot_token, "
-                    " bot_token_encrypted, bot_telegram_id FROM shops ORDER BY id"
+                    " bot_token_encrypted, bot_telegram_id, lang FROM shops ORDER BY id"
                 )
             )
         ).mappings()
@@ -587,6 +588,7 @@ async def test_the_whole_flow_creates_one_complete_usable_shop(
     assert (shop["owner_phone"], shop["owner_phone_verified"]) == ("+998901112233", True)
     assert shop["uses_process_bot_token"] is False, "only the pilot keeps the fallback"
     assert shop["bot_telegram_id"] == SHOP_BOT_ID
+    assert shop["lang"] == "uz", "an owner with no Russian Telegram gets the default"
     assert SHOP_SECRET not in shop["bot_token_encrypted"]
     assert decrypt_token(shop["bot_token_encrypted"]) == SHOP_TOKEN
 
@@ -595,6 +597,23 @@ async def test_the_whole_flow_creates_one_complete_usable_shop(
     assert await owner.data() == {}
     assert created == [shop["id"]], "the pollers are told, so the shop goes live now"
     _no_plaintext_in(storage)
+
+
+async def test_a_russian_speaking_owner_s_shop_is_stored_russian(
+    owner: Owner, db: AsyncConnection, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The owner's language, already derived for the conversation, becomes the
+    shop's: what its group, alerts and summary are written in."""
+
+    async def russian(self: Any, handler: Any, event: Any, data: dict[str, Any]) -> Any:
+        data["lang"] = "ru"
+        return await handler(event, data)
+
+    monkeypatch.setattr(OwnerLanguageMiddleware, "__call__", russian)
+    before = await _shops(db)
+    await owner.all_the_way()
+    (shop,) = [s for s in await _shops(db) if s not in before]
+    assert shop["lang"] == "ru"
 
 
 async def test_a_typed_owner_number_is_stored_unverified(owner: Owner, db: AsyncConnection) -> None:

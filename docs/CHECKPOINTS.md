@@ -26,7 +26,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP10a | Ordering: schema, order FSM, submit, snapshot, single-flight | done |
 | CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
 | CP-MT | Multi-tenant: per-shop bot tokens, per-shop send paths, owner onboarding, one process for every shop | done, 4 commits; open items in `docs/AUDIT_MULTI_TENANT.md` |
-| CP-MT2 | The rest of the multi-tenant audit: H3, H4, H5, M1, M3, L1, L2, L3 | one commit per finding, on branch `mt2-audit`; L2's column is a planned follow-up (below) |
+| CP-MT2 | The rest of the multi-tenant audit: H3, H4, H5, M1, M3, L1, L2, L3 | done, one commit per finding (L2's column in its own, after CP17 merged); merged to main |
 | CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
 | CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
 
@@ -302,11 +302,8 @@ bot id. This was reproduced against real Redis before it was fixed.
 **One process serves every shop**, and a shop added through the platform bot
 starts polling without a restart. One bot is never polled for two shops.
 
-Still open from the audit, recorded rather than forgotten (everything else
-was closed by CP-MT2, below):
-
-- **L2, the column:** `shops.lang` needs a migration; planned below
-  (CP-MT2, "Follow-up: `shops.lang`").
+Nothing from the audit is open: CP-MT2, below, closed the rest, L2's
+column included.
 
 ## What CP-MT2 guarantees
 
@@ -444,9 +441,8 @@ function so it answers Russian for shop B only: each path then speaks Russian
 to B and Uzbek to A in the same run (`tests/test_shop_language.py`, red on
 assertions before the change). Mutations: 4/4 caught.
 
-The part NOT done is the part that needs a migration: there is no
-`shops.lang` column, so `shop_language` answers DEFAULT_LANGUAGE for every
-shop -- what every path hardcoded before, so no behaviour changes today.
+The column came in its own commit once CP17 had merged (below):
+`shop_language` now reads `shops.lang`.
 
 **The seed makes more than one shop (L3).** `python -m gulbot.cli.seed` takes
 `--name` (the dev shop's name stays the default), `--channel-id`,
@@ -463,10 +459,15 @@ Red first on an assertion: the CLI ignored its arguments entirely
   which the audit's L3 asked for and CP-MT already built; the dev shop speaks
   through `BOT_TOKEN`.
 
-### Follow-up: `shops.lang` (needs a migration; planned, not made)
+### `shops.lang` -- DONE (2026-10-08), as planned here
 
-Skipped on purpose: CP17 is adding unpushed migrations, and a second Alembic
-head would conflict. Make this AFTER CP17 merges, on top of the single head:
+Made after CP17 merged, on its single head, as migration `4b6e1d9c2a07`.
+The plan below was followed step by step; red first (six tests, the column
+absent), and mutations 8/8 caught on assertions: `shop_language` ignoring
+the column or reading another shop's, the migration's CHECK admitting
+another code, onboarding or its router dropping the owner's language, and
+the seed ignoring, overwriting or not passing `--lang`. Every existing shop
+reads 'uz', exactly what it read before. The plan, as written:
 
 1. **Migration**, additive and one revision:
    `ALTER TABLE shops ADD COLUMN lang varchar(2) NOT NULL DEFAULT 'uz'`, plus a

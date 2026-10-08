@@ -127,3 +127,38 @@ async def test_a_rerun_fills_what_is_unset_and_never_overwrites(db: AsyncConnect
         await session.flush()
         assert "channel_id" in refusal, "a conflicting value was not refused"
         assert (await _shop(db, "Shop A"))[1] == -1001, "a stored value was overwritten"
+
+
+# --- the shop's language (shops.lang, the CP-MT2 follow-up to L2) ---------------
+
+
+def test_the_command_line_takes_the_shop_language(monkeypatch: pytest.MonkeyPatch) -> None:
+    called: dict[str, Any] = {}
+
+    async def recording(**kwargs: Any) -> tuple[int, bool]:
+        called.update(kwargs)
+        return 3, True
+
+    monkeypatch.setattr(seed, "seed_dev_shop", recording)
+    monkeypatch.setattr(sys, "argv", ["seed", "--name", "Shop R", "--lang", "ru"])
+    seed.main()
+    assert called.get("lang") == "ru"
+
+
+@pytest.mark.infra
+async def test_a_seeded_shop_keeps_its_language_and_a_rerun_never_changes_it(
+    db: AsyncConnection,
+) -> None:
+    async with bound_session_factory(db)() as session:
+        await seed.ensure_shop(session, name="Shop R", lang="ru")
+        await session.flush()
+        stored = await db.scalar(text("SELECT lang FROM shops WHERE name = 'Shop R'"))
+        assert stored == "ru"
+        refusal = ""
+        try:
+            await seed.ensure_shop(session, name="Shop R", lang="uz")
+        except seed.SeedConflict as conflict:
+            refusal = str(conflict)
+        await session.flush()
+        assert "lang" in refusal, "a different language was not refused"
+        assert await db.scalar(text("SELECT lang FROM shops WHERE name = 'Shop R'")) == "ru"

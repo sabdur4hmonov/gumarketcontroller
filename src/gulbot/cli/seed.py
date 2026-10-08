@@ -2,7 +2,7 @@
 
     python -m gulbot.cli.seed                                  # the dev shop
     python -m gulbot.cli.seed --name "Shop B" --channel-id -100123 \\
-        --group-chat-id -100456 --owner-id 111 --owner-id 222
+        --group-chat-id -100456 --owner-id 111 --owner-id 222 --lang ru
 
 Safe to run repeatedly -- it never overwrites an existing shop's configuration,
 because doing so would silently reset working hours someone tuned by hand. A
@@ -45,6 +45,7 @@ async def ensure_shop(
     channel_id: int | None = None,
     group_chat_id: int | None = None,
     owner_ids: Sequence[int] = (),
+    lang: str | None = None,
 ) -> tuple[int, bool]:
     """Return (shop_id, created). Does not commit.
 
@@ -61,6 +62,8 @@ async def ensure_shop(
             group_chat_id=group_chat_id,
             owner_telegram_ids=list(owner_ids),
         )
+        if lang is not None:
+            shop.lang = lang
         session.add(shop)
         await session.flush()
         return int(shop.id), True
@@ -76,6 +79,12 @@ async def ensure_shop(
                 "the seed never overwrites. Change it deliberately, in psql."
             )
         wanted[field] = value
+    if lang is not None and shop.lang != lang:
+        # Never unset: a stored language always exists, so any other is a change.
+        raise SeedConflict(
+            f"shop {name!r} already has lang={shop.lang}, not {lang}; "
+            "the seed never overwrites. Change it deliberately, in psql."
+        )
     if owner_ids:
         current_owners = list(shop.owner_telegram_ids or [])
         if current_owners and sorted(current_owners) != sorted(owner_ids):
@@ -97,6 +106,7 @@ async def seed_dev_shop(
     channel_id: int | None = None,
     group_chat_id: int | None = None,
     owner_ids: Sequence[int] = (),
+    lang: str | None = None,
     database: str | None = None,
 ) -> tuple[int, bool]:
     """Return (shop_id, created), committed."""
@@ -108,6 +118,7 @@ async def seed_dev_shop(
             channel_id=channel_id,
             group_chat_id=group_chat_id,
             owner_ids=owner_ids,
+            lang=lang,
         )
 
 
@@ -128,6 +139,12 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="an owner's Telegram id; repeat for several",
     )
+    parser.add_argument(
+        "--lang",
+        choices=("uz", "ru", "en"),
+        default=None,
+        help="what the shop's own people read (default: uz, for a new shop)",
+    )
     return parser
 
 
@@ -140,6 +157,7 @@ def main(argv: list[str] | None = None) -> None:
                 channel_id=args.channel_id,
                 group_chat_id=args.group_chat_id,
                 owner_ids=args.owner_ids,
+                lang=args.lang,
             )
         )
     except SeedConflict as conflict:
