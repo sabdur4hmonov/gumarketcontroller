@@ -57,6 +57,13 @@ from gulbot.db.base import Base, IdMixin, TimestampMixin
 class PageKind(StrEnum):
     YESNO = "yesno"
     INVITE = "invite"
+    #: CP17: Uzrnoma -- an apology letter, answered "Kechirdim".
+    APOLOGY = "apology"
+
+
+#: The kinds a recipient answers. Answered, they lock: the answer was given to
+#: exactly that text.
+ANSWERABLE_KINDS: Final = (PageKind.YESNO.value, PageKind.APOLOGY.value)
 
 
 #: The ten designs. Every one of them serves both kinds.
@@ -256,6 +263,10 @@ class SharePage(IdMixin, TimestampMixin, Base):
             "deleted_at IS NOT NULL OR kind <> 'yesno' "
             "OR (question IS NOT NULL AND question_preset IS NOT NULL)",
             name="yesno_complete",
+        ),
+        CheckConstraint(
+            "deleted_at IS NOT NULL OR kind <> 'apology' OR message IS NOT NULL",
+            name="apology_complete",
         ),
         CheckConstraint(
             "deleted_at IS NOT NULL OR kind <> 'invite' "

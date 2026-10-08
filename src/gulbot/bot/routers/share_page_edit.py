@@ -53,7 +53,7 @@ from gulbot.bot.routers.share_pages import _days, _months, _shop_today, _take_te
 from gulbot.bot.states import EditPage
 from gulbot.i18n import t
 from gulbot.models.customer import Customer
-from gulbot.models.share_page import MUSIC_TRACKS, PageKind, SharePage
+from gulbot.models.share_page import ANSWERABLE_KINDS, MUSIC_TRACKS, PageKind, SharePage
 from gulbot.services import share_pages
 from gulbot.services.share_pages import TEXT_FIELDS, EditRefused, effective_text
 from gulbot.utils.render import escape
@@ -79,7 +79,18 @@ def _field_button(lang: str, page_id: int, field: str, label_key: str, **kw: str
 def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
     yes, no = t("pages.word_yes", lang), t("pages.word_no", lang)
     rows: list[list[Any]] = []
-    if page.kind == PageKind.YESNO:
+    if page.kind == PageKind.APOLOGY:
+        rows += [
+            _field_button(lang, page.id, "message", "ibtn.pages.f_letter"),
+            _field_button(
+                lang,
+                page.id,
+                "notify_creator",
+                "ibtn.pages.f_notify",
+                state=yes if page.notify_creator else no,
+            ),
+        ]
+    elif page.kind == PageKind.YESNO:
         rows += [
             _field_button(lang, page.id, "question", "ibtn.pages.f_question"),
             _field_button(lang, page.id, "plan", "ibtn.pages.f_plan"),
@@ -158,7 +169,7 @@ def edit_menu_keyboard(lang: str, page: SharePage) -> InlineKeyboardMarkup:
         rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_gallery"))
         if page.template == "konvert":
             rows.append(_field_button(lang, page.id, "seal_monogram", "ibtn.pages.f_seal"))
-    elif page.template == "foto":
+    elif page.template == "foto":  # Ha/Yo'q and Uzrnoma: the one framed photo
         rows.append(_field_button(lang, page.id, "photo", "ibtn.pages.f_photo"))
     rows.append(
         [
@@ -222,7 +233,7 @@ async def open_edit_menu(
     if page is None:
         await target.answer(t("pages.gone", lang))
         return
-    if page.kind == PageKind.YESNO and page.answered_at is not None:
+    if page.kind in ANSWERABLE_KINDS and page.answered_at is not None:
         await target.answer(t("pages.edit_locked", lang))
         return
     await target.answer(t("pages.edit_menu", lang), reply_markup=edit_menu_keyboard(lang, page))
@@ -287,7 +298,7 @@ async def pick_field(
         return
     if not (plan or photo) and field not in share_pages.EDITABLE_FIELDS[page.kind]:
         return
-    if page.kind == PageKind.YESNO and page.answered_at is not None:
+    if page.kind in ANSWERABLE_KINDS and page.answered_at is not None:
         await target.answer(t("pages.edit_locked", lang))
         return
     if photo:

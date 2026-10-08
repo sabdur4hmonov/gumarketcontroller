@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gulbot.models.customer import Customer
 from gulbot.models.order import Order
 from gulbot.models.share_page import (
+    ANSWERABLE_KINDS,
     CLOSING_MAX,
     CONTACT_MAX,
     DRESS_CODE_MAX,
@@ -134,6 +135,16 @@ class YesNoDraft:
     #: CP17: the optional date plan. Both empty, or 1-5 of each.
     places: tuple[str, ...] = ()
     slots: tuple[datetime, ...] = ()
+
+
+@dataclass(frozen=True)
+class ApologyDraft:
+    """Uzrnoma (CP17): the creator's own letter, answered "Kechirdim"."""
+
+    template: str
+    lang: str
+    text: str
+    notify_creator: bool
 
 
 @dataclass(frozen=True)
@@ -249,7 +260,7 @@ async def create_page(
     shop_id: int,
     customer_id: int,
     bot_username: str | None,
-    draft: YesNoDraft | InviteDraft,
+    draft: YesNoDraft | InviteDraft | ApologyDraft,
     now: datetime | None = None,
 ) -> SharePage:
     """Write one page, or raise PageLimitReached / InvalidDraft.
@@ -282,6 +293,16 @@ async def create_page(
             "expires_at": now + YESNO_LIFETIME,
         }
         plan = await _checked_plan(session, shop_id, draft.places, draft.slots, now)
+    elif isinstance(draft, ApologyDraft):
+        letter = clean_text(draft.text, MESSAGE_MAX, multiline=True)
+        if letter is None:
+            raise InvalidDraft("an empty apology")
+        values |= {
+            "kind": PageKind.APOLOGY.value,
+            "message": letter,
+            "notify_creator": draft.notify_creator,
+            "expires_at": now + YESNO_LIFETIME,
+        }
     else:
         if draft.event_type not in EVENT_TYPES:
             raise InvalidDraft(f"unknown event type {draft.event_type!r}")
@@ -548,7 +569,7 @@ async def answer_yes(
     now = now or datetime.now(UTC)
     live = and_(
         SharePage.token == token,
-        SharePage.kind == PageKind.YESNO.value,
+        SharePage.kind.in_(ANSWERABLE_KINDS),
         SharePage.deleted_at.is_(None),
         SharePage.expires_at > now,
     )
@@ -684,6 +705,8 @@ class NotifyTarget:
     lang: str
     question: str
     kind: str = "yes"
+    #: "yesno" or "apology": what the answer was to.
+    page_kind: str = "yesno"
     place: str | None = None
     slot_at: datetime | None = None
     shop_timezone: str = "Asia/Tashkent"
@@ -739,8 +762,9 @@ async def claim_notification(
         shop_id=page.shop_id,
         telegram_user_id=int(customer[0]),
         lang=str(customer[1]),
-        question=page.question or "",
+        question=(page.question if page.kind == PageKind.YESNO else page.message) or "",
         kind=kind,
+        page_kind=page.kind,
         place=page.chosen_place,
         slot_at=page.chosen_slot_at,
         shop_timezone=await _shop_timezone_name(session, page.shop_id),
@@ -1022,6 +1046,7 @@ EDITABLE_FIELDS: Final[dict[str, frozenset[str]]] = {
         }
     ),
     PageKind.YESNO.value: frozenset({"question", "template", "lang", "notify_creator", "music"}),
+    PageKind.APOLOGY.value: frozenset({"message", "template", "lang", "notify_creator", "music"}),
 }
 
 #: Text fields: (cap, multi-line, may be emptied). Emptying title, message or
@@ -1102,13 +1127,16 @@ async def update_page(
         raise EditRefused("gone")
     if not changes or set(changes) - EDITABLE_FIELDS[page.kind]:
         raise EditRefused("invalid")
-    if page.kind == PageKind.YESNO and page.answered_at is not None:
+    if page.kind in ANSWERABLE_KINDS and page.answered_at is not None:
         raise EditRefused("locked")
 
     values: dict[str, object] = {}
     for field, value in changes.items():
         if field in TEXT_FIELDS:
             cap, multiline, may_empty = TEXT_FIELDS[field]
+            # An invitation's message may go back to its preset; an Uzrnoma's
+            # IS the letter, and a letter cannot be emptied.
+            may_empty = may_empty and not (field == "message" and page.kind == PageKind.APOLOGY)
             if value is not None and not isinstance(value, str):
                 raise EditRefused("invalid")
             cleaned = clean_text(value, cap, multiline=multiline)

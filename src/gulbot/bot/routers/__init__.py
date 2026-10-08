@@ -21,6 +21,7 @@ from gulbot.bot.routers.onboarding import build_onboarding_router
 from gulbot.bot.routers.orders import build_orders_router
 from gulbot.bot.routers.phone import build_phone_router
 from gulbot.bot.routers.settings import build_settings_router
+from gulbot.bot.routers.share_page_apology import build_share_page_apology_router
 from gulbot.bot.routers.share_page_colors import build_share_page_colors_router
 from gulbot.bot.routers.share_page_edit import build_share_page_edit_router
 from gulbot.bot.routers.share_page_photo import build_share_page_photo_router
@@ -78,6 +79,8 @@ def build_routers() -> tuple[Router, ...]:
         build_share_page_photo_router(),
         # CP17: the dress-code palette.
         build_share_page_colors_router(),
+        # CP17: making an Uzrnoma.
+        build_share_page_apology_router(),
         # CP17: the creator's view of the wishes wall.
         build_share_page_wishes_router(),
         build_menu_router(),

@@ -1268,6 +1268,56 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "Tantana",
         "ru": "Торжество",
     },
+    # --- Uzrnoma, the apology letter (CP17) ---------------------------------
+    "ibtn.pages.apology": {
+        "uz": "🕊 Uzrnoma",
+        "ru": "🕊 Письмо-извинение",
+    },
+    "pages.ask_apology": {
+        "uz": (
+            "✍️ Uzr so'zlaringizni yozing — o'z so'zlaringiz bilan, {max} "
+            "belgigacha. Sahifada xat bo'lib turadi."
+        ),
+        "ru": (
+            "✍️ Напишите извинение своими словами, до {max} знаков. На странице оно будет письмом."
+        ),
+    },
+    "pages.ask_notify_apology": {
+        "uz": "Kechirishganda sizga xabar beraymi?",
+        "ru": "Сообщить вам, когда вас простят?",
+    },
+    "pages.confirm_apology": {
+        "uz": (
+            "🕊 <b>Uzrnoma</b>\n\n«{letter}»\n\nSahifa tili: "
+            "{lang_name}\nDizayn: {template}\nXabar berish: {notify}"
+        ),
+        "ru": (
+            "🕊 <b>Письмо-извинение</b>\n\n«{letter}»\n\nЯзык страницы: "
+            "{lang_name}\nДизайн: {template}\nСообщить: {notify}"
+        ),
+    },
+    "pages.notify_forgiven": {
+        "uz": "🕊 Kechirdi! Uzrnomangiz qabul qilindi.\n\n«{letter}»",
+        "ru": "🕊 Вас простили! Ваше письмо-извинение принято.\n\n«{letter}»",
+    },
+    "pages.answer_forgiven": {
+        "uz": "🕊 Javob: «Kechirdim»! ({when})",
+        "ru": "🕊 Ответ: «Прощаю»! ({when})",
+    },
+    "pages.detail_apology": {
+        "uz": (
+            "🕊 <b>{letter}</b>\n\n🔗 {url}\n👀 Ochishlar: {views}\n🌸 Do'kon "
+            "havolasi bosilgan: {clicks}\n{answer}\n⏳ {expires} gacha"
+        ),
+        "ru": (
+            "🕊 <b>{letter}</b>\n\n🔗 {url}\n👀 Открытий: {views}\n🌸 Переходов в "
+            "магазин: {clicks}\n{answer}\n⏳ до {expires}"
+        ),
+    },
+    "ibtn.pages.f_letter": {
+        "uz": "✍️ Xat matni",
+        "ru": "✍️ Текст письма",
+    },
     # --- editing a page (CP17) ---------------------------------------------
     "ibtn.pages.edit": {
         "uz": "✏️ Tahrirlash",
@@ -1911,6 +1961,25 @@ _EN["pages.ask_music"] = (
 _EN["pages.track_bahor"] = "Spring"
 _EN["pages.track_oqshom"] = "Evening"
 _EN["pages.track_tantana"] = "Celebration"
+
+# Uzrnoma, the apology letter (CP17).
+_EN["ibtn.pages.apology"] = "🕊 Apology letter"
+_EN["pages.ask_apology"] = (
+    "✍️ Write your apology in your own words, up to {max} "
+    "characters. It will be a letter on the page."
+)
+_EN["pages.ask_notify_apology"] = "Shall I tell you when you are forgiven?"
+_EN["pages.confirm_apology"] = (
+    "🕊 <b>Apology letter</b>\n\n«{letter}»\n\nPage language: "
+    "{lang_name}\nDesign: {template}\nTell me: {notify}"
+)
+_EN["pages.notify_forgiven"] = "🕊 You are forgiven! Your apology was accepted.\n\n«{letter}»"
+_EN["pages.answer_forgiven"] = "🕊 Answer: «I forgive you»! ({when})"
+_EN["pages.detail_apology"] = (
+    "🕊 <b>{letter}</b>\n\n🔗 {url}\n👀 Opened: {views}\n🌸 Taps to the "
+    "shop: {clicks}\n{answer}\n⏳ until {expires}"
+)
+_EN["ibtn.pages.f_letter"] = "✍️ The letter"
 
 CATALOG["btn.language.en"] = {"uz": "🇬🇧 English", "ru": "🇬🇧 English"}
 for _key, _value in _EN.items():

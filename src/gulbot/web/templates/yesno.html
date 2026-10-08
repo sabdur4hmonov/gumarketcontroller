@@ -9,12 +9,18 @@
   {%- endif %}
   {{ ornament(v.theme) }}
   <div id="ask">
+    {%- if v.apology %}
+    <p class="eyebrow">{{ v.s.apology_eyebrow }}</p>
+    <h1 class="display">{{ v.s.apology_title }}</h1>
+    <p class="letter">{{ v.letter }}</p>
+    {%- else %}
     <p class="eyebrow">{{ v.s.eyebrow }}</p>
     <h1 class="display">{{ v.question }}</h1>
+    {%- endif %}
   </div>
   <div class="answers" id="answers">
-    <button type="button" class="btn btn-yes" id="yes" data-post="{{ v.yes_url }}"{% if v.plan %} data-plan="1"{% endif %}{% if v.chosen %} data-chosen="{{ v.chosen }}"{% endif %}>{{ v.s.yes }}</button>
-    <button type="button" class="btn btn-no" id="no" data-lines="{{ v.no_lines_json }}">{{ v.s.no }}</button>
+    <button type="button" class="btn btn-yes" id="yes" data-post="{{ v.yes_url }}"{% if v.plan %} data-plan="1"{% endif %}{% if v.chosen %} data-chosen="{{ v.chosen }}"{% endif %}>{{ v.yes_label }}</button>
+    <button type="button" class="btn btn-no" id="no" data-lines="{{ v.no_lines_json }}">{{ v.no_label }}</button>
   </div>
   {%- if v.plan %}
   <section class="plan" id="plan" hidden aria-labelledby="plan-title">
@@ -39,7 +45,7 @@
   {%- endif %}
   <section class="celebrate" id="celebrate" hidden aria-live="polite">
     {{ heart("heart") }}
-    <h2 class="display">{{ v.s.yay }}</h2>
+    <h2 class="display">{{ v.yay }}</h2>
     <p class="lead">{{ v.celebration }}</p>
     <p class="chosen" id="chosen-line" hidden></p>
   </section>

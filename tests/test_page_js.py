@@ -51,6 +51,15 @@ def test_every_press_says_something_new_and_then_the_button_leaves(lang: str) ->
     assert result["goneAfter"] == len(lines), "Yo'q must leave exactly when the lines run out"
 
 
+@pytest.mark.parametrize("lang", PAGE_LANGUAGES)
+def test_the_apology_think_button_escalates_the_same_way(lang: str) -> None:
+    """Uzrnoma's "Hali o'ylab ko'raman" runs on the same code as Yo'q."""
+    lines = strings.APOLOGY_LINES[lang]
+    result = press_until_gone(lines)
+    assert result["seen"] == list(lines[1:])
+    assert result["goneAfter"] == len(lines)
+
+
 def run(harness: str, *args: str) -> dict[str, object]:
     assert NODE is not None
     out = subprocess.run(

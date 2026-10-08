@@ -706,6 +706,19 @@ body {
   background: #3f7a4a;
 }
 
+/* --- Uzrnoma (CP17): the letter ------------------------------------------------ */
+
+.letter {
+  margin: 18px auto 0;
+  max-width: 32ch;
+  text-align: left;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
 /* --- Music (CP17): a quiet button, never autoplay ---------------------------- */
 
 .music {

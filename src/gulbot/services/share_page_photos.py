@@ -33,7 +33,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.models.share_page import GALLERY_MAX, SharePage, SharePagePhoto
+from gulbot.models.share_page import ANSWERABLE_KINDS, GALLERY_MAX, SharePage, SharePagePhoto
 
 #: The upload itself: Telegram's own photos are far below this.
 MAX_INPUT_BYTES: Final = 10 * 1024 * 1024
@@ -102,7 +102,7 @@ async def _own_open_page(
         )
         .with_for_update()
     )
-    if page is None or (page.kind == "yesno" and page.answered_at is not None):
+    if page is None or (page.kind in ANSWERABLE_KINDS and page.answered_at is not None):
         return None
     return page
 

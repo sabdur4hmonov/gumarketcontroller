@@ -179,6 +179,24 @@ def yesno_view(
 ) -> dict[str, Any]:
     lang = page.lang
     v = _common(page.template, lang, branding)
+    if page.kind == PageKind.APOLOGY:
+        return v | {
+            "title": v["s"]["og_apology"],
+            "og_title": v["s"]["og_apology"],
+            # As with a question: the preview must not give the letter away.
+            "og_description": v["s"]["og_apology_desc"],
+            "apology": True,
+            "letter": page.message or "",
+            "yes_url": yes_url,
+            "yes_label": v["s"]["forgive"],
+            "no_label": strings.APOLOGY_LINES[lang][0],
+            "no_lines_json": json.dumps(list(strings.APOLOGY_LINES[lang]), ensure_ascii=False),
+            "yay": v["s"]["forgiven_title"],
+            "celebration": v["s"]["forgiven_lead"],
+            "plan": None,
+            "choose_url": "",
+            "chosen": None,
+        }
     question = page.question or ""
     v |= {
         "title": v["s"]["og_yesno"],
@@ -192,6 +210,10 @@ def yesno_view(
         "plan": plan if plan is not None and plan.places and plan.slots else None,
         "choose_url": choose_url,
         "chosen": chosen_line(page, tz_name),
+        "apology": False,
+        "yes_label": v["s"]["yes"],
+        "no_label": v["s"]["no"],
+        "yay": v["s"]["yay"],
     }
     return v
 
@@ -279,6 +301,12 @@ def gallery_view(kind: str, lang: str) -> dict[str, Any]:
     title = {"uz": "Dizaynlar", "uz_cyrl": "Дизайнлар", "ru": "Дизайны", "en": "Designs"}[lang]
     kind_label = {
         "yesno": {"uz": "Ha / Yo'q", "uz_cyrl": "Ҳа / Йўқ", "ru": "Да / Нет", "en": "Yes / No"},
+        "apology": {
+            "uz": "Uzrnoma",
+            "uz_cyrl": "Узрнома",
+            "ru": "Письмо-извинение",
+            "en": "Apology",
+        },
         "invite": {
             "uz": "Taklifnoma",
             "uz_cyrl": "Таклифнома",
@@ -311,7 +339,7 @@ def page_html(
     wishes: list[Any] | None = None,
 ) -> str:
     """The live page. `base` is "/p/<token>", the root of its own endpoints."""
-    if page.kind == PageKind.YESNO:
+    if page.kind in (PageKind.YESNO, PageKind.APOLOGY):
         view = yesno_view(
             page,
             branding,
@@ -415,6 +443,10 @@ def sample_plan(lang: str, tz_name: str = "Asia/Tashkent") -> Plan:
 def sample_page(kind: str, theme: str, lang: str, *, event_type: str = "wedding") -> SharePage:
     """A page that exists nowhere but in this response."""
     today = datetime.now(UTC).date()
+    if kind == PageKind.APOLOGY:
+        return SharePage(
+            id=0, kind=kind, template=theme, lang=lang, message=strings.text("apology_sample", lang)
+        )
     if kind == PageKind.YESNO:
         return SharePage(
             id=0,

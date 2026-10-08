@@ -141,6 +141,16 @@ class ShopOnboarding(StatesGroup):
     sharing_phone = State()
 
 
+class ApologyPage(StatesGroup):
+    """Making an Uzrnoma (CP17). One text step: the letter."""
+
+    choosing_lang = State()
+    entering_text = State()
+    choosing_template = State()
+    choosing_notify = State()
+    confirming = State()
+
+
 class YesNoPage(StatesGroup):
     """Making a Ha/Yo'q page. One text step: the customer's own question."""
 

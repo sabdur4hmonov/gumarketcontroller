@@ -94,6 +94,12 @@ def pages_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
             ],
             [
                 InlineKeyboardButton(
+                    text=t("ibtn.pages.apology", lang),
+                    callback_data=PageMenuCB(action=PageKind.APOLOGY.value).pack(),
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text=t("ibtn.pages.mine", lang),
                     callback_data=PageMenuCB(action="mine").pack(),
                 )
@@ -279,6 +285,9 @@ def link_keyboard(lang: str, url: str) -> InlineKeyboardMarkup | None:
 
 
 def _page_label(page: SharePage) -> str:
+    if page.kind == PageKind.APOLOGY:
+        text = " ".join((page.message or "").split())
+        return f"🕊 {text[:30]}{'…' if len(text) > 30 else ''}"
     if page.kind == PageKind.YESNO:
         text = page.question or ""
         return f"💍 {text[:30]}{'…' if len(text) > 30 else ''}"

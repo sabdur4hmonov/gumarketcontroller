@@ -67,7 +67,16 @@ def when_text(moment: datetime, lang: str, tz_name: str) -> str:
     return f"{local.day}-{strings.MONTHS['uz'][local.month - 1].lower()}, {clock}"
 
 
+#: How much of the letter the "forgiven" message quotes back.
+LETTER_QUOTE_MAX: Final = 120
+
+
 def message_for(target: NotifyTarget) -> str:
+    if target.page_kind == "apology":
+        letter = target.question
+        if len(letter) > LETTER_QUOTE_MAX:
+            letter = letter[: LETTER_QUOTE_MAX - 1] + "…"
+        return t("pages.notify_forgiven", target.lang, letter=escape(letter))
     when = (
         when_text(target.slot_at, target.lang, target.shop_timezone)
         if target.slot_at is not None

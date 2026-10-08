@@ -120,6 +120,37 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "yes": {"uz": "Ha", "ru": "Да", "en": "Yes"},
     "no": {"uz": "Yo'q", "ru": "Нет", "en": "No"},
     "yay": {"uz": "Hurraa!", "ru": "Ура!", "en": "Yay!"},
+    # Uzrnoma (CP17).
+    "apology_eyebrow": {"uz": "Senga xat bor", "ru": "Тебе письмо", "en": "A letter for you"},
+    "apology_title": {"uz": "Meni kechir", "ru": "Прости меня", "en": "Forgive me"},
+    "forgive": {"uz": "Kechirdim 🤍", "ru": "Прощаю 🤍", "en": "I forgive you 🤍"},
+    "forgiven_title": {"uz": "Rahmat! 🕊", "ru": "Спасибо! 🕊", "en": "Thank you! 🕊"},
+    "forgiven_lead": {
+        "uz": "Bu yaxshilikni hech qachon unutmayman 🤍",
+        "ru": "Я никогда не забуду твою доброту 🤍",
+        "en": "I will never forget your kindness 🤍",
+    },
+    "og_apology": {
+        "uz": "🕊 Senga maxsus xat",
+        "ru": "🕊 Для тебя письмо",
+        "en": "🕊 A letter for you",
+    },
+    "og_apology_desc": {
+        "uz": "Ochib o'qi 🤍",
+        "ru": "Открой и прочитай 🤍",
+        "en": "Open and read 🤍",
+    },
+    "apology_sample": {
+        "uz": (
+            "Kecha aytgan so'zlarim uchun uzr so'rayman. Seni xafa qilmoqchi emasdim.\n"
+            "Sen men uchun juda qadrlisan."
+        ),
+        "ru": "Прости меня за вчерашние слова. Я не хотел тебя обидеть.\nТы очень мне дорога.",
+        "en": (
+            "I'm sorry for what I said yesterday. I never meant to hurt you.\n"
+            "You mean so much to me."
+        ),
+    },
     "open": {"uz": "Ochish uchun bosing", "ru": "Нажмите, чтобы открыть", "en": "Tap to open"},
     "cta": {"uz": "Gul buyurtma qilish", "ru": "Заказать цветы", "en": "Order flowers"},
     "made_with": {
@@ -291,6 +322,60 @@ NO_LINES: Final[dict[str, tuple[str, ...]]] = {
     ),
 }  # fmt: skip
 NO_LINES["uz_cyrl"] = tuple(to_cyrillic(line) for line in NO_LINES["uz"])
+
+#: Uzrnoma's second button (CP17): "I'll think about it". Like Yo'q it runs
+#: away, a new line each press, never repeating, and leaves when they run out.
+#: Gentle on purpose: patience and warmth, never guilt or pressure -- an
+#: apology that pushes is not one. tests/test_share_page_apology.py keeps at
+#: least ten, all different, in every language.
+APOLOGY_LINES: Final[dict[str, tuple[str, ...]]] = {
+    "uz": (
+        "Hali o'ylab ko'raman",
+        "Shoshilma, o'ylab ko'r 🙂",
+        "Men kutaman 🕊",
+        "Bir piyola choy ustida gaplashsakmi? ☕",
+        "Hamma ham adashadi 🙏",
+        "Rostdan ham xulosa chiqardim",
+        "Bitta imkoniyat berasanmi? 🌷",
+        "Seni sog'indim 💛",
+        "Bir jilmayib qo'y, iltimos 🙂",
+        "Bu tugma ham uyalib qoldi 🙈",
+        "Yaxshi kunlar hali oldinda 🌅",
+        "Yuraging nima desa, shu 💕",
+        "Bu tugma dam olishga ketdi 🌴",
+    ),
+    "ru": (
+        "Ещё подумаю",
+        "Не спеши, подумай 🙂",
+        "Я подожду 🕊",
+        "Может, поговорим за чаем? ☕",
+        "Все ошибаются 🙏",
+        "Я правда многое понял(а)",
+        "Дашь мне шанс? 🌷",
+        "Я скучаю 💛",
+        "Улыбнись, пожалуйста 🙂",
+        "Эта кнопка тоже смущается 🙈",
+        "Хорошие дни ещё впереди 🌅",
+        "Как подскажет сердце 💕",
+        "Кнопка ушла отдыхать 🌴",
+    ),
+    "en": (
+        "I'll think about it",
+        "Take your time 🙂",
+        "I'll wait 🕊",
+        "Talk it over with tea? ☕",
+        "Everyone makes mistakes 🙏",
+        "I really have learned",
+        "Give me one more chance? 🌷",
+        "I miss you 💛",
+        "A small smile, please? 🙂",
+        "This button is shy too 🙈",
+        "Better days are ahead 🌅",
+        "Whatever your heart says 💕",
+        "This button went for a rest 🌴",
+    ),
+}  # fmt: skip
+APOLOGY_LINES["uz_cyrl"] = tuple(to_cyrillic(line) for line in APOLOGY_LINES["uz"])
 
 #: The ready-made questions, picked from buttons in the bot. `custom` is the
 #: customer's own words and has no entry here.

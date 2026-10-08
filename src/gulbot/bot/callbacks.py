@@ -324,7 +324,7 @@ class PageMenuCB(CallbackData, prefix="pgmenu"):
 
     @classmethod
     def samples(cls) -> list[str]:
-        return [cls(action=a).pack() for a in ("yesno", "invite", "mine")]
+        return [cls(action=a).pack() for a in ("yesno", "invite", "apology", "mine")]
 
 
 class PageLangCB(CallbackData, prefix="pglang"):

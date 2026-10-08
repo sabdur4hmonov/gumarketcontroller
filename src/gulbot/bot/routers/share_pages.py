@@ -73,7 +73,7 @@ from gulbot.bot.keyboards_pages import (
     template_keyboard,
     toggle_keyboard,
 )
-from gulbot.bot.states import InvitePage, YesNoPage
+from gulbot.bot.states import ApologyPage, InvitePage, YesNoPage
 from gulbot.i18n import button_labels, t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.customer import Customer
@@ -93,6 +93,7 @@ from gulbot.models.share_page import (
 from gulbot.models.shop import Shop
 from gulbot.services import share_pages
 from gulbot.services.share_pages import (
+    ApologyDraft,
     InviteDraft,
     PageLimitReached,
     YesNoDraft,
@@ -236,6 +237,11 @@ async def menu_choice(
         await state.update_data(kind=PageKind.YESNO.value)
         await state.set_state(YesNoPage.choosing_lang)
         await target.answer(t("pages.choose_lang", lang), reply_markup=page_lang_keyboard())
+        return
+    if callback_data.action == PageKind.APOLOGY:
+        from gulbot.bot.routers.share_page_apology import start_apology
+
+        await start_apology(target, state, lang)
         return
     if callback_data.action == PageKind.INVITE:
         await state.update_data(kind=PageKind.INVITE.value)
@@ -731,8 +737,17 @@ async def confirm(
         await target.answer(t("pages.cancelled", lang), reply_markup=main_menu_keyboard(lang))
         return
 
-    draft: YesNoDraft | InviteDraft | None
-    if data.get("kind") == PageKind.YESNO and _yesno_ready(data):
+    from gulbot.bot.routers.share_page_apology import apology_ready
+
+    draft: YesNoDraft | InviteDraft | ApologyDraft | None
+    if data.get("kind") == PageKind.APOLOGY and apology_ready(data):
+        draft = ApologyDraft(
+            template=data["template"],
+            lang=data["page_lang"],
+            text=data["letter"],
+            notify_creator=data["notify"],
+        )
+    elif data.get("kind") == PageKind.YESNO and _yesno_ready(data):
         from gulbot.bot.routers.share_page_plan import slot_times
 
         draft = YesNoDraft(
@@ -848,6 +863,24 @@ async def _detail(session: AsyncSession, page: SharePage, lang: str) -> str:
         "clicks": page.cta_click_count,
         "expires": _expires_text(page, tz),
     }
+    if page.kind == PageKind.APOLOGY:
+        answer = (
+            t(
+                "pages.answer_forgiven",
+                lang,
+                when=page.answered_at.astimezone(tz).strftime("%d.%m %H:%M"),
+            )
+            if page.answered_at
+            else t("pages.answer_none", lang)
+        )
+        letter = page.message or ""
+        return t(
+            "pages.detail_apology",
+            lang,
+            letter=escape(letter if len(letter) <= 120 else letter[:119] + "…"),
+            answer=answer,
+            **common,
+        )
     if page.kind == PageKind.YESNO:
         answer = (
             t(
@@ -955,6 +988,8 @@ def build_share_pages_router() -> Router:
     )
 
     router.callback_query.register(
-        confirm, StateFilter(YesNoPage.confirming, InvitePage.confirming), PageConfirmCB.filter()
+        confirm,
+        StateFilter(YesNoPage.confirming, InvitePage.confirming, ApologyPage.confirming),
+        PageConfirmCB.filter(),
     )
     return router
