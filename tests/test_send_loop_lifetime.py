@@ -315,12 +315,18 @@ def test_two_ticks_in_one_process_both_really_send(
 # --- 3. the structural properties the two tests above depend on ------------
 
 
-def test_build_bot_is_not_cached() -> None:
+def test_build_bot_is_not_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fails fast, with a readable message, if someone adds an lru_cache.
 
     The tests above would also fail, but with `RuntimeError: Event loop is
     closed` from deep inside aiohttp -- true, and much harder to act on.
+
+    The token is the harness's, not whatever `.env` holds: a checkout with no
+    BOT_TOKEN (a worktree, CI) failed here with TokenValidationError before
+    the assertion ever ran. The no-argument call stays -- it is the path the
+    workers take.
     """
+    monkeypatch.setattr(factory_module, "get_settings", lambda: Settings(bot_token=TEST_TOKEN))
     first, second = factory_module.build_bot(), factory_module.build_bot()
     try:
         assert first is not second, "build_bot is cached; the second Celery task will die"
