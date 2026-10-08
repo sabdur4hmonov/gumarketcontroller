@@ -7,7 +7,7 @@ column.
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from enum import StrEnum
 from typing import Any
 
@@ -15,6 +15,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     Integer,
     SmallInteger,
@@ -109,6 +110,13 @@ class Shop(IdMixin, TimestampMixin, Base):
     status_changed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # CP18. Billing is manual: the platform owner records each payment in the
+    # admin panel (the ledger is subscription_payments; this is the current
+    # state). "overdue" is a badge -- nothing pauses a shop automatically.
+    subscription_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, server_default=text("'none'")
+    )
+    paid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     working_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 
@@ -167,6 +175,10 @@ class Shop(IdMixin, TimestampMixin, Base):
     __table_args__ = (
         CheckConstraint("lang IN ('uz', 'ru', 'en')", name="lang_known"),
         CheckConstraint("status IN ('onboarding', 'active', 'paused')", name="status_known"),
+        CheckConstraint(
+            "subscription_status IN ('none', 'trial', 'paid', 'overdue')",
+            name="subscription_known",
+        ),
         # A pasted plaintext token ("123456:ABC...") starts with digits; every
         # Fernet token starts "gAAAAA" -- version byte 0x80, then the high
         # bytes of a 64-bit timestamp that stay zero until the year 2106.
