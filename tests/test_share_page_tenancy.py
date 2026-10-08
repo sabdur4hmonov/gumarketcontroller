@@ -111,6 +111,82 @@ async def test_a_referral_cannot_join_shop_a_page_to_shop_b_customer(two: dict[s
             )
 
 
+# --- CP17's tables: a plan option, a photo, a wish ----------------------------------
+#
+# Each carries shop_id beside page_id, joined to the page by a composite FK, so a
+# row can never claim a page of another shop -- whatever a bug upstream passes.
+
+
+async def test_a_plan_option_cannot_cross_shops(two: dict[str, Any]) -> None:
+    page = await a_page_in(two, "a")
+    with pytest.raises(IntegrityError, match="fk_share_page_options_page_id_shop_id_share_pages"):
+        async with two["db"].begin_nested():
+            await two["db"].execute(
+                text(
+                    "INSERT INTO share_page_options (shop_id, page_id, kind, position, place) "
+                    "VALUES (:b, :p, 'place', 1, 'Kino')"
+                ),
+                {"b": two["b"].shop_id, "p": page.id},
+            )
+
+
+async def test_a_photo_cannot_cross_shops(two: dict[str, Any]) -> None:
+    page = await a_page_in(two, "a", kind="invite")
+    with pytest.raises(IntegrityError, match="fk_share_page_photos_page_id_shop_id_share_pages"):
+        async with two["db"].begin_nested():
+            await two["db"].execute(
+                text(
+                    "INSERT INTO share_page_photos "
+                    " (shop_id, page_id, position, data, width, height, size_bytes) "
+                    "VALUES (:b, :p, 1, '\\xffd8'::bytea, 1, 1, 2)"
+                ),
+                {"b": two["b"].shop_id, "p": page.id},
+            )
+
+
+async def test_a_wish_cannot_cross_shops(two: dict[str, Any]) -> None:
+    page = await a_page_in(two, "a", kind="invite")
+    with pytest.raises(IntegrityError, match="fk_share_page_wishes_page_id_shop_id_share_pages"):
+        async with two["db"].begin_nested():
+            await two["db"].execute(
+                text(
+                    "INSERT INTO share_page_wishes (shop_id, page_id, voter_key, author, body) "
+                    "VALUES (:b, :p, 'vvvvvvvvvvvvvvvvvvvvvv', 'Aziz', 'Baxtli bo''linglar')"
+                ),
+                {"b": two["b"].shop_id, "p": page.id},
+            )
+
+
+async def test_the_same_rows_are_accepted_under_their_own_shop(two: dict[str, Any]) -> None:
+    """The control: the refusals above are the shop mismatch, not a bad row."""
+    question = await a_page_in(two, "a")
+    invitation = await a_page_in(two, "a", kind="invite")
+    shop = two["a"].shop_id
+    async with two["db"].begin_nested():
+        await two["db"].execute(
+            text(
+                "INSERT INTO share_page_options (shop_id, page_id, kind, position, place) "
+                "VALUES (:s, :p, 'place', 1, 'Kino')"
+            ),
+            {"s": shop, "p": question.id},
+        )
+        await two["db"].execute(
+            text(
+                "INSERT INTO share_page_photos "
+                " (shop_id, page_id, position, data, width, height, size_bytes) "
+                "VALUES (:s, :p, 1, '\\xffd8'::bytea, 1, 1, 2)"
+            ),
+            {"s": shop, "p": invitation.id},
+        )
+        await two["db"].execute(
+            text(
+                "INSERT INTO share_page_wishes (shop_id, page_id, voter_key, author, body) "
+                "VALUES (:s, :p, 'vvvvvvvvvvvvvvvvvvvvvv', 'Aziz', 'Baxtli bo''linglar')"
+            ),
+            {"s": shop, "p": invitation.id},
+        )
+
+
 # --- through the bots ---------------------------------------------------------------
 
 
