@@ -257,3 +257,66 @@ Do these in order.
 **Backups.** The new tables (`share_pages`, `share_page_rsvps`,
 `share_page_referrals`) are in the normal database dump. Nothing is stored on
 disk.
+
+## 7. CP17: date plans, Uzrnoma, editable pages, photos, sections, music
+
+Everything in section 6 still holds. On top of it:
+
+1. **A new dependency: Pillow** (`pillow>=11,<12`), for the page photos. It is
+   in `pyproject.toml`; install with `pip install -e .` on the server, then
+   check it imports in the SAME environment the bot and page server run in:
+
+   ```
+   python -c "import PIL; print(PIL.__version__)"
+   ```
+
+   Pillow ships binary wheels for Linux; nothing else needs installing. The
+   bot needs it (it re-encodes photos as they arrive); the page server only
+   serves what is already stored.
+
+2. **Ten migrations, all forward-only in normal use**, from `1897629a71dc`
+   (CP16) to the new head `c5a8e2d61f37`:
+
+   | Revision | What it adds |
+   |---|---|
+   | `360f0694be06` | `en` as a customer language |
+   | `83ca22ed6f83` | the editable taklifnoma text blocks (title, dress code, programme, contact, closing) and an edit stamp |
+   | `878bc32b72d4` | the date plan: `share_page_options`, the chosen place and time |
+   | `797f8207081f` | the ten new designs in the template CHECK |
+   | `86570def06eb` | `share_page_photos` (stored in Postgres, 1.5 MB cap each) |
+   | `cf7aa499fe45` | the countdown and gallery switches, and the dress-code colours with a shape CHECK |
+   | `541afb7b8568` | `share_page_wishes` |
+   | `9d2e41c07a5b` | the Konvert seal's letters |
+   | `b3f7a90c2e14` | `music`, with a CHECK naming our three tracks |
+   | `c5a8e2d61f37` | the `apology` kind (Uzrnoma) |
+
+   ```
+   alembic upgrade head
+   alembic current      # must print c5a8e2d61f37 (head)
+   alembic heads
+   ```
+
+   All are additive: no column is dropped, no existing row changes. **Two
+   downgrades change data**, because the old CHECKs cannot hold it: going
+   below `c5a8e2d61f37` deletes every Uzrnoma page, and going below
+   `360f0694be06` turns every English-speaking customer back into an Uzbek
+   one. Back up first if you ever need to roll back past them.
+
+3. **Restart the bot, the worker and the page server** -- all three, since
+   each imports the new code. The worker must be running: the "they said Ha
+   -- here is the place and time they picked" message, and the "nothing chosen
+   yet" follow-up ten minutes later, are queued with a Celery countdown.
+
+4. **Backups grow with photos.** Photos live in `share_page_photos` (at most
+   six per invitation, each re-encoded to ≤ 1.5 MB, usually a few hundred
+   KB), so they are in the normal dump and are deleted with their page by the
+   nightly scrub. Watch the dump size for the first weeks.
+
+5. **Verify, from outside the server**, after section 6's checks:
+   - `/demo/apology/konvert` and `/demo/invite/oltin` open on a phone.
+   - Make a Ha/Yo'q page with a date plan, press Ha, pick a place and time:
+     the creator gets ONE message naming both.
+   - Edit a taklifnoma's title from "Mening sahifalarim": the same link
+     shows the new title.
+   - Send the bot a photo for an invitation's gallery, then download it from
+     the page and check it has no EXIF (`exiftool` shows only JPEG basics).

@@ -27,6 +27,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP10b | Group notification + admin ping tick | code done; **live proof blocked**: the group's chat_id is still unknown |
 | CP-MT | Multi-tenant: per-shop bot tokens, per-shop send paths, owner onboarding, one process for every shop | done, 4 commits; open items in `docs/AUDIT_MULTI_TENANT.md` |
 | CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
+| CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -482,6 +483,247 @@ Bot; the taps are synthetic, as in `live_order.py`.
   (2 guests).
 - "They said Ha" was sent once; the second attempt returned `nothing`.
 - Screenshots: `docs/screenshots/share_pages/live-*.png`.
+
+## What CP17 guarantees
+
+CP17 deepens the share pages. All of it reaches the creator through the
+shop's own bot, in Uzbek, Russian or English (the customer's language), and
+every public page keeps the CP16 rules: autoescaped, `style-src 'self'`, no
+inline style or script, no third party, capped and rate-limited input, no
+phone number unless the creator types one into a free-text line.
+
+**Three kinds of page.**
+- **Ha/Yo'q**, now optionally a **date plan**: 1–5 places (typed) and 1–5
+  times (picked). After Ha the recipient picks one of each and confirms.
+- **Taklifnoma**, where every visible block is the creator's to write.
+- **Uzrnoma** (new): an apology letter. "Kechirdim" answers it; "Hali o'ylab
+  ko'raman" runs away like Yo'q, with its own gentle lines.
+
+**The creator hears the answer exactly once**, claimed under `FOR UPDATE`
+and committed before the send (the CP6 pattern):
+
+| Page | Message |
+|---|---|
+| Ha/Yo'q, no plan | "Ha!" |
+| Ha/Yo'q, chosen within 10 min | "Ha! Joy: Kino. Sana: 12-oktabr, 19:00." |
+| Ha/Yo'q, nothing chosen in 10 min | "Ha — but nothing chosen yet", then ONE follow-up if they choose later |
+| Uzrnoma | "Kechirdi! …" with the letter quoted back |
+
+**Editing, at the same link.** From "Mening sahifalarim" → Edit, the creator
+changes any text block, the date, the venue and pin, the design, the
+language, the photos, the sections and the music. `update_page` edits the
+row in place (same token), scoped to shop + customer + live page. A Ha/Yo'q
+page or an Uzrnoma locks once answered, and the bot says why.
+
+**A taklifnoma's sections**, each switched on and off or filled in from the
+bot: title, names, message, date/time, venue, dress code (text and up to five
+palette colours), programme (rows of time + item), contact, closing line,
+countdown, photo gallery (up to six), RSVP with guest count (CP16), guest
+wishes wall, music.
+
+**Twenty designs**, all original CSS/SVG (see `docs/DESIGN_BRIEF_INVITES.md`).
+Ten are new in CP17. Three CP16 designs were re-themed to cover the trends
+shops asked for: Oltin (cream and gold, arched frame, white florals), Konvert
+(lilac envelope, wax seal with the creator's monogram, the letter revealed
+section by section) and Bog' (green botanical garden).
+
+**Public input, bounded.**
+- Photos: re-encoded by Pillow (EXIF/GPS/camera gone, at most 1200 px,
+  ≤ 1.5 MB stored, 10 MB / 40 MP input cap), stored per shop in Postgres,
+  served only through the page's token.
+- Wishes: name ≤ 40, wish ≤ 300, cleaned, ≤ 3 per guest, ≤ 300 per page,
+  6 per minute per address, hideable one by one by the creator.
+- The date choice: option ids must be this page's and of the right kind,
+  plain integers; the first choice is kept.
+
+**Music.** Off by default; one of three ORIGINAL tracks written for Gulbot as
+notes and synthesised in the browser (no audio files; CC0, recorded in
+`static/music/LICENSE.md`); a CHECK admits only those names; it never plays
+until the visitor taps, which a Node test proves (no AudioContext exists
+before the tap).
+
+### Decisions made during CP17, each with its reason
+
+- **English covers the share-page flows and the language switch, not the
+  whole bot.** The brief asked for these flows in uz/ru/en; the rest of the
+  bot stays uz/ru for now. `tests/test_i18n_trilingual.py` holds every page
+  key to all three languages.
+- **NULL means "the preset"** for a taklifnoma's title, message and closing,
+  so a language switch carries the preset along and "reset" brings it back.
+- **The choice waits 10 minutes** (`CHOICE_WAIT`) before the creator is told
+  "nothing chosen yet": long enough to read the options, short enough not to
+  leave the creator wondering. The web app queues the check with a Celery
+  countdown.
+- **The choice is a snapshot.** The chosen place and time are copied onto the
+  page, so editing the plan later (impossible once answered anyway) could
+  never change what was agreed.
+- **Photos live in Postgres**, not on disk: they travel with the backup, are
+  deleted in the same transaction as the page, and need no shared filesystem.
+- **The programme is typed as lines** ("18:00 Kutib olish") and stored
+  normalised; a picker per row would be eight taps a line. Anything that is
+  not a time is refused, not half-stored.
+- **Colours are a fixed palette**, one CSS class each, so no inline style ever
+  reaches the page.
+- **Uzrnoma is its own kind**, sharing the Ha/Yo'q answer path
+  (`ANSWERABLE_KINDS`), with the letter in `message`. Its downgrade deletes
+  apology pages: their kind does not exist below that revision.
+- **The second button's lines are kind on purpose.** Ha/Yo'q may tease; an
+  apology that pushes is not an apology. Patience and warmth, no guilt.
+- **Sections are added after creation**, from Edit, so making a page stays a
+  minute's work.
+- **Instagram was not scraped.** The in-app browser was refused; the owner
+  supplied the Instagram findings (e.taklif, taklifim.uz,
+  invitestudio.uz, nafis_taklifnoma) and those shaped the addendum.
+- **The geometric design uses eight-pointed girih stars**, not interlaced
+  triangles: a six-pointed star reads as a religious symbol, out of place on
+  an Uzbek family invitation.
+- **The empty Foto frame shows the couple's initials or a heart**, never the
+  shop's letter.
+
+### Found by the gate during CP17
+
+- **Alert cooldowns leaked between test runs.** Cooldown keys
+  (`gulbot:alert:<shop>:<kind>`, one hour) were written to the broker Redis
+  by tests, keyed by test-database shop ids. A rebuilt test database reuses
+  those ids, so a run within the hour failed five alert tests. FIXED: each
+  test session claims under its own prefix. Reproduced deterministically
+  (rebuild, run, rebuild, run).
+- **A killed test run can leave a committed row behind** (one shop), which
+  then breaks "for every shop" jobs in later runs. The cure is to drop the
+  test database; worktrees use their own (`POSTGRES_TEST_DB`), and running
+  pytest in a worktree WITHOUT it drops and recreates the main one mid-run.
+- **One shop without a bot stopped the health job for every shop -- FIXED.**
+  That leftover row was what showed it: the alert/summary job raised
+  `KeyError` out of `BotRegistry.bot_for` on the first shop row its resolver
+  had no entry for, and every shop after it went unalerted. The production
+  resolver (`stored_tokens`) already raised `ShopBotUnavailable`, and a
+  revoked token is a failed send rather than an exception -- but the registry
+  trusted every resolver to keep that contract. It now enforces it: a
+  resolver's `LookupError` becomes `ShopBotUnavailable("no bot is registered
+  for it")`, so every send path skips that shop with one ERROR line and serves
+  the rest. Failing test first, 6/6 mutants.
+- **The C9 tests had never been verified.** Their first mutation run caught
+  9 of 12: an expired invitation and a Ha/Yo'q page with the wall forced on
+  had no test (one added), and one mutant was equivalent (the template hides
+  a closed wall on its own), so it now mutates that template guard. C9 also
+  failed mypy (`Select[tuple[int]]` where SQLAlchemy 2.1 types `Select[int]`),
+  and C12 passed an `ApologyDraft` that `create_page`'s signature did not
+  name. Both fixed in their own stage.
+- **The CP17 tables had no database-level tenancy test.** CP16's tables each
+  prove the composite FK refuses a row filed under another shop;
+  `share_page_options`, `share_page_photos` and `share_page_wishes` had the
+  FK but no proof. Added in their own commit, with a control showing the same
+  rows are accepted under their own shop.
+- **Memory.** On this machine, with ~15 GB shared with other apps, running
+  mutation suites and a page server beside the gate made worker processes
+  fail allocation (`MemoryError` inside `test_concurrency`'s worker
+  processes). Gates run alone.
+- **Sleep, not hangs.** Twice a full gate appeared stuck at ~74% for hours:
+  the laptop had gone to sleep inside `test_shadow_sweep.py`, the slow,
+  CPU-bound file there. Gates now run under a keep-awake request.
+- **The shadow sweep is slow** (64 states × 159 probes × 2 dispatchers, about
+  5–8 minutes, longer with each stage's new states): not a hang.
+- **A mutant reported MISSED with no output.** In C10's first batch one
+  mutant came back with no pytest output at all; the runner counts that as
+  missed, on purpose. Re-run alone and then in the full batch, it was caught
+  on an assertion both times (12/12).
+
+### How CP17 was finished (2026-10-05)
+
+The previous session built C6..C12 in scratch copies. They were ported onto
+main as one commit per stage:
+
+- **C10, C11 and C12 were one scratch copy.** They were split by hand into
+  three commits (seal + reveal, music, Uzrnoma), each a state that lints,
+  type-checks and passes its tests on its own. The combined test file became
+  `test_share_page_seal.py` and `test_share_page_music.py`.
+- **The Uzrnoma line rules live in `test_share_page_apology.py`**, which
+  already held them; the Uzbek Cyrillic check (no Latin left behind) joined
+  them there.
+- **One mutant was dropped as equivalent:** the music picker answers only in
+  its own state AND checks that state itself, so removing either layer alone
+  changes nothing.
+- **Gates.** Commits 1, 2 and C6–C8 each passed a full gate. With the
+  owner's agreement, C9–C12 and the tenancy commit each passed a stage check
+  instead -- lint, format, mypy, the shadow sweep (C9–C12, which add bot
+  steps and a router), a fresh-database migration round trip, every test file
+  of the share-page / web / bot-page area, and the stage's full mutation set
+  -- and one full gate ran on the tip before any of them was pushed.
+- **Stranded, then recovered (2026-10-08).** The next session's inventory
+  found C9, C10 and C11 committed only on a DETACHED HEAD in a temporary
+  worktree -- on no branch, not pushed, reachable from nothing but that
+  worktree -- and C12 staged but uncommitted. Its last stage check had died
+  with `MemoryError` inside pytest's own traceback formatter: the machine at
+  its commit limit, not a test failing. The commits were put on a branch
+  before anything else was touched.
+- **C12's last stage found two gaps, both closed in C12 itself.** An edit
+  that emptied the letter was refused only by the database CHECK; the
+  service now refuses it (`EditRefused("invalid")`), and the test asserts the
+  TYPE, so a CHECK firing behind a missing guard is a failed assertion. And
+  nothing ever wrote a letterless Uzrnoma straight to Postgres, so a
+  migration that made `ck_share_pages_apology_complete` vacuous (`OR true`)
+  passed every test -- the CHECK guard compares quoted literals and that
+  mutant has none (CONTRIBUTING, "What Alembic autogenerate does NOT
+  catch"). A direct database test now asks Postgres.
+
+**Mutation totals, all on assertions:**
+
+| Stage | Mutants |
+|---|---|
+| Alert-key isolation | 1/1 |
+| Health job skips a shop without a bot | 6/6 |
+| C6 designs | 8/8 |
+| C7 photos | 12/12 |
+| C8 sections | 12/12 |
+| C9 wishes | 12/12 |
+| C10 seal + reveal | 12/12 |
+| C11 music | 8/8 |
+| C12 Uzrnoma | 14/14 |
+| CP17 tables, database tenancy | 3/3 |
+
+### Live evidence, 2026-10-08, through the real dev bot (@Flowersmarketcontroller_bot)
+
+`scripts/live_cp17.py --shop-id 1 --customer-id 3`, against the dev database
+(migrated to `c5a8e2d61f37` first, checked with `alembic current`) and the
+local page server. The real dispatcher and the real Bot; the taps and typed
+lines are synthetic, as in `live_pages.py`. The three photos are REAL
+Telegram photos: the bot sends each to the customer's DM, and the file id it
+gets back is what the "customer sent a photo" update carries. 91 messages
+went out.
+
+- A date invitation with two places and two times. A visitor pressed Ha and
+  chose "Bog'da sayr, Yapon bog'i", 17 October 20:00. The creator got ONE
+  message: "🎉 Ha! Joy: Bog'da sayr, Yapon bog'i. Sana: 17-oktabr, 20:00."
+  The second attempt returned `nothing`.
+- An Uzrnoma in Russian, Konvert. "Kechirdim" was pressed; the creator got
+  "🕊 Kechirdi!" with the letter quoted back, once.
+- A taklifnoma made, then edited at the same link: the link is unchanged,
+  and the new title, a programme row, the music button and a guest's wish
+  (escaped: `&lt;b&gt;Omad&lt;/b&gt;`) are absent before and present after.
+  The seal shows S&M both before and after: a Konvert made without letters
+  already takes the couple's initials, so that line proves the seal is
+  there, not that the edit changed it.
+- Three photos stored (13–16 KB each, 900×700); photos still carrying a GPS
+  block: **0**.
+- Screenshots: `docs/screenshots/share_pages/live-cp17-*.png`, and every one
+  of the twenty designs at 360 px as `invite-*`, `yesno-*` and `apology-*`,
+  plus `plan-*` (the date plan after Ha) and `*-konvert-opened`.
+
+Found while gathering it, both in the script, not the product:
+- **A tap needs a real message.** The colour picker edits the keyboard of the
+  message that was tapped; a synthetic tap on message 1 got "message can't be
+  edited" from Telegram. Taps now carry the id of the bot's last real message,
+  as a person's would.
+- **A refused creation was silently reused.** The second run hit the 5 pages
+  per 24 hours limit, and "the newest invitation" picked up the first run's
+  half-edited page, printing its state as new. The script now accepts only
+  pages made by THIS run and stops with the reason otherwise. The five pages
+  the two failed runs made were removed from the dev database before the run
+  above.
+- **A full-page screenshot is not evidence of a missing photo.** The
+  beyond-viewport capture left the lazy gallery blank. A cold-cache headless
+  probe (fresh profile, cache disabled) loaded all three photos on Konvert and
+  on Milliy alike; the gallery shot is a viewport capture scrolled to it.
 
 ## Briefs already agreed for future checkpoints
 
