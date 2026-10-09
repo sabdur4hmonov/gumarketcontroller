@@ -1,21 +1,9 @@
 {% extends "admin/_layout.html" %}
+{% from "admin/_entries.html" import entries %}
 {% block main %}
 <h1>Jurnal{% if v.shop_id %} · do‘kon #{{ v.shop_id }}{% endif %}</h1>
 <section class="panel">
   <p class="muted">Faqat qo‘shiladi: ma’lumotlar bazasi bu jadvalni o‘zgartirish va o‘chirishni rad etadi.</p>
-  <div class="scroll"><table>
-    <thead><tr><th>Vaqt (UTC)</th><th>Admin</th><th>Amal</th><th>Do‘kon</th><th>Obyekt</th><th>Oldin → keyin</th><th>Sabab</th><th>IP</th></tr></thead>
-    <tbody>
-    {% for e in v.entries %}
-      <tr>
-        <td>{{ e.at.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.admin or '—' }}</td><td>{{ e.action }}</td>
-        <td>{% if e.shop_id %}<a href="/admin/shops/{{ e.shop_id }}">#{{ e.shop_id }}</a>{% endif %}</td>
-        <td>{{ e.target }}</td>
-        <td class="wrap-text">{% if e.before or e.after %}{{ e.before or '' }} → {{ e.after or '' }}{% endif %}</td>
-        <td class="wrap-text">{{ e.reason or '' }}</td><td>{{ e.ip or '' }}</td>
-      </tr>
-    {% else %}<tr><td colspan="8">Jurnal bo‘sh.</td></tr>{% endfor %}
-    </tbody>
-  </table></div>
+  {{ entries(v.entries, "Jurnal bo‘sh.") }}
 </section>
 {% endblock %}

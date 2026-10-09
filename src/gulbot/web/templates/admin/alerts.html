@@ -9,21 +9,20 @@
 </div>
 <section class="panel">
   {% if v.alerts %}
-  <div class="scroll"><table>
-    <thead><tr><th>Turi</th><th>Daraja</th><th>Do‘kon</th><th>Tafsilot</th><th class="num">Soni</th><th>Qachondan (UTC)</th></tr></thead>
-    <tbody>
+  <ol class="log">
     {% for a in v.alerts %}
-      <tr>
-        <td>{{ a.kind }}</td>
-        <td><span class="badge {{ a.severity }}">{{ a.severity }}</span></td>
-        <td>{% if a.shop_id %}<a href="/admin/shops/{{ a.shop_id }}">{{ a.shop_name }}</a>{% else %}{{ a.shop_name }}{% endif %}</td>
-        <td class="wrap-text">{{ a.detail }}</td>
-        <td class="num">{{ a.count }}</td>
-        <td>{% if a.since %}{{ a.since.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
-      </tr>
+    <li>
+      <div class="log-head">
+        <span class="badge {{ a.severity }}">{{ a.severity }}</span>
+        <strong>{{ a.kind }}</strong>
+        {% if a.shop_id %}<a href="/admin/shops/{{ a.shop_id }}">{{ a.shop_name }}</a>{% else %}<span>{{ a.shop_name }}</span>{% endif %}
+        {% if a.count > 1 %}<span>× {{ a.count }}</span>{% endif %}
+      </div>
+      <div class="log-change">{{ a.detail }}</div>
+      <div class="muted log-meta">{% if a.since %}{{ a.since.strftime('%Y-%m-%d %H:%M') }} UTC dan beri{% else %}hali hech qachon{% endif %}</div>
+    </li>
     {% endfor %}
-    </tbody>
-  </table></div>
+  </ol>
   {% else %}<p>Hech qanday ogohlantirish yo‘q.</p>{% endif %}
   <p class="muted">“To‘xtagan ishlar” ishchi jarayondan mustaqil hisoblanadi: har bir davriy ish tugaganda vaqtini yozadi, panel esa kutilgan oraliqning ikki baravaridan oshganini ko‘radi. Tashqi monitor uchun: <code>/healthz/jobs</code>.</p>
 </section>

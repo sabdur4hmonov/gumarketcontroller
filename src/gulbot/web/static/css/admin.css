@@ -270,6 +270,46 @@ code {
   border-radius: 4px;
 }
 
+/* Two narrow tables: side by side on a wide screen, stacked on a phone. */
+.pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 6px 24px;
+}
+
+/* The audit log as cards: one action each, only what changed. */
+ol.log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+ol.log li {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+
+.log-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.log-change {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.log-reason {
+  font-style: italic;
+}
+
+.log-meta {
+  font-size: 12.5px;
+}
+
 @media (max-width: 420px) {
   .wrap {
     padding: 10px;

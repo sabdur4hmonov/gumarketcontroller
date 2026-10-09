@@ -76,6 +76,7 @@ _SHOPS = text(
     SELECT s.id, s.name, s.status, s.created_at, s.subscription_status, s.paid_until,
            s.gift_premium_after_order, s.group_chat_id, s.channel_id,
            h.bot_username, h.token_valid, h.channel_ok, h.group_ok, h.checked_at,
+           h.detail ? 'bot' AS no_bot,
            (SELECT max(p.indexed_at) FROM products p
              WHERE p.shop_id = s.id AND p.finalized_at IS NOT NULL) AS last_indexed_at,
            (SELECT count(*) FROM products p
@@ -88,7 +89,7 @@ _SHOPS = text(
              WHERE ph.shop_id = s.id AND ph.data IS NOT NULL) AS photo_bytes
       FROM shops s
       LEFT JOIN LATERAL (
-            SELECT bot_username, token_valid, channel_ok, group_ok, checked_at
+            SELECT bot_username, token_valid, channel_ok, group_ok, checked_at, detail
               FROM shop_health_snapshots x
              WHERE x.shop_id = s.id
              ORDER BY x.checked_at DESC
@@ -102,6 +103,8 @@ def _health(row: Any, now: datetime) -> tuple[str, str, bool]:
     stale = row.last_indexed_at is None or row.last_indexed_at < now - STALE_CATALOGUE
     if row.checked_at is None:
         return "unknown", "not checked yet", stale
+    if row.no_bot:
+        return "bad", "no usable bot (no token stored)", stale
     if row.token_valid is False:
         return "bad", "token invalid", stale
     if row.group_chat_id is not None and row.group_ok is False:
@@ -434,8 +437,11 @@ async def alerts(session: AsyncSession, *, now: datetime | None = None) -> list[
                     "bad",
                     None,
                     "platform",
-                    f"{job}: no finished run since "
-                    + (finished.strftime("%Y-%m-%d %H:%M UTC") if finished else "ever"),
+                    (
+                        f"{job}: last finished {finished.strftime('%Y-%m-%d %H:%M UTC')}"
+                        if finished
+                        else f"{job}: has never finished a run"
+                    ),
                     1,
                     finished,
                 )
@@ -675,6 +681,18 @@ class AuditRow:
     after: dict[str, Any] | None
     reason: str | None
     ip: str | None
+
+    @property
+    def changes(self) -> list[str]:
+        """Only what changed, as "field: before -> after" -- readable on a
+        phone, where the whole before/after state would not fit."""
+        before, after = self.before or {}, self.after or {}
+        out = []
+        for key in sorted(set(before) | set(after)):
+            old, new = before.get(key), after.get(key)
+            if old != new:
+                out.append(f"{key}: {'—' if old is None else old} → {'—' if new is None else new}")
+        return out
 
 
 async def audit_entries(

@@ -1,4 +1,5 @@
 {% extends "admin/_layout.html" %}
+{% from "admin/_entries.html" import entries %}
 {% block main %}
 {% set d = v.d %}{% set m = v.m %}{% set row = v.row %}
 <h1>{{ d.name }}
@@ -36,19 +37,20 @@
     <div class="tile"><span class="n">{{ m.unlocks_total }}</span><span class="l">premium sovg‘a (+{{ m.unlocks_new }})</span></div>
     <div class="tile"><span class="n">{{ (m.photo_bytes / 1048576)|round(1) }} MB</span><span class="l">suratlar diskda ({{ (m.photo_bytes_purged / 1048576)|round(1) }} MB tozalangan)</span></div>
   </div>
-  <div class="scroll">
+  <div class="pair">
   <table>
-    <thead><tr><th>Buyurtmalar holati</th><th class="num">soni</th><th>Qayerdan</th><th class="num">soni</th></tr></thead>
+    <thead><tr><th>Buyurtmalar holati</th><th class="num">soni</th></tr></thead>
     <tbody>
-    {% set statuses = ['placed', 'confirmed', 'delivered', 'rejected', 'cancelled'] %}
-    {% set sources = [('reminder', 'eslatmadan'), ('page_invite', 'taklifnomadan'), ('page_yesno', 'Ha/Yo‘q sahifadan'), ('page_apology', 'Uzrnomadan'), ('direct', 'o‘zi kelgan'), ('unknown', 'CP18 dan oldin')] %}
-    {% for i in range([statuses|length, sources|length]|max) %}
-      <tr>
-        <td>{{ statuses[i] if i < statuses|length else '' }}</td>
-        <td class="num">{{ m.orders.get(statuses[i], 0) if i < statuses|length else '' }}</td>
-        <td>{{ sources[i][1] if i < sources|length else '' }}</td>
-        <td class="num">{{ m.sources.get(sources[i][0], 0) if i < sources|length else '' }}</td>
-      </tr>
+    {% for status in ['placed', 'confirmed', 'delivered', 'rejected', 'cancelled'] %}
+      <tr><td>{{ status }}</td><td class="num">{{ m.orders.get(status, 0) }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <table>
+    <thead><tr><th>Buyurtma qayerdan</th><th class="num">soni</th></tr></thead>
+    <tbody>
+    {% for key, label in [('reminder', 'eslatmadan'), ('page_invite', 'taklifnomadan'), ('page_yesno', 'Ha/Yo‘q sahifadan'), ('page_apology', 'Uzrnomadan'), ('direct', 'o‘zi kelgan'), ('unknown', 'CP18 dan oldin')] %}
+      <tr><td>{{ label }}</td><td class="num">{{ m.sources.get(key, 0) }}</td></tr>
     {% endfor %}
     </tbody>
   </table>
@@ -94,16 +96,6 @@
 
 <section class="panel">
   <h2>Faoliyat</h2>
-  {% if v.activity %}
-  <div class="scroll"><table>
-    <thead><tr><th>Vaqt (UTC)</th><th>Admin</th><th>Amal</th><th>Oldin → keyin</th><th>Sabab</th></tr></thead>
-    <tbody>
-    {% for e in v.activity %}
-      <tr><td>{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.admin or '—' }}</td><td>{{ e.action }}</td>
-          <td class="wrap-text">{{ e.before or '' }} → {{ e.after or '' }}</td><td class="wrap-text">{{ e.reason or '' }}</td></tr>
-    {% endfor %}
-    </tbody>
-  </table></div>
-  {% else %}<p class="muted">Hali hech narsa qilinmagan.</p>{% endif %}
+  {{ entries(v.activity, "Hali hech narsa qilinmagan.") }}
 </section>
 {% endblock %}

@@ -1,0 +1,20 @@
+{#- Audit entries as cards: one per action, only the fields that changed.
+    Shared by the audit log and a shop's "Faoliyat". -#}
+{% macro entries(rows, empty) %}
+{% if rows %}
+<ol class="log">
+  {% for e in rows %}
+  <li>
+    <div class="log-head">
+      <strong>{{ e.action }}</strong>
+      {% if e.shop_id %}<a href="/admin/shops/{{ e.shop_id }}">do‘kon #{{ e.shop_id }}</a>{% endif %}
+      {% if e.target and not e.target.startswith('shop ') %}<span class="muted">{{ e.target }}</span>{% endif %}
+    </div>
+    {% for change in e.changes %}<div class="log-change">{{ change }}</div>{% endfor %}
+    {% if e.reason %}<div class="log-reason">“{{ e.reason }}”</div>{% endif %}
+    <div class="muted log-meta">{{ e.at.strftime('%Y-%m-%d %H:%M:%S') }} UTC · admin {{ e.admin or '—' }}{% if e.ip %} · {{ e.ip }}{% endif %}</div>
+  </li>
+  {% endfor %}
+</ol>
+{% else %}<p class="muted">{{ empty }}</p>{% endif %}
+{% endmacro %}

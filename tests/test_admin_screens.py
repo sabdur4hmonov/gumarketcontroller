@@ -308,6 +308,16 @@ async def test_the_alerts_name_what_is_wrong(world: dict[str, Any]) -> None:
     mine = {(a.kind, a.count) for a in found if a.shop_id == world["shop"]}
     assert ("unanswered_order", 1) in mine
     assert ("bot", 1) in mine
+    await db.execute(
+        text(
+            "INSERT INTO shop_health_snapshots (shop_id, checked_at, detail) "
+            "VALUES (:s, now() + interval '1 second', '{\"bot\": \"no usable bot\"}')"
+        ),
+        {"s": world["shop"]},
+    )
+    async with bound_session_factory(db)() as session:
+        (row,) = [r for r in await admin_panel.shops_overview(session) if r.id == world["shop"]]
+    assert (row.health, row.health_reason) == ("bad", "no usable bot (no token stored)")
     stalled = {a.detail.split(":")[0] for a in found if a.kind == "stalled_job"}
     assert "send_due_reminders" in stalled, "a job that never ran was not reported"
 
