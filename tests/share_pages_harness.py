@@ -98,3 +98,17 @@ class ShopBot:
 
     def clear(self) -> None:
         self.recorder.calls.clear()
+
+
+def every_customer_has_the_gift(monkeypatch: Any) -> None:
+    """For tests of the premium parts' MECHANICS (the music player, the
+    gallery, the sections): their customers have unlocked premium, as a
+    customer with a confirmed order would have. The GATING itself -- locked
+    before, unlocked per shop after a confirmed order -- is proven in
+    tests/test_premium_gift.py, never by this shortcut."""
+    from gulbot.services import premium
+
+    async def unlocked(session: Any, *, shop_id: int, customer_id: int) -> bool:
+        return True
+
+    monkeypatch.setattr(premium, "unlocked", unlocked)

@@ -213,3 +213,24 @@ async def test_a_payment_can_only_be_filed_under_a_shop_that_exists(db: AsyncCon
     assert "fk_subscription_payments_shop_id_shops" in orphan, (
         orphan or "an orphan payment was accepted"
     )
+
+
+# --- the gift rule --------------------------------------------------------------------
+
+
+async def test_the_gift_rule_is_switched_per_shop_and_recorded(
+    db: AsyncConnection, world: dict[str, Any]
+) -> None:
+    shop = world["shop_id"]
+    async with bound_session_factory(db)() as session:
+        after = await shop_admin.set_gift_rule(session, admin=ADMIN, shop_id=shop, on=False, ip=IP)
+        await session.commit()
+    assert after["gift_premium_after_order"] is False
+    stored = await db.scalar(
+        text("SELECT gift_premium_after_order FROM shops WHERE id = :s"), {"s": shop}
+    )
+    assert stored is False
+    (entry,) = await audit_rows(db)
+    assert entry["action"] == "gift_rule_off"
+    assert entry["before"]["gift_premium_after_order"] is True
+    assert entry["after"]["gift_premium_after_order"] is False

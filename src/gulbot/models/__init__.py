@@ -12,6 +12,7 @@ from gulbot.models.notification import (
 )
 from gulbot.models.occasion import Occasion, OccasionKind, OccasionType
 from gulbot.models.order import Order, OrderReminder, OrderStatus, PingState
+from gulbot.models.premium import PremiumUnlock
 from gulbot.models.product import (
     HashtagAlias,
     Product,
@@ -52,6 +53,7 @@ __all__ = [
     "Product",
     "ProductHashtag",
     "PingState",
+    "PremiumUnlock",
     "ProductSource",
     "Recipient",
     "ScheduledNotification",

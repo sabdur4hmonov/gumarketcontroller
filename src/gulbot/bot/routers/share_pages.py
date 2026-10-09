@@ -91,7 +91,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.models.shop import Shop
-from gulbot.services import share_pages
+from gulbot.services import premium, share_pages
 from gulbot.services.share_pages import (
     ApologyDraft,
     InviteDraft,
@@ -314,11 +314,27 @@ async def _ask_template(
     )
 
 
+async def premium_locked(session: AsyncSession, customer: Customer, template: str) -> bool:
+    """CP18: a premium design this customer has not unlocked at this shop.
+    The service refuses it too; this is so the customer is told why, at once."""
+    return premium.is_premium_template(template) and not await premium.unlocked(
+        session, shop_id=customer.shop_id, customer_id=customer.id
+    )
+
+
 async def yesno_template(
-    callback: CallbackQuery, callback_data: PageTemplateCB, state: FSMContext, lang: str
+    callback: CallbackQuery,
+    callback_data: PageTemplateCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
 ) -> None:
     await callback.answer()
     if callback_data.template not in PAGE_TEMPLATES:
+        return
+    if await premium_locked(session, customer, callback_data.template):
+        await _target(callback).answer(t("premium.locked", lang))
         return
     await state.update_data(template=callback_data.template, photo_file_id=None)
     if callback_data.template == "foto":
@@ -598,10 +614,18 @@ async def invite_rsvp(
 
 
 async def invite_template(
-    callback: CallbackQuery, callback_data: PageTemplateCB, state: FSMContext, lang: str
+    callback: CallbackQuery,
+    callback_data: PageTemplateCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
 ) -> None:
     await callback.answer()
     if callback_data.template not in PAGE_TEMPLATES:
+        return
+    if await premium_locked(session, customer, callback_data.template):
+        await _target(callback).answer(t("premium.locked", lang))
         return
     await state.update_data(template=callback_data.template, photo_file_id=None)
     if callback_data.template == "foto":
@@ -781,6 +805,9 @@ async def confirm(
         await target.answer(
             t(f"pages.limit_{limit.which}", lang, n=n), reply_markup=main_menu_keyboard(lang)
         )
+        return
+    except premium.PremiumLocked:
+        await target.answer(t("premium.locked", lang), reply_markup=main_menu_keyboard(lang))
         return
     except share_pages.InvalidDraft as bad:
         log.warning("refused a page draft: %s", bad)

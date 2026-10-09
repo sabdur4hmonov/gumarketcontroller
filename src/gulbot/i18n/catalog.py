@@ -754,6 +754,20 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Панель управления работает только по HTTPS и ещё не настроена.",
         "en": "The admin panel works only over HTTPS and is not set up yet.",
     },
+    "premium.locked": {
+        "uz": (
+            "⭐ Bu — sovg‘a: ⭐ belgili dizaynlar, musiqa va suratlar shu do‘kondan "
+            "birinchi buyurtmangiz tasdiqlangach ochiladi. Hozircha boshqa dizayn tanlang."
+        ),
+        "ru": (
+            "⭐ Это подарок: дизайны со ⭐, музыка и фото открываются после того, как "
+            "магазин подтвердит ваш первый заказ. Пока выберите другой дизайн."
+        ),
+        "en": (
+            "⭐ This is a gift: the ⭐ designs, music and photos unlock once this shop "
+            "confirms your first order. For now, pick another design."
+        ),
+    },
     "shop.paused": {
         "uz": (
             "🌙 Do‘kon vaqtincha ishlamayapti. Tez orada qaytamiz — sanalaringiz va "

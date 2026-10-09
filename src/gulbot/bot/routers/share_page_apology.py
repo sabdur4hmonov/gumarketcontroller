@@ -14,12 +14,20 @@ from typing import Any
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.callbacks import PageChoiceCB, PageLangCB, PageTemplateCB
 from gulbot.bot.keyboards_pages import confirm_keyboard, toggle_keyboard
-from gulbot.bot.routers.share_pages import LANG_NAMES, _ask_template, _take_text, _target
+from gulbot.bot.routers.share_pages import (
+    LANG_NAMES,
+    _ask_template,
+    _take_text,
+    _target,
+    premium_locked,
+)
 from gulbot.bot.states import ApologyPage
 from gulbot.i18n import t
+from gulbot.models.customer import Customer
 from gulbot.models.share_page import MESSAGE_MAX, PAGE_LANGUAGES, PAGE_TEMPLATES
 from gulbot.utils.render import escape
 from gulbot.web.render import THEME_NAMES
@@ -57,10 +65,18 @@ async def apology_text(message: Message, state: FSMContext, lang: str) -> None:
 
 
 async def apology_template(
-    callback: CallbackQuery, callback_data: PageTemplateCB, state: FSMContext, lang: str
+    callback: CallbackQuery,
+    callback_data: PageTemplateCB,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
 ) -> None:
     await callback.answer()
     if callback_data.template not in PAGE_TEMPLATES:
+        return
+    if await premium_locked(session, customer, callback_data.template):
+        await _target(callback).answer(t("premium.locked", lang))
         return
     await state.update_data(template=callback_data.template)
     await state.set_state(ApologyPage.choosing_notify)

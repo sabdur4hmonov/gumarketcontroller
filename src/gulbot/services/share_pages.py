@@ -65,6 +65,7 @@ from gulbot.models.share_page import (
     SharePageWish,
 )
 from gulbot.models.shop import Shop, ShopStatus
+from gulbot.services import premium
 from gulbot.web import sections
 
 #: Pages one customer may create in any rolling 24 hours, deleted ones included.
@@ -270,6 +271,10 @@ async def create_page(
     """
     now = now or datetime.now(UTC)
     _check_common(draft.template, draft.lang)
+    if premium.is_premium_template(draft.template):
+        # Raises PremiumLocked: the bot offers these only once unlocked, and
+        # this is the wall behind that offer (CP18, the gift rule).
+        await premium.require(session, shop_id=shop_id, customer_id=customer_id)
     values: dict[str, object] = {
         "shop_id": shop_id,
         "customer_id": customer_id,
@@ -1083,6 +1088,13 @@ TEXT_FIELDS: Final[dict[str, tuple[int, bool, bool]]] = {
 }
 
 
+async def _require_premium(session: AsyncSession, shop_id: int, customer_id: int) -> None:
+    """An edit that turns a premium part ON needs the gift. Turning one off,
+    or keeping what a page already has, never does."""
+    if not await premium.unlocked(session, shop_id=shop_id, customer_id=customer_id):
+        raise EditRefused("premium")
+
+
 class EditRefused(Exception):
     """`reason` is "gone" (not this customer's live page), "locked" (a Ha/Yo'q
     page someone has answered) or "invalid" (a value no keyboard offers)."""
@@ -1174,6 +1186,8 @@ async def update_page(
         elif field == "template":
             if value not in PAGE_TEMPLATES:
                 raise EditRefused("invalid")
+            if value != page.template and premium.is_premium_template(str(value)):
+                await _require_premium(session, shop_id, customer_id)
             values[field] = value
         elif field == "lang":
             if value not in PAGE_LANGUAGES:
@@ -1189,6 +1203,8 @@ async def update_page(
         elif field == "music":
             if value is not None and value not in MUSIC_TRACKS:
                 raise EditRefused("invalid")
+            if value is not None and value != page.music:
+                await _require_premium(session, shop_id, customer_id)
             values[field] = value
         elif field == "dress_colors":
             try:

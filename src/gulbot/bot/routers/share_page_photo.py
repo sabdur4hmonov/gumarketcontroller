@@ -31,6 +31,7 @@ from gulbot.i18n import t
 from gulbot.models.customer import Customer
 from gulbot.models.share_page import GALLERY_MAX, PageKind, SharePage
 from gulbot.services import share_page_photos
+from gulbot.services.premium import PremiumLocked
 from gulbot.services.share_page_photos import MAX_INPUT_BYTES, GalleryFull, PhotoRefused
 from gulbot.utils.render import escape
 from gulbot.web import links
@@ -115,6 +116,10 @@ async def store_after_create(
         stored = await share_page_photos.store_photo(
             session, shop_id=customer.shop_id, customer_id=customer.id, page_id=page_id, raw=raw
         )
+    except PremiumLocked:
+        await session.rollback()
+        await target.answer(t("premium.locked", lang))
+        return
     except PhotoRefused:
         await session.rollback()
         await target.answer(t("pages.photo_refused", lang))
@@ -212,6 +217,11 @@ async def edit_photo(
         await message.answer(
             t("pages.gallery_full", lang, max=GALLERY_MAX), reply_markup=gallery_keyboard(lang)
         )
+        return
+    except PremiumLocked:
+        await session.rollback()
+        await state.clear()
+        await message.answer(t("premium.locked", lang), reply_markup=main_menu_keyboard(lang))
         return
     except PhotoRefused:
         await session.rollback()

@@ -40,6 +40,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.order import Order, OrderReminder, OrderStatus, PingState
+from gulbot.services import premium
 
 log = logging.getLogger("gulbot.services.order_status")
 
@@ -120,14 +121,23 @@ async def _transition(
 async def confirm_order(
     session: AsyncSession, *, shop_id: int, order_id: int, now_utc: datetime | None = None
 ) -> Transition:
-    """The shop has accepted it."""
-    return await _transition(
+    """The shop has accepted it.
+
+    CP18, the gift rule: the confirmation that actually happened (not a
+    double tap's loser) also grants the customer premium share-page parts at
+    this shop -- in the same transaction, so a rolled-back confirmation
+    grants nothing. gulbot.services.premium decides whether it applies.
+    """
+    transition = await _transition(
         session,
         shop_id=shop_id,
         order_id=order_id,
         to=OrderStatus.CONFIRMED,
         now_utc=now_utc or datetime.now(UTC),
     )
+    if transition.changed:
+        await premium.grant_for_confirmed_order(session, shop_id=shop_id, order_id=order_id)
+    return transition
 
 
 async def reject_order(

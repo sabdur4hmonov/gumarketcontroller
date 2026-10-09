@@ -34,6 +34,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.share_page import ANSWERABLE_KINDS, GALLERY_MAX, SharePage, SharePagePhoto
+from gulbot.services import premium
 
 #: The upload itself: Telegram's own photos are far below this.
 MAX_INPUT_BYTES: Final = 10 * 1024 * 1024
@@ -125,6 +126,9 @@ async def store_photo(
     )
     if page is None:
         return None
+    # CP18: every photo is premium (gulbot.services.premium). Raises
+    # PremiumLocked for a customer who has not unlocked it at this shop.
+    await premium.require(session, shop_id=shop_id, customer_id=customer_id)
     limit = photo_limit(page)
     taken = list(
         await session.scalars(

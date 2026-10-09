@@ -745,7 +745,11 @@ async def test_the_order_records_whether_it_came_from_a_reminder(
         else:
             await driver.say("Aziza")
         await driver.tap(OrderConfirmCB(action="submit").pack())
-    sources = (await driver.db.execute(text("SELECT source FROM orders ORDER BY id"))).scalars()
+    sources = (
+        await driver.db.execute(
+            text("SELECT source FROM orders WHERE shop_id = :s ORDER BY id"), {"s": driver.shop}
+        )
+    ).scalars()
     assert list(sources) == ["reminder", "direct"]
 
 

@@ -16,7 +16,7 @@ from PIL import Image
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession
 from tests.bot_harness import bound_session_factory
-from tests.share_pages_harness import ShopBot
+from tests.share_pages_harness import ShopBot, every_customer_has_the_gift
 from tests.test_share_pages_service import invite, make_customer, make_shop
 
 from gulbot.bot.callbacks import ColorCB, EditFieldCB
@@ -29,6 +29,12 @@ from gulbot.web.render import STATIC
 from gulbot.web.sections import ProgramRefused, normalise_program, program_rows
 
 pytestmark = pytest.mark.infra
+
+
+@pytest.fixture(autouse=True)
+def _gift(monkeypatch: pytest.MonkeyPatch) -> None:
+    """CP18: premium parts need the gift; these tests are about how they work."""
+    every_customer_has_the_gift(monkeypatch)
 
 
 # --- the programme --------------------------------------------------------------------

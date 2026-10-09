@@ -370,9 +370,11 @@ async def _finish_edit(
         )
     except EditRefused as refused:
         await session.rollback()
-        key = {"gone": "pages.gone", "locked": "pages.edit_locked"}.get(
-            refused.reason, "pages.edit_invalid"
-        )
+        key = {
+            "gone": "pages.gone",
+            "locked": "pages.edit_locked",
+            "premium": "premium.locked",
+        }.get(refused.reason, "pages.edit_invalid")
         await target.answer(t(key, lang), reply_markup=main_menu_keyboard(lang))
         return
     await session.commit()

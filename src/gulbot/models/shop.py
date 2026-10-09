@@ -117,6 +117,11 @@ class Shop(IdMixin, TimestampMixin, Base):
         String(16), nullable=False, server_default=text("'none'")
     )
     paid_until: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # CP18, the gift rule (gulbot.services.premium): on -> a customer's first
+    # confirmed order here unlocks premium share-page parts, at this shop only.
+    gift_premium_after_order: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
     working_hours: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
 

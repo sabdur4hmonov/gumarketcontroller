@@ -50,7 +50,12 @@ async def shop_state(session: AsyncSession, shop_id: int) -> dict[str, Any]:
     """The audited fields of a shop, locked for this transaction."""
     row = (
         await session.execute(
-            select(Shop.status, Shop.subscription_status, Shop.paid_until)
+            select(
+                Shop.status,
+                Shop.subscription_status,
+                Shop.paid_until,
+                Shop.gift_premium_after_order,
+            )
             .where(Shop.id == shop_id)
             .with_for_update()
         )
@@ -61,6 +66,7 @@ async def shop_state(session: AsyncSession, shop_id: int) -> dict[str, Any]:
         "status": row.status,
         "subscription_status": row.subscription_status,
         "paid_until": row.paid_until.isoformat() if row.paid_until else None,
+        "gift_premium_after_order": row.gift_premium_after_order,
     }
 
 
@@ -174,6 +180,30 @@ async def mark_paid(
         before=before,
         after=after,
         reason=clean_reason(payment.note),
+        ip=ip,
+    )
+    return after
+
+
+async def set_gift_rule(
+    session: AsyncSession, *, admin: Admin, shop_id: int, on: bool, ip: str | None
+) -> dict[str, Any]:
+    """The gift rule for one shop (gulbot.services.premium). Affects orders
+    confirmed from now on; unlocks already granted are kept."""
+    before = await shop_state(session, shop_id)
+    await session.execute(
+        update(Shop).where(Shop.id == shop_id).values(gift_premium_after_order=on)
+    )
+    after = dict(before, gift_premium_after_order=on)
+    await audit(
+        session,
+        action="gift_rule_on" if on else "gift_rule_off",
+        admin=admin.telegram_id,
+        shop_id=shop_id,
+        target_type="shop",
+        target_id=shop_id,
+        before=before,
+        after=after,
         ip=ip,
     )
     return after

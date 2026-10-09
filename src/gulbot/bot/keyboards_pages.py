@@ -35,6 +35,7 @@ from gulbot.bot.callbacks import (
 )
 from gulbot.i18n import t
 from gulbot.models.share_page import EVENT_TYPES, PAGE_TEMPLATES, PageKind, SharePage
+from gulbot.services.premium import PREMIUM_TEMPLATES
 from gulbot.web import strings
 from gulbot.web.render import THEME_NAMES
 
@@ -142,7 +143,9 @@ def question_keyboard(lang: str, page_lang: str) -> InlineKeyboardMarkup:
 def template_keyboard() -> InlineKeyboardMarkup:
     buttons = [
         InlineKeyboardButton(
-            text=f"{THEME_ICONS[theme]} {THEME_NAMES[theme]}",
+            # CP18: a star marks the designs the gift unlocks (services/premium).
+            text=f"{THEME_ICONS[theme]} {THEME_NAMES[theme]}"
+            + (" ⭐" if theme in PREMIUM_TEMPLATES else ""),
             callback_data=PageTemplateCB(template=theme).pack(),
         )
         for theme in PAGE_TEMPLATES
