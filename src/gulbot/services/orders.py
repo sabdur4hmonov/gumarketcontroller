@@ -27,8 +27,9 @@ from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.models.order import FREES_A_SLOT, Order, OrderReminder, OrderStatus
+from gulbot.models.order import FREES_A_SLOT, Order, OrderReminder, OrderSource, OrderStatus
 from gulbot.models.product import Product
+from gulbot.models.share_page import SharePageReferral
 from gulbot.models.shop import Shop
 from gulbot.scheduling.delivery import SlotPolicy
 from gulbot.sending.order_card import ANNOUNCEMENT
@@ -59,6 +60,47 @@ class OrderDraft:
     location_text: str | None = None
     location_lat: float | None = None
     location_lon: float | None = None
+    #: CP18: the flow began at a reminder's bouquet button (the only button
+    #: that names a person). Decides orders.source; see `order_source`.
+    from_reminder: bool = False
+
+
+#: A page visit counts for an order placed this long after it, at most.
+ATTRIBUTION_WINDOW = timedelta(days=30)
+
+
+async def order_source(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    from_reminder: bool,
+    now: datetime | None = None,
+) -> tuple[str, int | None]:
+    """(source, source_page_id) for an order being placed now.
+
+    The reminder's button wins: it is what the customer tapped. Otherwise the
+    most recent page through which the customer arrived in THIS shop's bot
+    within the window. Otherwise direct. Never another shop's page: the
+    referral is looked up by this shop, and the composite FK on orders would
+    refuse one anyway.
+    """
+    if from_reminder:
+        return OrderSource.REMINDER.value, None
+    now = now or datetime.now(UTC)
+    page_id = await session.scalar(
+        select(SharePageReferral.page_id)
+        .where(
+            SharePageReferral.shop_id == shop_id,
+            SharePageReferral.customer_id == customer_id,
+            SharePageReferral.created_at >= now - ATTRIBUTION_WINDOW,
+        )
+        .order_by(SharePageReferral.created_at.desc(), SharePageReferral.id.desc())
+        .limit(1)
+    )
+    if page_id is not None:
+        return OrderSource.PAGE.value, int(page_id)
+    return OrderSource.DIRECT.value, None
 
 
 async def load_slot_policy(session: AsyncSession, *, shop_id: int) -> SlotPolicy:
@@ -162,6 +204,9 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
     name = product.name if product is not None else draft.product_name
     price = product.price_uzs if product is not None else draft.price_uzs
     file_id = product.telegram_file_id if product is not None else draft.telegram_file_id
+    source, source_page_id = await order_source(
+        session, shop_id=shop_id, customer_id=customer_id, from_reminder=draft.from_reminder
+    )
 
     statement = (
         insert(Order)
@@ -182,6 +227,8 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
             recipient_name=draft.recipient_name,
             status=OrderStatus.PLACED.value,
             submit_token=draft.submit_token,
+            source=source,
+            source_page_id=source_page_id,
         )
         .on_conflict_do_nothing(index_elements=["shop_id", "submit_token"])
         .returning(Order.id)

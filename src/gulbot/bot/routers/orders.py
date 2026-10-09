@@ -172,6 +172,10 @@ async def start_order(
         # choice. This is what finally writes `orders.recipient_id`, which
         # has been NULL on every order since CP10a because nothing set it.
         recipient_id=recipient_id,
+        # CP18, orders.source: a button that names a person is rendered only
+        # under a reminder. Kept even if the person is gone by now -- the
+        # reminder is still where the order came from.
+        from_reminder=bool(data.recipient_id),
     )
     await _show_dates(target, state, session, customer.shop_id, lang)
 
@@ -534,6 +538,7 @@ async def submit_order(
         location_text=data.get("location_text"),
         location_lat=data.get("location_lat"),
         location_lon=data.get("location_lon"),
+        from_reminder=bool(data.get("from_reminder")),
     )
     order, created = await create_order(
         session, shop_id=customer.shop_id, customer_id=customer.id, draft=draft

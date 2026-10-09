@@ -115,7 +115,17 @@ SENDABLE_PING_STATES = (PingState.PENDING.value, PingState.FAILED.value)
 FREES_A_SLOT = (OrderStatus.CANCELLED.value, OrderStatus.REJECTED.value)
 
 
+class OrderSource(StrEnum):
+    """Where an order came from (CP18), set once at submit. NULL for orders
+    placed before CP18: shown as unknown, never guessed at."""
+
+    REMINDER = "reminder"
+    PAGE = "page"
+    DIRECT = "direct"
+
+
 ORDER_STATUSES_SQL = ", ".join(f"'{s.value}'" for s in OrderStatus)
+ORDER_SOURCES_SQL = ", ".join(f"'{s.value}'" for s in OrderSource)
 PING_STATES_SQL = ", ".join(f"'{s.value}'" for s in PingState)
 
 
@@ -182,6 +192,11 @@ class Order(IdMixin, TimestampMixin, Base):
     #: away is a race the customer can win, a unique index is not.
     submit_token: Mapped[str] = mapped_column(String(32), nullable=False)
 
+    #: CP18: reminder / page / direct (services/orders.order_source).
+    source: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    #: The page a 'page' order is attributed to. Same-shop by its composite FK.
+    source_page_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+
     __table_args__ = (
         # CP1's tenancy pattern, both directions: this row belongs to a shop,
         # and anything referencing it must name the shop too.
@@ -211,6 +226,15 @@ class Order(IdMixin, TimestampMixin, Base):
             ondelete="SET NULL (product_id)",
         ),
         CheckConstraint(f"status IN ({ORDER_STATUSES_SQL})", name="status_known"),
+        CheckConstraint(f"source IS NULL OR source IN ({ORDER_SOURCES_SQL})", name="source_known"),
+        CheckConstraint(
+            "source_page_id IS NULL OR source = 'page'", name="source_page_only_for_pages"
+        ),
+        ForeignKeyConstraint(
+            ["source_page_id", "shop_id"],
+            ["share_pages.id", "share_pages.shop_id"],
+            ondelete="SET NULL (source_page_id)",
+        ),
         CheckConstraint(
             "price_uzs_snapshot IS NULL OR price_uzs_snapshot > 0", name="snapshot_price_positive"
         ),

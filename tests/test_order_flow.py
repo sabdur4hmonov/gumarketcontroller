@@ -724,6 +724,31 @@ async def test_choosing_someone_else_falls_through_to_typing(
     assert stored == "Qo'shni Dilnoza"
 
 
+async def test_the_order_records_whether_it_came_from_a_reminder(
+    driver: Driver, with_recipient: int
+) -> None:
+    """CP18, orders.source, through the real flow: the reminder's button is
+    what the router turns into 'reminder'; the browse path is 'direct'."""
+    for from_reminder in (True, False):
+        if from_reminder:
+            start = OrderStartCB(product_id=driver.product, recipient_id=with_recipient)
+        else:
+            start = OrderStartCB(product_id=driver.product)
+        await driver.tap(start.pack())
+        await driver.tap(OrderDateCB(offset=1).pack())
+        await driver.tap(OrderHourCB(hour=14).pack())
+        await driver.tap(OrderLocationCB(mode="text").pack())
+        await driver.say("Chilonzor 5")
+        await driver.say("Ko'k eshik")
+        if from_reminder:
+            await driver.tap(OrderRecipientCB(action="known").pack())
+        else:
+            await driver.say("Aziza")
+        await driver.tap(OrderConfirmCB(action="submit").pack())
+    sources = (await driver.db.execute(text("SELECT source FROM orders ORDER BY id"))).scalars()
+    assert list(sources) == ["reminder", "direct"]
+
+
 async def test_the_browse_path_has_no_name_to_offer(driver: Driver) -> None:
     """recipient_id 0 -- no occasion behind the choice, so straight to typing."""
     await driver.through_to_landmark()
