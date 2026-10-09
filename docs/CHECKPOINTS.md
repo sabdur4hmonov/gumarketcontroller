@@ -29,6 +29,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP-MT2 | The rest of the multi-tenant audit: H3, H4, H5, M1, M3, L1, L2, L3 | done, one commit per finding (L2's column in its own, after CP17 merged); merged to main |
 | CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
 | CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
+| CP18 | Platform admin panel (/admin), pause, subscriptions, order source, gift unlock, moderation, photo purge, health + heartbeats | done, one commit per stage; live-proven locally except the platform bot's Telegram delivery (needs PLATFORM_BOT_TOKEN) |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -905,6 +906,195 @@ Found while gathering it, both in the script, not the product:
   beyond-viewport capture left the lazy gallery blank. A cold-cache headless
   probe (fresh profile, cache disabled) loaded all three photos on Konvert and
   on Milliy alike; the gallery shot is a viewport capture scrolled to it.
+
+## What CP18 guarantees
+
+The platform owner's admin panel, under `/admin` on the page server, and the
+gift that unlocks premium share-page parts. The brief is
+`docs/ADMIN_PANEL_SPEC.md`, copied unchanged; where the owner's CP18
+instructions differ from it, the instructions win, and each difference is a
+decision below.
+
+**Only a listed admin gets in, only through the platform bot.**
+- `/admin` in the PLATFORM bot, from an id in `PLATFORM_ADMIN_TELEGRAM_IDS`,
+  answers with a one-time link: 10 minutes, one use, link preview off, at
+  most 5 per 10 minutes. Any other id gets nothing -- "/admin" falls through
+  to onboarding, so a shop owner learns nothing about a panel.
+- Opening the link shows a "Kirish" button; only the POST spends it, by
+  compare-and-swap. A link-preview fetcher must never be what logs in.
+- The admin list is checked when the link is minted, when it is spent, and
+  on every request: removing an id ends its sessions at once.
+- The session cookie is HttpOnly, Secure, SameSite=Strict, Path=/admin, and
+  lasts one hour, absolutely. Link and session tokens are stored as SHA-256
+  only.
+- ONE gate for every /admin route (a middleware): no live session gives 401
+  or 403, and every POST also needs the session's CSRF token. A test walks
+  the router, so a route added later cannot be forgotten.
+- Login is rate-limited per address. The panel has its own CSP, the pages'
+  policy plus `form-action 'self'`.
+- Production refuses to start with an empty or unparsable admin list. One
+  typo empties the whole list rather than letting a wrong id in.
+
+**Every admin action is recorded, and the record cannot be rewritten.**
+`admin_audit_log` holds every login, refusal, CSRF refusal, logout, pause,
+resume, payment, gift switch and hide. Each entry has before -> after, the
+reason and the address, written in the action's own transaction. A trigger
+refuses UPDATE, DELETE and TRUNCATE: the log is append-only in the database,
+not only in the UI.
+
+**Pause stops real work** (`shops.status`). For a paused shop:
+- the reminder tick skips its rows, which stay pending;
+- its bot answers a customer with one line and creates no customer row;
+- its pages stay up without the "order flowers" link.
+
+Its group still works, so orders already placed can be confirmed. On resume,
+the ordinary 6-hour staleness rule expires what is too late rather than
+firing a backlog, and the resume's audit entry says how many will expire.
+
+**Every order says where it came from** (`orders.source`):
+- **reminder**: the reminder's button, which wins over any page visit;
+- **page**: the latest page through which the customer reached THIS shop's
+  bot, within 30 days, named in `source_page_id`;
+- **direct**: anything else.
+
+Older orders stay NULL, shown as "before CP18". The page FK is
+same-shop by construction.
+
+**The gift: premium unlocks per shop, after a confirmed order.**
+- Premium is defined in one place (`services/premium.py`): the ten CP17
+  designs, music, and photos. Every kind of page and everything else stays
+  free.
+- The unlock is written in the transaction that confirms the customer's
+  order at THAT shop, only when the confirmation happened, and only while
+  the shop's rule is on.
+- The walls are in the service: create, edit to a premium design, music on,
+  any photo. Turning a premium part off never needs the gift.
+- The bot marks premium designs with ⭐ and says how to unlock them.
+- The same person, a customer of two shops, ordering at A unlocks nothing
+  at B. The composite FKs make a cross-shop unlock unrepresentable.
+
+**Moderation is reversible and total.**
+- A hidden page answers as gone on EVERY public route, found by walking the
+  router, and records nothing a visitor does. The creator's text is kept,
+  and showing the page again restores it.
+- A wish hidden by moderation cannot be un-hidden by its page's creator.
+- A hide always has a reason, in the service and in a CHECK.
+
+**Photo files of gone pages are dropped; the rows stay.** The nightly scrub
+and the creator's delete null the bytes and set `purged_at`, so the counts
+and the per-shop disk figures stay true. A CHECK allows only "purged" or
+"not purged", never half.
+
+**The panel never calls Telegram.**
+- Bot health comes from a snapshot the worker takes every 10 minutes through
+  each shop's own bot: getMe, then the bot's standing in the channel and the
+  group. It never posts.
+- Every periodic task writes a heartbeat. The page server's `/healthz/jobs`
+  answers 503 when the ticks stop. It runs in the web process, so it works
+  when beat or the worker is what died: the hook for an external
+  dead-man's-switch monitor (AUDIT.md section 3, B).
+
+**Counts before personal data.**
+- No screen shows a customer's phone or name, the owner's whole phone (it
+  is masked, e.g. +998 90 *** ** 12), or a page token. A page's link is its
+  secret, so pages are shown by internal id.
+- A test renders every screen with all three planted and greps for them.
+
+### Decisions made during CP18, each with its reason
+
+- **Login by a one-time link, not the spec's password + TOTP.** The owner
+  asked for it. It also removes a password to phish or reuse: holding the
+  listed Telegram account IS the credential.
+- **The gift unlocks everything premium.** The spec said "one premium
+  design"; the owner's brief said music, gallery and premium designs. The
+  brief wins.
+- **The rule defaults ON.** The brief describes it as the product's rule;
+  the panel switches it off per shop. Off means no NEW gifts; granted ones
+  are kept.
+- **Premium = the ten CP17 designs.** The ten CP16 designs stay free, so
+  every shop has a full free set.
+- **Grandfathering.** A page that already has a premium part keeps it. Only
+  turning a part ON needs the gift.
+- **No backfill of gifts from past confirmations.** No real customer has
+  any yet (the pilot has not run in production), and a backfill in the same
+  transaction as DDL is against CONTRIBUTING.
+- **The order source is recorded, not derived.** The spec allowed a
+  derived "approximate" stopgap. Recording it at submit costs one lookup and
+  is exact.
+- **Pause uses the existing 6-hour staleness rule**, not the spec's 24
+  hours. It is stricter, already proven, and one rule instead of two.
+- **"Overdue" is a badge.** Nothing pauses a shop automatically: billing
+  is manual, as the spec's MVP says.
+- **Alerts are computed when the page loads**, from the data, with no
+  alerts table and no acknowledge. The spec's acknowledge/resolve and
+  owner-Telegram push are deferred.
+- **No "Add shop" form and no editable config.** Shops come from the
+  platform bot's onboarding; the spec puts both later.
+- **The panel is in Uzbek**, the owner's language. Times are shown in UTC,
+  labelled.
+
+### Found while building, each fixed and tested
+
+- `record_cta` counted a tap on a deleted, expired or hidden page, and on a
+  paused shop's page. It now counts only a tap that can go somewhere. The
+  moderation test found it.
+- `scheduled_notifications` has no `updated_at`. The panel's first queries
+  assumed one. The screen tests found it.
+- CP17's music, photo and section tests act as customers who have the gift
+  (an explicit fixture), since they test how those parts work. The gating
+  is proven only in `test_premium_gift.py`.
+- `test_order_status`'s committed-world cleanup was blocked by the unlock's
+  FK to the order. It is now `ON DELETE CASCADE`: an unlock never outlives
+  the order that granted it.
+- On a phone, the audit log and two tables were unreadable. They are cards
+  and narrow tables now, found by looking at the live screens.
+
+**Mutation totals, all caught on assertions:**
+
+| Stage | Mutants |
+|---|---|
+| A pause | 7/7 |
+| H login, sessions, audit | 16/16 |
+| B subscriptions | 9/9 |
+| C order source | 9/9 |
+| D gift | 12/12 (one more judged equivalent: the unlock lookup without its shop) |
+| E moderation | 12/12 |
+| F photo purge | 6/6 |
+| G health, heartbeats | 9/9 |
+| I screens | 10/10, + 1/1 for "no usable bot" |
+
+### Live evidence, 2026-10-09, against the dev database and the local page server
+
+`scripts/live_cp18.py --admin-id <id> --link-file <path>`, run with
+`PLATFORM_ADMIN_TELEGRAM_IDS=<id>` for the page server and the script.
+The dev database was migrated to `d5e841dbb2be` first (after a dump) and
+checked with `alembic current`.
+
+- **Bot health, through the real dev bot (read-only):** shop 1 has
+  token_valid=True, @Flowersmarketcontroller_bot, group_ok=True, and its
+  channel unchecked because the pilot shop has no `channel_id` recorded
+  (DEPLOY step 0c).
+- **The login link:** "/admin" went to the REAL platform dispatcher from
+  the admin id. The handler, the database and the link are real.
+  **Synthetic part: delivery.** There is no `PLATFORM_BOT_TOKEN` on this
+  machine (a BotFather step), so the reply was captured by a recording
+  session instead of sent. It carried the link with the preview off.
+- **Login and the screens:** headless Chrome at 360 px opened the link,
+  pressed "Kirish", and was redirected to `/admin`. Before that, `/admin`
+  without a session answered 401. All six screens were captured to
+  `docs/screenshots/admin/`.
+- **Pause and resume of the dev shop, through the panel's own buttons:**
+  the shop went active -> paused -> active. The audit log holds
+  `login_link_sent`, `login`, `shop_pause` ("live CP18 evidence",
+  127.0.0.1) and `shop_resume`, each with the admin id; see
+  `admin-9-audit.png`.
+- **`/healthz/jobs` answered 503**, naming the send ticks and the health
+  check, because no worker runs on this laptop. That is the endpoint doing
+  its job.
+
+**Still to do with a real platform bot (an owner's step):** set
+`PLATFORM_BOT_TOKEN` and `PLATFORM_ADMIN_TELEGRAM_IDS`, send /admin, and
+confirm the link arrives in the DM. The handler path is the one above.
 
 ## Briefs already agreed for future checkpoints
 
