@@ -31,6 +31,7 @@ GULBOT_TASKS = {
     "gulbot.finalize_album",
     "gulbot.notify_page_answer",
     "gulbot.scrub_expired_pages",
+    "gulbot.snapshot_shop_health",  # CP18
 }
 
 

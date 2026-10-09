@@ -11,6 +11,7 @@ from gulbot.models.notification import (
     ScheduledNotification,
 )
 from gulbot.models.occasion import Occasion, OccasionKind, OccasionType
+from gulbot.models.ops import JobRun, ShopHealthSnapshot
 from gulbot.models.order import Order, OrderReminder, OrderStatus, PingState
 from gulbot.models.premium import PremiumUnlock
 from gulbot.models.product import (
@@ -44,6 +45,7 @@ __all__ = [
     "NotificationChannel",
     "NotificationState",
     "HashtagAlias",
+    "JobRun",
     "Occasion",
     "Order",
     "OrderReminder",
@@ -64,5 +66,6 @@ __all__ = [
     "SharePageReferral",
     "SharePageRsvp",
     "Shop",
+    "ShopHealthSnapshot",
     "SubscriptionPayment",
 ]

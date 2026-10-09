@@ -10,6 +10,7 @@
     GET  /demo[/<kind>[/<theme>]]  the designs, with sample text
     GET  /static/...            CSS, JS, fonts -- this origin only
     GET  /robots.txt, /healthz
+    GET  /healthz/jobs          200 while the periodic jobs run, 503 when they stop (CP18)
 
 SECURITY, in one place (`secure_headers`): a Content-Security-Policy that
 allows scripts, styles, fonts and images from this origin and nothing else --
@@ -513,6 +514,22 @@ async def healthz(_request: web.Request) -> web.Response:
     return web.Response(text="ok", content_type="text/plain")
 
 
+async def healthz_jobs(request: web.Request) -> web.Response:
+    """CP18, for an EXTERNAL monitor (the dead-man's switch, docs/DEPLOY.md):
+    200 "ok" while the send ticks and the health check keep finishing, 503
+    naming the ones that stopped. Answered by the page server, so it still
+    works when beat or the worker is the thing that died."""
+    from gulbot.services.shop_health import stale_jobs
+
+    async with request.app[KEY_SESSIONS]() as session:
+        stale = await stale_jobs(session)
+    if stale:
+        return web.Response(
+            status=503, text="stale: " + ", ".join(stale), content_type="text/plain"
+        )
+    return web.Response(text="ok", content_type="text/plain")
+
+
 def build_app(
     *,
     session_factory: async_sessionmaker[AsyncSession],
@@ -548,6 +565,7 @@ def build_app(
     app.router.add_get("/demo/{kind}/{theme}", demo_page)
     app.router.add_get("/robots.txt", robots)
     app.router.add_get("/healthz", healthz)
+    app.router.add_get("/healthz/jobs", healthz_jobs)
     app.router.add_static("/static/", render.STATIC, show_index=False, follow_symlinks=False)
     # CP18: the platform admin panel. Off (no routes at all) unless an admin
     # list source is given -- the page server's entrypoint always gives one.

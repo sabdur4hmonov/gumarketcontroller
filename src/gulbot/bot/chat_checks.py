@@ -115,6 +115,13 @@ async def check_channel(bot: Bot, ref: int | str) -> ChatCheck:
     return result
 
 
+async def check_group_standing(bot: Bot, chat_id: int) -> ChatCheck:
+    """The bot is an admin of the group. NEVER posts -- for the 10-minute
+    health snapshot (CP18), where a test message would be 144 posts a day."""
+    result, _ = await _membership(bot, chat_id, kinds=GROUP_TYPES)
+    return result
+
+
 async def check_group(bot: Bot, chat_id: int, *, test_text: str) -> ChatCheck:
     """Admin, then a real post of `test_text` -- verify_group.py's check."""
     result, resolved = await _membership(bot, chat_id, kinds=GROUP_TYPES)

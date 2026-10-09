@@ -53,6 +53,9 @@ ALBUM_SOFT_LIMIT, ALBUM_HARD_LIMIT = 60, 90
 # One Telegram message, or one UPDATE over expired pages.
 PAGE_NOTIFY_SOFT_LIMIT, PAGE_NOTIFY_HARD_LIMIT = 60, 90
 PAGE_SCRUB_SOFT_LIMIT, PAGE_SCRUB_HARD_LIMIT = 300, 360
+# CP18: every shop's bot asked three questions, ten shops at a time.
+SNAPSHOT_SOFT_LIMIT, SNAPSHOT_HARD_LIMIT = 240, 300
+SNAPSHOT_EXPIRES_SECONDS = 590
 
 app = Celery(
     "gulbot",
@@ -99,6 +102,12 @@ app.conf.update(
         "scrub-expired-pages": {
             "task": "gulbot.scrub_expired_pages",
             "schedule": crontab(hour=3, minute=30),
+        },
+        # CP18: what the admin panel shows as each shop's bot health.
+        "snapshot-shop-health": {
+            "task": "gulbot.snapshot_shop_health",
+            "schedule": 600.0,
+            "options": {"expires": SNAPSHOT_EXPIRES_SECONDS},
         },
         "materialize-nightly": {
             "task": "gulbot.materialize_all_shops",

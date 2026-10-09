@@ -18,6 +18,7 @@ from gulbot.sending.render import render_reminder
 from gulbot.sending.transport import TransportFor
 from gulbot.services.indexer import finalize_product
 from gulbot.services.materializer import materialize_shop
+from gulbot.services.shop_health import heartbeat
 from gulbot.worker.app import (
     ALBUM_HARD_LIMIT,
     ALBUM_SOFT_LIMIT,
@@ -29,6 +30,8 @@ from gulbot.worker.app import (
     PAGE_NOTIFY_SOFT_LIMIT,
     PAGE_SCRUB_HARD_LIMIT,
     PAGE_SCRUB_SOFT_LIMIT,
+    SNAPSHOT_HARD_LIMIT,
+    SNAPSHOT_SOFT_LIMIT,
     SUMMARY_HARD_LIMIT,
     SUMMARY_SOFT_LIMIT,
     TICK_HARD_LIMIT,
@@ -164,6 +167,7 @@ async def _materialize_all_shops() -> dict[str, int]:
     soft_time_limit=TICK_SOFT_LIMIT,
     time_limit=TICK_HARD_LIMIT,
 )
+@heartbeat("send_due_reminders")
 def send_due_reminders() -> dict[str, int]:
     return asyncio.run(_send_due_reminders())
 
@@ -173,6 +177,7 @@ def send_due_reminders() -> dict[str, int]:
     soft_time_limit=TICK_SOFT_LIMIT,
     time_limit=TICK_HARD_LIMIT,
 )
+@heartbeat("send_order_pings")
 def send_order_pings() -> dict[str, int]:
     return asyncio.run(_send_order_pings())
 
@@ -182,6 +187,7 @@ def send_order_pings() -> dict[str, int]:
     soft_time_limit=HEALTH_SOFT_LIMIT,
     time_limit=HEALTH_HARD_LIMIT,
 )
+@heartbeat("check_health")
 def check_health() -> dict[str, int]:
     result = asyncio.run(_for_every_shop("check"))
     log.info("health check: %s", result)
@@ -193,6 +199,7 @@ def check_health() -> dict[str, int]:
     soft_time_limit=SUMMARY_SOFT_LIMIT,
     time_limit=SUMMARY_HARD_LIMIT,
 )
+@heartbeat("send_daily_summary")
 def send_daily_summary_task() -> dict[str, int]:
     result = asyncio.run(_for_every_shop("summary"))
     log.info("daily summary: %s", result)
@@ -204,6 +211,7 @@ def send_daily_summary_task() -> dict[str, int]:
     soft_time_limit=MATERIALIZE_SOFT_LIMIT,
     time_limit=MATERIALIZE_HARD_LIMIT,
 )
+@heartbeat("materialize_all_shops")
 def materialize_all_shops() -> dict[str, int]:
     return asyncio.run(_materialize_all_shops())
 
@@ -324,5 +332,35 @@ async def _scrub_expired_pages() -> int:
     soft_time_limit=PAGE_SCRUB_SOFT_LIMIT,
     time_limit=PAGE_SCRUB_HARD_LIMIT,
 )
+@heartbeat("scrub_expired_pages")
 def scrub_expired_pages() -> int:
     return asyncio.run(_scrub_expired_pages())
+
+
+# --- CP18: bot-health snapshots for the platform admin panel -----------------
+
+
+async def _snapshot_shop_health() -> int:
+    from gulbot.services.shop_health import snapshot_all_shops
+
+    async with task_session_factory() as factory, factory() as session:
+        registry = await registry_for(session)
+        try:
+            snapshots = await snapshot_all_shops(session, registry.bot_for)
+            await session.commit()
+        finally:
+            await registry.close()
+    log.info("shop health: %s shop(s) checked", len(snapshots))
+    return len(snapshots)
+
+
+@app.task(
+    name="gulbot.snapshot_shop_health",
+    soft_time_limit=SNAPSHOT_SOFT_LIMIT,
+    time_limit=SNAPSHOT_HARD_LIMIT,
+)
+@heartbeat("snapshot_shop_health")
+def snapshot_shop_health() -> int:
+    """Every 10 minutes: token, channel and group standing of every shop's bot,
+    for the admin panel -- which never calls Telegram from a page request."""
+    return asyncio.run(_snapshot_shop_health())
