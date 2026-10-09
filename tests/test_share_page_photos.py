@@ -243,14 +243,23 @@ async def test_nobody_else_can_add_or_clear_photos(
     assert await count_of(db, page.id) == 1
 
 
-async def test_deleting_the_page_deletes_its_photos(
+async def test_deleting_the_page_drops_its_photo_files_and_keeps_the_rows(
     db: AsyncConnection, session: AsyncSession
 ) -> None:
+    """CP18 changed this deliberately: the bytes go, the rows stay (size and
+    when) for the counts -- the same "deleting scrubs, it does not drop" rule
+    CP16 set for the page itself."""
     page, shop, customer = await invitation(session, db)
     photo = await add(session, page, shop, customer)
     await add(session, page, shop, customer)
     await share_pages.delete_page(session, shop_id=shop, customer_id=customer, page_id=page.id)
-    assert await count_of(db, page.id) == 0
+    await session.flush()
+    assert await count_of(db, page.id) == 2
+    left = await db.scalar(
+        text("SELECT count(*) FROM share_page_photos WHERE page_id = :p AND data IS NOT NULL"),
+        {"p": page.id},
+    )
+    assert left == 0
     assert await share_page_photos.photo_for_token(session, page.token, photo.id) is None
 
 

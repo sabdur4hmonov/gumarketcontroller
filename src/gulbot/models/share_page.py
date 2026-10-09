@@ -360,13 +360,17 @@ class SharePagePhoto(Base):
     shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
-    data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    #: NULL once purged (CP18): a gone page's photo files are dropped nightly;
+    #: the row stays for the counts. See purged_at.
+    data: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
     width: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     height: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    #: When the nightly scrub (or the creator's delete) dropped the bytes.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
         ForeignKeyConstraint(
@@ -377,6 +381,7 @@ class SharePagePhoto(Base):
         CheckConstraint(f"size_bytes > 0 AND size_bytes <= {PHOTO_MAX_BYTES}", name="size_bound"),
         CheckConstraint("width > 0 AND height > 0", name="dimensions_positive"),
         CheckConstraint(f"position BETWEEN 1 AND {GALLERY_MAX}", name="position_range"),
+        CheckConstraint("(purged_at IS NULL) = (data IS NOT NULL)", name="purged_has_no_data"),
         UniqueConstraint("page_id", "position"),
     )
 

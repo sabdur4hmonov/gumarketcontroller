@@ -444,7 +444,7 @@ async def photo(request: web.Request) -> web.Response:
         found = await share_page_photos.photo_for_token(
             session, token, int(request.match_info["photo_id"])
         )
-    if found is None:
+    if found is None or found.data is None:
         raise web.HTTPNotFound()
     # Every photo has its own id, so a replaced photo is a new URL; this
     # one may be kept by the browser, but only privately.

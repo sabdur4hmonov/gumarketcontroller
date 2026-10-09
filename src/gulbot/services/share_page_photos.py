@@ -191,7 +191,7 @@ async def photos_of(session: AsyncSession, *, page_id: int) -> list[PhotoRef]:
         select(
             SharePagePhoto.id, SharePagePhoto.position, SharePagePhoto.width, SharePagePhoto.height
         )
-        .where(SharePagePhoto.page_id == page_id)
+        .where(SharePagePhoto.page_id == page_id, SharePagePhoto.data.is_not(None))
         .order_by(SharePagePhoto.position)
     )
     return [PhotoRef(int(r[0]), int(r[1]), int(r[2]), int(r[3])) for r in rows]
@@ -207,6 +207,7 @@ async def photo_for_token(
         .join(SharePage, SharePage.id == SharePagePhoto.page_id)
         .where(
             SharePagePhoto.id == photo_id,
+            SharePagePhoto.data.is_not(None),  # CP18: a purged photo has no file
             SharePage.token == token,
             SharePage.deleted_at.is_(None),
             SharePage.hidden_at.is_(None),  # CP18: hidden by moderation

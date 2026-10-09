@@ -445,7 +445,7 @@ async def delete_page(
     if deleted is None:
         return False
     await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page_id))
-    await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id == page_id))
+    await purge_photos(session, [page_id], now=now)
     await session.execute(delete(SharePageWish).where(SharePageWish.page_id == page_id))
     await session.execute(
         update(SharePageRsvp)
@@ -471,9 +471,23 @@ async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -
             update(SharePageRsvp).where(SharePageRsvp.page_id.in_(ids)).values(guest_name=None)
         )
         await session.execute(delete(SharePageOption).where(SharePageOption.page_id.in_(ids)))
-        await session.execute(delete(SharePagePhoto).where(SharePagePhoto.page_id.in_(ids)))
+        await purge_photos(session, ids, now=now)
         await session.execute(delete(SharePageWish).where(SharePageWish.page_id.in_(ids)))
     return len(ids)
+
+
+async def purge_photos(session: AsyncSession, page_ids: list[int], *, now: datetime) -> int:
+    """CP18: drop the photo FILES of pages that are gone; keep each row (size,
+    dimensions, when) for the counts and the disk-usage figures. Returns the
+    bytes freed. A purged row has data NULL and purged_at set -- the CHECK
+    ck_share_page_photos_purged_has_no_data makes that a single state."""
+    sizes = await session.scalars(
+        update(SharePagePhoto)
+        .where(SharePagePhoto.page_id.in_(page_ids), SharePagePhoto.data.is_not(None))
+        .values(data=None, purged_at=now)
+        .returning(SharePagePhoto.size_bytes)
+    )
+    return sum(int(size) for size in sizes)
 
 
 @dataclass(frozen=True)
