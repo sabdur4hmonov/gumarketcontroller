@@ -1,342 +1,284 @@
-# Deploy runbook
+# Deploy runbook: from an empty VPS to a running Gulbot
 
-Steps that a code change cannot take effect without, or that only the deploy
-host can verify. Each one says why it is here, so it is not skipped as ritual.
+One ordered path. Do the steps in order; each says why it is there, so none is
+skipped as ritual. Started by the pre-deployment audit (pass 5) and rewritten
+for CP18 as a single runbook. **The code side has been proven on the dev
+machine; no step below has yet been run on a real server** -- the first deploy
+is also this document's first run, so note anything that differs.
 
-Started by the pre-deployment audit, pass 5. Add to it whenever a fix needs the
-deploy to finish it.
+The files referred to are in the repo:
 
-## 0. The production environment. Get this wrong and nothing else matters.
+| File | Goes to |
+|---|---|
+| `deploy/gulbot.env.example` | `/etc/gulbot/gulbot.env`, filled in |
+| `deploy/docker-compose.prod.yml` | used from the repo with `docker-compose.yml` |
+| `deploy/systemd/*.service` | `/etc/systemd/system/` |
+| `deploy/Caddyfile` | `/etc/caddy/Caddyfile`, hostname edited |
 
-Every production process refuses to start unless it runs with
-`ENVIRONMENT=production` and these four are **real environment variables**,
-exported for that process. They must not come from a `.env` file or a
-built-in default:
+What runs where: **Postgres and Redis in Docker** (bound to 127.0.0.1);
+**four Python processes under systemd** -- the bots, the Celery worker, Celery
+beat, and the page server; **Caddy** in front of the page server for HTTPS.
 
-```
-ENVIRONMENT=production
-BOT_TOKEN=<the production bot's token, never the dev one>
-POSTGRES_HOST=<production database host>
-POSTGRES_DB=<production database name>
-POSTGRES_PASSWORD=<not "gulbot">
-```
+## 0. Before you start: what only the owner can provide
 
-A process with the wrong config dies at startup with
-`ProductionConfigError: REFUSING TO START`, followed by the name of every
-problem. That is the guard working. Fix the environment; do not work around it.
+- **A VPS**: Ubuntu 24.04 LTS, 2 vCPU / 2 GB RAM / 40 GB disk is enough for
+  the pilot and the first tens of shops. Root SSH access.
+- **A domain**, and one hostname for the pages and the panel, e.g.
+  `pages.<your-domain>.uz`, with an `A` record (and `AAAA` if the server has
+  IPv6) pointing at the VPS. Check: `nslookup pages.<your-domain>.uz`.
+- **Two bot tokens from @BotFather**: the pilot shop's bot (`BOT_TOKEN`) and
+  the **platform bot** (`PLATFORM_BOT_TOKEN`) -- a bot of its own, never a
+  shop's. Shops onboarded later bring their own bots through the platform bot.
+- **The admins' Telegram user ids** (`PLATFORM_ADMIN_TELEGRAM_IDS`): who may
+  log into `/admin`. (@userinfobot shows your id.)
 
-### STOP. Check `ENVIRONMENT` with your own eyes before starting anything.
-
-**The guard cannot protect a process that never sets `ENVIRONMENT=production`.**
-Without it, the process is "local" and runs on dev defaults, silently, by
-design. No code can catch this, so a person has to. Do it at every deploy,
-before every start.
-
-1. In the shell session that will launch the bot, the worker and beat, run:
-
-   ```
-   echo "$ENVIRONMENT"
-   ```
-
-2. It must print exactly:
-
-   ```
-   production
-   ```
-
-   If it prints a blank line, or anything else, **stop**. Start nothing. Set
-   the variable, then go back to step 1.
-
-3. Do this check in **that same shell session**. Not in another terminal, and
-   not assumed from a script that "already set it" earlier.
-
-4. Only then start the processes, from that session.
-
-If a service manager (systemd, supervisor) starts the processes instead of this
-shell, the `echo` proves nothing about them. Check the environment in the
-service's unit or config file.
-
-After start, the bot logs `environment=production` on its `starting as @...`
-line. Check that the bot name on that line is the production bot.
-
-Do not copy a dev `.env` onto the server. The guard refuses a `.env`-supplied
-token or database, but a `.env` can still supply the settings it does not
-check, such as ports and Redis.
-
-## 0b. Per-shop bot tokens and the platform bot
-
-Since CP-MT every shop speaks through its own bot. Its token is stored in
-`shops.bot_token_encrypted`, encrypted with a key that is only ever an
-environment variable:
+## 1. The server
 
 ```
-SHOP_TOKEN_ENCRYPTION_KEY=<Fernet key; generate with the command in .env.example>
-PLATFORM_BOT_TOKEN=<the onboarding bot's token; leave unset to run without onboarding>
+apt update && apt -y upgrade
+apt -y install ufw unattended-upgrades git ca-certificates curl
+dpkg-reconfigure -plow unattended-upgrades
+ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw enable
+adduser --system --group --home /opt/gulbot gulbot
 ```
 
-- **Back the key up with the database credentials, never inside the
-  database.** Lose it and every stored shop token is unreadable: each shop
-  would have to hand over its token again.
-- **Rotating the key.** Set `SHOP_TOKEN_ENCRYPTION_KEY=<new>,<old>`. The first
-  key encrypts and every listed key decrypts. Drop the old key only once
-  every token has been re-stored.
-- **The platform bot.** With `PLATFORM_BOT_TOKEN` set, the bot process
-  refuses to start without a usable encryption key. The platform bot must be
-  a bot of its own, never a shop's bot and never `BOT_TOKEN`'s.
-- **The pilot shop** may keep using `BOT_TOKEN`, and the bot logs a WARNING
-  every time it does. Store its own token to retire the fallback.
+Only 22, 80 and 443 are open. **Never open 5433, 6380 or 8088.**
 
-## 0c. Every shop's catalogue channel is recorded (CP-MT2, H3)
+Journald must not fill the disk: in `/etc/systemd/journald.conf` set
+`SystemMaxUse=500M`, then `systemctl restart systemd-journald`.
 
-Since CP-MT2 the indexer takes a channel post only from the shop's own
-`shops.channel_id`, and **a shop whose `channel_id` is NULL indexes nothing.**
-Shops onboarded through the platform bot always have it. The pilot shop
-predates onboarding and, on the dev database at least, does not. Set it
-**before** deploying CP-MT2, or the pilot's new and edited posts stop reaching
-the catalogue. Products already indexed are not affected.
+## 2. Software
 
-Find the channel id: post anything with a photo in the channel. The bot logs
-`shop N has no channel_id ... set shops.channel_id = <id>`, naming the exact id.
-Then:
+- **Docker** with the compose plugin (2.24+), from Docker's own apt
+  repository (docs.docker.com/engine/install/ubuntu).
+- **Python 3.11** exactly (`requires-python = ">=3.11,<3.12"`). Ubuntu 24.04
+  ships 3.12, so: `add-apt-repository ppa:deadsnakes/ppa && apt -y install
+  python3.11 python3.11-venv`.
+- **Caddy** from its apt repository (caddyserver.com/docs/install).
+
+## 3. The code
 
 ```
-UPDATE shops SET channel_id = <that id> WHERE id = <the pilot shop's id> AND channel_id IS NULL;
+sudo -u gulbot git clone https://github.com/sabdur4hmonov/gumarketcontroller.git /opt/gulbot
+cd /opt/gulbot
+sudo -u gulbot python3.11 -m venv .venv
+sudo -u gulbot .venv/bin/pip install -e .
+sudo -u gulbot .venv/bin/python -c "import PIL, jinja2, aiogram; print('ok')"
 ```
 
-Verify: a new hashtagged post appears in the catalogue, and the log says
-`indexed message=...`, not `ignored`.
+That pulls in Pillow (CP17 photos) and Jinja2 (pages). **There must be no
+`.env` file in `/opt/gulbot`**: docker compose and the app would both read it.
 
-## 1. Before stopping anything
-
-- **Migrations at head, checked, not assumed.** Compare the database with the
-  code:
-
-  ```
-  alembic current
-  alembic heads
-  ```
-
-  The two must print the same revision. A report of "applied" is not evidence:
-  it has been wrong twice on this project already.
-
-## 2. Recreate Postgres and Redis so log rotation applies
-
-`docker-compose.yml` sets `max-size: 10m`, `max-file: 3` on both containers.
-Docker applies a logging config **only when a container is created**. A
-container already running keeps the unbounded default forever, and `docker
-compose up -d` does not recreate a container just because its logging changed
-on every Compose version.
-
-Stop the bot and the worker first, then:
+## 4. The production settings
 
 ```
-docker compose up -d --force-recreate postgres redis
+mkdir -p /etc/gulbot
+cp /opt/gulbot/deploy/gulbot.env.example /etc/gulbot/gulbot.env
+chown root:gulbot /etc/gulbot/gulbot.env && chmod 0640 /etc/gulbot/gulbot.env
 ```
 
-Data survives: both use named volumes (`gulbot_pgdata`, `gulbot_redisdata`).
-Redis runs with `appendonly yes`, so queued Celery work survives too.
+Fill it in. Every variable is commented there. The essentials:
 
-Verify, per container. It must show the limits, not `map[]`:
+- `ENVIRONMENT=production` -- arms the guard (step 6).
+- `BOT_TOKEN`, `PLATFORM_BOT_TOKEN`, `PLATFORM_ADMIN_TELEGRAM_IDS`.
+- `SHOP_TOKEN_ENCRYPTION_KEY`: generate once with the command in the file.
+  **Back it up with the database password, never inside the database**: lose
+  it and every stored shop token is unreadable. To rotate, set
+  `<new>,<old>` (the first encrypts, all decrypt) and drop the old one only
+  once every token has been re-stored.
+- `POSTGRES_PASSWORD`: long and random. The guard refuses `gulbot`.
+- `PUBLIC_BASE_URL=https://pages.<your-domain>.uz` (an origin: no path, no
+  trailing slash). Until it is https, the bots answer the pages menu with
+  "coming soon" and the platform bot sends no admin link -- deliberately.
+- `WEB_TRUST_PROXY=true`, only because Caddy is in front.
+
+## 5. Postgres and Redis
+
+```
+cd /opt/gulbot
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml \
+    --env-file /etc/gulbot/gulbot.env up -d --wait
+```
+
+The override takes the database credentials from the env file (a missing one
+stops compose with its name) and binds both ports to 127.0.0.1. Data lives in
+the named volumes `gulbot_pgdata` and `gulbot_redisdata`; Redis runs with
+`appendonly yes`, so queued Celery work survives a restart.
+
+Verify, per container -- it must show the limits, not `map[]`:
 
 ```
 docker inspect -f "{{.HostConfig.LogConfig}}" gulbot-postgres
 docker inspect -f "{{.HostConfig.LogConfig}}" gulbot-redis
+ss -ltnp | grep -E ':5433|:6380'     # both on 127.0.0.1 only
 ```
 
-Expected: `{json-file map[max-file:3 max-size:10m]}`.
+Expected: `{json-file map[max-file:3 max-size:10m]}`. Docker applies logging
+only when a container is CREATED: when upgrading a server whose containers
+predate the limits, add `--force-recreate postgres redis` once (data survives).
 
-## 3. The worker runs PREFORK, never solo
+## 6. STOP. Check the production guard with your own eyes.
 
-Every task carries `soft_time_limit` and `time_limit` (`worker/app.py`). **Celery
-enforces them only in the prefork pool.** The solo pool used on the Windows dev
-box silently ignores them. A solo worker on the VPS would put back the defect
-pass 5 found: one hung task holds the worker forever.
+Every process refuses to start (`ProductionConfigError: REFUSING TO START`,
+followed by the name of every problem) unless `ENVIRONMENT=production` and
+`BOT_TOKEN`, `POSTGRES_HOST`, `POSTGRES_DB` and `POSTGRES_PASSWORD` are real
+environment variables, the password is not the dev one, and
+`PLATFORM_ADMIN_TELEGRAM_IDS` is a usable list. That is the guard working: fix
+the environment, never work around it.
+
+**The guard cannot protect a process that never sets
+`ENVIRONMENT=production`.** Without it the process is "local" and runs on dev
+defaults, silently, by design. So check, with the exact environment the
+services will get:
 
 ```
-celery -A gulbot.worker.app worker --pool=prefork --loglevel=info
-celery -A gulbot.worker.app beat --loglevel=info
+cd /opt/gulbot
+sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
+  .venv/bin/python -c "from gulbot.config import get_settings; s = get_settings(); print(s.environment, s.postgres_db)"'
 ```
 
-Verify: the worker's startup banner reads `concurrency: N (prefork)`.
+It must print `production` and your production database name. Anything else:
+**stop**, fix the env file, check again. The systemd units read the same file
+(`EnvironmentFile=`), so this is what they will see.
 
-**Run beat exactly once.** Two beats enqueue every tick twice. That is safe,
-because the claims make it idempotent, but it is wasted work, and it doubles
-the expired-tick noise in the log.
+## 7. Migrations
 
-## 4. Nothing to configure, but know it is there
+```
+sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
+  .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
+```
 
-These are in code and need no environment variable. Listed so nobody "fixes"
-them at deploy time:
+`current` and `heads` must print the same revision (`d5e841dbb2be` at CP18).
+**A report of "applied" is not evidence** -- on this project it has been wrong
+twice; read it here. Every migration is additive. Four DOWNGRADES change data,
+because the old CHECKs cannot hold it -- back up before ever going below them:
+
+| Below | What the downgrade does |
+|---|---|
+| `360f0694be06` | English-speaking customers become Uzbek |
+| `c5a8e2d61f37` | Uzrnoma pages are deleted |
+| `b996b9032869` | purged photo rows are deleted |
+| `4b6e1d9c2a07` and the CP18 revisions | their columns and tables are dropped |
+
+## 8. The processes
+
+```
+cp /opt/gulbot/deploy/systemd/gulbot-*.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now gulbot-web gulbot-worker gulbot-beat gulbot-bot
+systemctl status 'gulbot-*'
+```
+
+Check each one's log (`journalctl -u gulbot-bot -n 50`):
+
+- **bot**: `serving N shop(s); platform bot on; environment=production`, and
+  the bot names on the `starting`/`polling` lines are the production bots.
+- **worker**: the banner reads `concurrency: 2 (prefork)`. **Prefork, never
+  solo**: the task time limits (`worker/app.py`) are enforced only by the
+  prefork pool, and one hung task would otherwise hold the worker forever.
+- **beat**: lists `send-due-reminders`, `send-order-pings`, `health-check`,
+  `snapshot-shop-health`, `daily-summary`, `materialize-nightly`,
+  `scrub-expired-pages`. **Run beat exactly once**, on one machine.
+- **web**: `pages: serving on 127.0.0.1:8088 for https://pages... (environment=production)`.
+  It writes no access log, on purpose: every page path is a secret.
+
+## 9. HTTPS
+
+Copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, put your hostname in, and
+`systemctl reload caddy`. Caddy obtains and renews the certificate itself. The
+pages and `/admin` share the one hostname. **Do not add a `log` directive**
+(see the file). Recommended: uncomment the block that lets only your own IP
+addresses reach `/admin` at all.
+
+## 10. Verify from outside the server
+
+- `curl -I https://pages.<domain>/healthz` -> 200 with
+  `Content-Security-Policy`, `X-Robots-Tag: noindex` and
+  `Strict-Transport-Security`.
+- `curl https://pages.<domain>/healthz/jobs` -> `ok` once the worker has run
+  for two minutes (`stale: ...` names any job that is not finishing).
+- `curl -I https://pages.<domain>/admin` -> 401.
+- On a phone: `/demo/yesno`, `/demo/invite`, `/demo/apology/konvert`.
+- In the pilot shop's bot: make a Ha/Yo'q page. The reply carries **Ochish**
+  and **Ulashish** buttons (https only). Open it, press Ha: the "they said Ha"
+  message arrives once. "Gul buyurtma qilish" opens THAT shop's bot.
+- In the platform bot, from an admin id: `/admin` -> a link in your DM
+  (preview off). Open it, press **Kirish** -> the panel. Within 10 minutes the
+  shop shows a bot-health snapshot. From any other id, `/admin` does nothing.
+
+## 11. The pilot shop's wiring
+
+- **Its catalogue channel (CP-MT2, H3).** A shop with no `shops.channel_id`
+  indexes nothing; the pilot shop predates onboarding and may not have one.
+  Post anything with a photo in the channel; the bot logs
+  `shop N has no channel_id ... set shops.channel_id = <id>`. Then:
+  `UPDATE shops SET channel_id = <id> WHERE id = <pilot id> AND channel_id IS NULL;`
+  Verify a new hashtagged post is `indexed`, not `ignored`.
+- **Its own token.** The pilot may keep using `BOT_TOKEN`; the bot logs a
+  WARNING each time. Storing its own token retires the fallback.
+- **Its language** (`shops.lang`, default `uz`): `UPDATE shops SET lang = 'ru'
+  WHERE id = ...` for a Russian-speaking shop.
+
+## 12. The dead-man's switch (do it now, it takes five minutes)
+
+If beat or the worker dies, nothing inside the deployment can say so -- the
+health check is itself a beat task. `/healthz/jobs` is answered by the page
+server, so it still answers when they are dead. Point an external uptime
+monitor at `https://pages.<domain>/healthz/jobs` every 5 minutes, alerting on
+anything but 200, to your phone. Also monitor `/healthz` (the page server
+itself). See the owner's checklist for the choice of service.
+
+## 13. Backups
+
+- Nightly, as root: `docker exec gulbot-postgres pg_dump -U <user> -Fc <db> >
+  /var/backups/gulbot/gulbot-$(date +%F).dump`, keep 14 days, and copy them
+  OFF the server. Photos are in the database (CP17), so the dump grows with
+  them; the nightly purge drops expired pages' photo bytes.
+- The env file and above all `SHOP_TOKEN_ENCRYPTION_KEY`: in a password
+  manager, never only on the server.
+- Once, before going live: restore a dump into a scratch database and run
+  `alembic current` against it. A backup never restored is a hope.
+
+## 14. Upgrading to a new version
+
+```
+cd /opt/gulbot && sudo -u gulbot git pull
+sudo -u gulbot .venv/bin/pip install -e .
+# step 7: migrations, then current == heads
+systemctl restart gulbot-worker gulbot-beat gulbot-bot gulbot-web
+```
+
+Read the new commits' notes in `docs/CHECKPOINTS.md` first: a step that needs
+the deploy to finish it is recorded there and added here.
+
+## 15. Know it is there, do not "fix" it at deploy time
 
 | Bound | Value | Where |
 |---|---|---|
-| Bot API request timeout | 15 s | `bot/factory.py` `TELEGRAM_REQUEST_TIMEOUT` |
-| Circuit breaker | per shop: 3 consecutive network failures hand back that shop's rows; 3 different shops unanswered in a row end the tick | `sending/transport.py` |
-| Postgres `statement_timeout` on app connections | 30 s | `db/session.py` |
-| Tick expiry | 55 s (health check 290 s) | `worker/app.py` |
-| Tick time limits | soft 240 s, hard 300 s | `worker/app.py` |
+| Bot API request timeout | 15 s | `bot/factory.py` |
+| Circuit breakers | per shop; a fleet trip after 3 different shops fail in a row | `sending/transport.py` |
+| Postgres `statement_timeout` | 30 s | `db/session.py` |
+| Tick expiry / limits | 55 s; soft 240 s, hard 300 s | `worker/app.py` |
+| Health snapshot | every 10 min, soft 240 s, never posts | `worker/app.py` |
 
-**Do NOT set `idle_in_transaction_session_timeout`**, not in `postgresql.conf`
-and not on the role. Several paths correctly hold a transaction open across a
-Telegram call. A limit below the request timeout kills them mid-send.
+**Do NOT set `idle_in_transaction_session_timeout`**: several paths correctly
+hold a transaction open across a Telegram call.
 
-## 5. Known gaps, accepted for the pilot
+## 16. Known gaps, accepted -- and what is still open
 
-Written down in `docs/CHECKPOINTS.md` under *Deliberately not built*:
+Recorded in `docs/AUDIT.md` section 3 and `docs/CHECKPOINTS.md`; the owner's
+checklist gives a recommendation for each.
 
-- **No dead-man's switch.** If beat dies, nothing says so. The health check is
-  itself a beat task, and it alerts through Telegram. **Needed before a real
-  production launch beyond the pilot.** For the pilot, whoever runs the deploy
-  checks the worker log for `tick:` lines daily.
-- **The health check shares the worker's queue** with the ticks.
-## 6. Public pages (Ha/Yo'q, taklifnoma): going live
-
-The page server (`python -m gulbot.web.run`) is built and tested, but it is
-only reachable on this machine until these steps are done. **Until
-`PUBLIC_BASE_URL` is https, a production bot answers the pages menu with
-"coming soon"** (`gulbot.web.links.pages_available`). That is deliberate: a
-customer must never be handed an http:// link or a 127.0.0.1 one.
-
-Do these in order.
-
-1. **A domain.** Pick a hostname for the pages, for example
-   `pages.<your-domain>.uz`. Point an `A` record (and `AAAA` if the server has
-   IPv6) at the VPS. Check it with `nslookup pages.<your-domain>.uz` before
-   going on.
-
-2. **HTTPS in front of the page server.** The page server listens on
-   127.0.0.1 only; a reverse proxy terminates TLS for it. Caddy is the least
-   work, because it obtains and renews the certificate itself:
-
-   ```
-   pages.<your-domain>.uz {
-       reverse_proxy 127.0.0.1:8088
-   }
-   ```
-
-   With nginx instead, use certbot for the certificate and
-   `proxy_pass http://127.0.0.1:8088;` with
-   `proxy_set_header X-Forwarded-For $remote_addr;`.
-
-   Ports 80 and 443 must be open to the internet. Port 8088 must NOT be.
-
-3. **The environment.** Set these for the page-server process, AND for the
-   bot and worker processes, which build the links:
-
-   ```
-   PUBLIC_BASE_URL=https://pages.<your-domain>.uz   # an origin: no path, no trailing slash
-   WEB_HOST=127.0.0.1
-   WEB_PORT=8088
-   WEB_TRUST_PROXY=true                             # only because a proxy sets X-Forwarded-For
-   ```
-
-   Step 0 applies to this process too: check `ENVIRONMENT=production` with
-   your own eyes in the shell or unit file that starts it.
-
-4. **Migrate, and check.** The pages add migration `1897629a71dc`:
-
-   ```
-   alembic upgrade head
-   alembic current
-   alembic heads
-   ```
-
-   `current` and `heads` must print the same revision.
-
-5. **Install the new dependency** (`jinja2`), with `pip install -e .` on the
-   server.
-
-6. **Start the page server** under the service manager, next to the bot,
-   worker and beat:
-
-   ```
-   python -m gulbot.web.run
-   ```
-
-   It logs `pages: serving on 127.0.0.1:8088 for https://pages.<your-domain>.uz
-   (environment=production)`. It writes **no access log on purpose**: every
-   page's address is its secret. Do not turn one on in the proxy either, or
-   configure the proxy not to log paths.
-
-7. **Restart the worker and beat.** That registers the two new tasks,
-   `gulbot.notify_page_answer` and `gulbot.scrub_expired_pages`. Beat's
-   startup should list `scrub-expired-pages` (03:30).
-
-8. **Verify, from outside the server:**
-   - `curl -I https://pages.<your-domain>.uz/healthz` returns 200, with
-     `Content-Security-Policy`, `X-Robots-Tag: noindex` and
-     `Strict-Transport-Security` in the headers.
-   - On a phone, open `https://pages.<your-domain>.uz/demo/yesno` and
-     `/demo/invite`, and tap through a few designs.
-   - In a shop's bot, make a Ha/Yo'q page. The reply must now carry
-     **🔗 Ochish** and **📤 Ulashish** buttons (they appear only on https).
-     Open the link, press Ha, and check that the "they said Ha" message
-     arrives in the bot.
-   - Tap "Gul buyurtma qilish" on the page. It must open THAT shop's bot.
-
-**Backups.** The new tables (`share_pages`, `share_page_rsvps`,
-`share_page_referrals`) are in the normal database dump. Nothing is stored on
-disk.
-
-## 7. CP17: date plans, Uzrnoma, editable pages, photos, sections, music
-
-Everything in section 6 still holds. On top of it:
-
-1. **A new dependency: Pillow** (`pillow>=11,<12`), for the page photos. It is
-   in `pyproject.toml`; install with `pip install -e .` on the server, then
-   check it imports in the SAME environment the bot and page server run in:
-
-   ```
-   python -c "import PIL; print(PIL.__version__)"
-   ```
-
-   Pillow ships binary wheels for Linux; nothing else needs installing. The
-   bot needs it (it re-encodes photos as they arrive); the page server only
-   serves what is already stored.
-
-2. **Ten migrations, all forward-only in normal use**, from `1897629a71dc`
-   (CP16) to the new head `c5a8e2d61f37`:
-
-   | Revision | What it adds |
-   |---|---|
-   | `360f0694be06` | `en` as a customer language |
-   | `83ca22ed6f83` | the editable taklifnoma text blocks (title, dress code, programme, contact, closing) and an edit stamp |
-   | `878bc32b72d4` | the date plan: `share_page_options`, the chosen place and time |
-   | `797f8207081f` | the ten new designs in the template CHECK |
-   | `86570def06eb` | `share_page_photos` (stored in Postgres, 1.5 MB cap each) |
-   | `cf7aa499fe45` | the countdown and gallery switches, and the dress-code colours with a shape CHECK |
-   | `541afb7b8568` | `share_page_wishes` |
-   | `9d2e41c07a5b` | the Konvert seal's letters |
-   | `b3f7a90c2e14` | `music`, with a CHECK naming our three tracks |
-   | `c5a8e2d61f37` | the `apology` kind (Uzrnoma) |
-
-   ```
-   alembic upgrade head
-   alembic current      # must print c5a8e2d61f37 (head)
-   alembic heads
-   ```
-
-   All are additive: no column is dropped, no existing row changes. **Two
-   downgrades change data**, because the old CHECKs cannot hold it: going
-   below `c5a8e2d61f37` deletes every Uzrnoma page, and going below
-   `360f0694be06` turns every English-speaking customer back into an Uzbek
-   one. Back up first if you ever need to roll back past them.
-
-3. **Restart the bot, the worker and the page server** -- all three, since
-   each imports the new code. The worker must be running: the "they said Ha
-   -- here is the place and time they picked" message, and the "nothing chosen
-   yet" follow-up ten minutes later, are queued with a Celery countdown.
-
-4. **Backups grow with photos.** Photos live in `share_page_photos` (at most
-   six per invitation, each re-encoded to ≤ 1.5 MB, usually a few hundred
-   KB), so they are in the normal dump and are deleted with their page by the
-   nightly scrub. Watch the dump size for the first weeks.
-
-5. **Verify, from outside the server**, after section 6's checks:
-   - `/demo/apology/konvert` and `/demo/invite/oltin` open on a phone.
-   - Make a Ha/Yo'q page with a date plan, press Ha, pick a place and time:
-     the creator gets ONE message naming both.
-   - Edit a taklifnoma's title from "Mening sahifalarim": the same link
-     shows the new title.
-   - Send the bot a photo for an invitation's gallery, then download it from
-     the page and check it has no EXIF (`exiftool` shows only JPEG basics).
+- **Dead-man's switch**: the hook exists since CP18 (`/healthz/jobs`, step
+  12); the external monitor is the owner's to set up.
+- **The health check shares the worker's queue** with the ticks. Bounded by
+  the breakers and the time limits; a dedicated queue is real infrastructure
+  for a benefit that bites only at volume.
+- **Order-card permission is by chat, not by person**: anyone in a shop's
+  group can confirm or reject.
+- **One late duplicate reminder** is possible after a database loss (CP6's
+  deliberate trade).
+- **One long-poll per shop** in one process: right for tens of shops; at the
+  hundreds, webhooks are the better shape (`bot/run.py`).
+- **Page rate limits are in memory, per page-server process**: right for one
+  page server; more than one would want them in Redis.

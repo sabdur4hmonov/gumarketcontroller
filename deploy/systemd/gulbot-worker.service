@@ -1,0 +1,23 @@
+# The Celery worker. PREFORK, never solo: the task time limits are enforced
+# only by the prefork pool (docs/DEPLOY.md, step 8; AUDIT.md pass 5).
+[Unit]
+Description=Gulbot: Celery worker (prefork)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=gulbot
+Group=gulbot
+WorkingDirectory=/opt/gulbot
+EnvironmentFile=/etc/gulbot/gulbot.env
+ExecStart=/opt/gulbot/.venv/bin/celery -A gulbot.worker.app worker --pool=prefork --concurrency=2 --loglevel=info
+Restart=always
+RestartSec=5
+# Give a running tick time to finish its soft limit before it is killed.
+TimeoutStopSec=300
+KillMode=mixed
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

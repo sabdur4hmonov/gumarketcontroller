@@ -1,0 +1,20 @@
+# Every shop's bot, and the platform bot, in one process (docs/DEPLOY.md, step 8).
+[Unit]
+Description=Gulbot: every shop's bot and the platform bot
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=gulbot
+Group=gulbot
+WorkingDirectory=/opt/gulbot
+# The ONLY place the production settings come from. Never a .env in /opt/gulbot.
+EnvironmentFile=/etc/gulbot/gulbot.env
+ExecStart=/opt/gulbot/.venv/bin/python -m gulbot.bot.run
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

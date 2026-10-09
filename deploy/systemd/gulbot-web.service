@@ -1,0 +1,21 @@
+# The page server: public pages, /healthz, /healthz/jobs and the /admin panel.
+# Listens on 127.0.0.1 only; Caddy terminates HTTPS in front of it.
+# It writes no access log on purpose: every page path is a secret.
+[Unit]
+Description=Gulbot: page server and admin panel
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=gulbot
+Group=gulbot
+WorkingDirectory=/opt/gulbot
+EnvironmentFile=/etc/gulbot/gulbot.env
+ExecStart=/opt/gulbot/.venv/bin/python -m gulbot.web.run
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

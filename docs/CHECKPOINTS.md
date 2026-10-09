@@ -1202,6 +1202,11 @@ pings stop. That needs a conversation, not a commit: which service, what
 interval, and who gets paged. Found in the pre-deployment audit, pass 5. Until
 then, see docs/DEPLOY.md for the pilot's manual check.
 
+**CP18 built the hook.** Every periodic task writes a heartbeat, and the page
+server's `/healthz/jobs` answers 503 when the ticks stop -- from the web
+process, so it still answers when beat is what died. What remains is the
+external monitor itself: `docs/DEPLOY.md`, step 12.
+
 **The health check on its own queue.** Deliberately not built. The worker runs
 one task at a time, so the five-minute health check waits behind whatever tick
 is running. Pass 5 measured an outage tick at up to 100 minutes. That is what

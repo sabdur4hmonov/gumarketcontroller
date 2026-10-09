@@ -1,0 +1,22 @@
+# /etc/caddy/Caddyfile -- HTTPS in front of the page server (docs/DEPLOY.md, step 9).
+# Replace pages.example.uz with the real hostname. Caddy obtains and renews
+# the certificate itself; ports 80 and 443 must be open, 8088 must not be.
+#
+# NO ACCESS LOG: there is deliberately no `log` directive. Every page path is
+# that page's secret, and every admin login path is a one-time secret.
+
+pages.example.uz {
+	encode gzip
+
+	# Optional, recommended: only your own addresses may even reach the panel.
+	# Uncomment and list them; everyone else gets 404 before the app is asked.
+	# @admin_outside {
+	# 	path /admin /admin/*
+	# 	not remote_ip 203.0.113.10/32
+	# }
+	# respond @admin_outside 404
+
+	reverse_proxy 127.0.0.1:8088 {
+		header_up X-Forwarded-For {remote_host}
+	}
+}

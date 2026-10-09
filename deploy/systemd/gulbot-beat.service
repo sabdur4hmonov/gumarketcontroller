@@ -1,0 +1,21 @@
+# Celery beat. EXACTLY ONE, on one machine: two beats enqueue every tick
+# twice (safe, wasted). Its schedule file lives in /var/lib/gulbot.
+[Unit]
+Description=Gulbot: Celery beat (exactly one)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=gulbot
+Group=gulbot
+WorkingDirectory=/opt/gulbot
+EnvironmentFile=/etc/gulbot/gulbot.env
+StateDirectory=gulbot
+ExecStart=/opt/gulbot/.venv/bin/celery -A gulbot.worker.app beat --loglevel=info --schedule=/var/lib/gulbot/celerybeat-schedule
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

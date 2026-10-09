@@ -1,0 +1,28 @@
+# Production override for docker-compose.yml. Use BOTH files:
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml \
+#       --env-file /etc/gulbot/gulbot.env up -d --wait
+#
+# What it changes, and why:
+#   * the database user, password and name come from the environment -- the
+#     dev file's password "gulbot" is refused by the production guard anyway;
+#   * both ports bind to 127.0.0.1 only: the app runs on this host, and
+#     nothing else should ever reach Postgres or Redis. (Redis has no
+#     password: gulbot's Redis URL carries none, so the loopback binding is
+#     its protection. Keep the firewall closed on 5433 and 6380.)
+# Needs Docker Compose 2.24+ for `!override`.
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in /etc/gulbot/gulbot.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in /etc/gulbot/gulbot.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in /etc/gulbot/gulbot.env}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+    ports: !override
+      - "127.0.0.1:5433:5432"
+
+  redis:
+    ports: !override
+      - "127.0.0.1:6380:6379"

@@ -4,7 +4,7 @@
 
 Serves on WEB_HOST:WEB_PORT (default 127.0.0.1:8088). In production it sits
 behind a TLS-terminating reverse proxy that answers for PUBLIC_BASE_URL; see
-docs/DEPLOY.md, "Public pages".
+docs/DEPLOY.md, steps 9 and 10.
 
 NO ACCESS LOG. Every page's address is its secret, and an access log would
 write every one of them to disk in the clear. Errors are still logged, without
