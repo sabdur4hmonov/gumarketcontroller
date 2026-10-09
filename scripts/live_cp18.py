@@ -43,7 +43,7 @@ from gulbot.services import admin_auth  # noqa: E402
 from gulbot.services.shop_health import snapshot_all_shops  # noqa: E402
 
 
-async def main(admin_id: int, link_file: Path) -> None:
+async def main(admin_id: int) -> str:
     settings = get_settings()
     if admin_id not in admin_auth.admin_ids(settings):
         raise SystemExit("set PLATFORM_ADMIN_TELEGRAM_IDS to include --admin-id for this run")
@@ -81,8 +81,7 @@ async def main(admin_id: int, link_file: Path) -> None:
     )
     if not found:
         raise SystemExit("no login link was sent")
-    link_file.write_text(found.group(0), encoding="utf-8")
-    print(f"   link written to {link_file} (valid {admin_auth.LINK_TTL}, one use)")
+    return found.group(0)
 
 
 if __name__ == "__main__":
@@ -90,4 +89,6 @@ if __name__ == "__main__":
     parser.add_argument("--admin-id", type=int, required=True)
     parser.add_argument("--link-file", type=Path, required=True)
     args = parser.parse_args()
-    asyncio.run(main(args.admin_id, args.link_file))
+    link = asyncio.run(main(args.admin_id))
+    args.link_file.write_text(link, encoding="utf-8")
+    print(f"   link written to {args.link_file} (valid {admin_auth.LINK_TTL}, one use)")
