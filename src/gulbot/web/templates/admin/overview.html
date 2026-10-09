@@ -1,0 +1,64 @@
+{% extends "admin/_layout.html" %}
+{% macro yesno(value) -%}
+  {%- if value is none %}<span class="badge">—</span>
+  {%- elif value %}<span class="badge ok">ha</span>
+  {%- else %}<span class="badge bad">yo‘q</span>{% endif -%}
+{%- endmacro %}
+{% block main %}
+<h1>Umumiy holat</h1>
+<div class="tiles">
+  <div class="tile"><span class="n">{{ v.tiles.by_status.active }}</span><span class="l">faol do‘kon</span></div>
+  <div class="tile"><span class="n">{{ v.tiles.by_status.paused }}</span><span class="l">to‘xtatilgan</span></div>
+  <div class="tile"><span class="n">{{ v.tiles.by_status.onboarding }}</span><span class="l">ulanmoqda</span></div>
+  <div class="tile{% if v.tiles.with_problems %} bad{% endif %}"><span class="n">{{ v.tiles.with_problems }}</span><span class="l">muammoli do‘kon</span></div>
+  <div class="tile{% if v.tiles.open_alerts %} bad{% endif %}"><span class="n">{{ v.tiles.open_alerts }}</span><span class="l">ogohlantirish</span></div>
+  <div class="tile"><span class="n">{{ v.tiles.orders_today }} / {{ v.tiles.orders_7d }}</span><span class="l">buyurtma: bugun / 7 kun</span></div>
+  <div class="tile"><span class="n">{{ v.tiles.reminders_sent_today }}</span><span class="l">eslatma yuborildi (bugun)</span></div>
+  <div class="tile{% if v.tiles.reminders_failed_today %} bad{% endif %}"><span class="n">{{ v.tiles.reminders_failed_today }}</span><span class="l">eslatma xato (bugun)</span></div>
+</div>
+
+{% if v.attention %}
+<section class="panel">
+  <h2>E’tibor talab qiladi</h2>
+  <ul>
+  {% for s in v.attention %}
+    <li><a href="/admin/shops/{{ s.id }}">{{ s.name }}</a> —
+      <span class="badge {{ 'bad' if s.health == 'bad' else 'warn' }}">{{ s.health_reason or s.subscription }}</span></li>
+  {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="panel">
+  <h2>Barcha do‘konlar ({{ v.shops|length }})</h2>
+  <div class="scroll">
+  <table>
+    <thead><tr>
+      <th>Do‘kon</th><th>Holat</th><th>Bot</th><th>Token</th><th>Kanal</th><th>Guruh</th>
+      <th>Oxirgi post</th><th class="num">Buketlar</th><th>Obuna</th>
+      <th class="num">Mijozlar</th><th class="num">Buyurtma 30k</th><th class="num">Suratlar</th><th>Yaratilgan</th>
+    </tr></thead>
+    <tbody>
+    {% for s in v.shops %}
+      <tr>
+        <td><a href="/admin/shops/{{ s.id }}">{{ s.name }}</a>{% if s.bot_username %}<br><span class="muted">@{{ s.bot_username }}</span>{% endif %}</td>
+        <td><span class="badge {{ {'active': 'ok', 'paused': 'warn'}.get(s.status, '') }}">{{ s.status }}</span></td>
+        <td><span class="badge {{ s.health if s.health != 'unknown' else '' }}">{{ s.health }}</span></td>
+        <td>{{ yesno(s.token_valid) }}</td>
+        <td>{{ yesno(s.channel_ok) }}</td>
+        <td>{{ yesno(s.group_ok) }}</td>
+        <td>{% if s.last_indexed_at %}{{ s.last_indexed_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}{% if s.catalogue_stale %} <span class="badge warn">eski</span>{% endif %}</td>
+        <td class="num">{{ s.bouquets }}</td>
+        <td><span class="badge {{ {'paid': 'ok', 'overdue': 'bad', 'trial': 'warn'}.get(s.subscription, '') }}">{{ s.subscription }}</span>{% if s.paid_until %}<br><span class="muted">{{ s.paid_until }}</span>{% endif %}</td>
+        <td class="num">{{ s.customers }}</td>
+        <td class="num">{{ s.orders_30d }}</td>
+        <td class="num">{{ (s.photo_bytes / 1048576)|round(1) }} MB</td>
+        <td>{{ s.created_at.strftime('%Y-%m-%d') }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">Bot holati — ishchi jarayon har 10 daqiqada yozadigan oxirgi tekshiruvdan; panel Telegramga o‘zi murojaat qilmaydi.</p>
+</section>
+{% endblock %}

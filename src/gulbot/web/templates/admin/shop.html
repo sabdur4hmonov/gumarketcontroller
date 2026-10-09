@@ -1,0 +1,109 @@
+{% extends "admin/_layout.html" %}
+{% block main %}
+{% set d = v.d %}{% set m = v.m %}{% set row = v.row %}
+<h1>{{ d.name }}
+  <span class="badge {{ {'active': 'ok', 'paused': 'warn'}.get(d.status, '') }}">{{ d.status }}</span>
+  {% if row %}<span class="badge {{ row.health if row.health != 'unknown' else '' }}">{{ row.health }}</span>{% endif %}
+  <span class="badge {{ {'paid': 'ok', 'overdue': 'bad', 'trial': 'warn'}.get(d.subscription, '') }}">{{ d.subscription }}</span>
+</h1>
+{% if v.notice == 'ok' %}<p class="notice">Bajarildi va jurnalga yozildi.</p>
+{% elif v.notice %}<p class="notice">Rad etildi: {{ v.notice }}</p>{% endif %}
+
+<section class="panel">
+  <h2>Ulanish</h2>
+  <dl class="facts">
+    <dt>Token</dt><dd>{% if row and row.token_valid %}yaroqli{% elif row and row.token_valid is false %}<span class="badge bad">yaroqsiz</span>{% else %}tekshirilmagan{% endif %}{% if row and row.checked_at %} <span class="muted">({{ row.checked_at.strftime('%Y-%m-%d %H:%M') }} UTC)</span>{% endif %}</dd>
+    <dt>Kanal</dt><dd>{% if d.channel_id is none %}ulanmagan{% elif row and row.channel_ok %}ulangan{% else %}<span class="badge warn">bot kanalda admin emas</span>{% endif %}</dd>
+    <dt>Admin guruhi</dt><dd>{% if d.group_chat_id is none %}<span class="badge warn">yo‘q</span>{% elif row and row.group_ok %}ulangan{% else %}<span class="badge bad">bot guruhda ishlay olmaydi</span>{% endif %}</dd>
+    <dt>Oxirgi post</dt><dd>{% if row and row.last_indexed_at %}{{ row.last_indexed_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</dd>
+    {% if row and row.health_reason %}<dt>Sabab</dt><dd>{{ row.health_reason }}</dd>{% endif %}
+    <dt>Egalari</dt><dd>{{ d.owner_count }} · tel. {{ d.owner_phone_masked }}</dd>
+    <dt>Til / vaqt zonasi</dt><dd>{{ d.lang }} · {{ d.timezone }}</dd>
+    <dt>Eslatma kunlari</dt><dd>{{ d.reminder_offsets|join(', ') }}</dd>
+    <dt>Sovg‘a qoidasi</dt><dd>{{ 'yoqilgan' if d.gift_rule else 'o‘chirilgan' }}</dd>
+    <dt>Obuna</dt><dd>{{ d.subscription }}{% if d.paid_until %}, {{ d.paid_until }} gacha{% endif %}</dd>
+  </dl>
+</section>
+
+<section class="panel">
+  <h2>Ko‘rsatkichlar — oxirgi {{ m.days }} kun</h2>
+  <p><a href="?days=7">7 kun</a> · <a href="?days=30">30 kun</a> · <a href="?days=90">90 kun</a></p>
+  <div class="tiles">
+    <div class="tile"><span class="n">{{ m.customers_total }}</span><span class="l">mijoz (+{{ m.customers_new }})</span></div>
+    <div class="tile"><span class="n">{{ m.dates_total }}</span><span class="l">saqlangan sana (+{{ m.dates_new }})</span></div>
+    <div class="tile"><span class="n">{{ m.reminders.get('sent', 0) }}</span><span class="l">eslatma yuborildi</span></div>
+    <div class="tile{% if m.reminders.get('failed', 0) + m.reminders.get('dead_letter', 0) %} bad{% endif %}"><span class="n">{{ m.reminders.get('failed', 0) + m.reminders.get('dead_letter', 0) }}</span><span class="l">eslatma xato</span></div>
+    <div class="tile"><span class="n">{{ m.unlocks_total }}</span><span class="l">premium sovg‘a (+{{ m.unlocks_new }})</span></div>
+    <div class="tile"><span class="n">{{ (m.photo_bytes / 1048576)|round(1) }} MB</span><span class="l">suratlar diskda ({{ (m.photo_bytes_purged / 1048576)|round(1) }} MB tozalangan)</span></div>
+  </div>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Buyurtmalar holati</th><th class="num">soni</th><th>Qayerdan</th><th class="num">soni</th></tr></thead>
+    <tbody>
+    {% set statuses = ['placed', 'confirmed', 'delivered', 'rejected', 'cancelled'] %}
+    {% set sources = [('reminder', 'eslatmadan'), ('page_invite', 'taklifnomadan'), ('page_yesno', 'Ha/Yo‘q sahifadan'), ('page_apology', 'Uzrnomadan'), ('direct', 'o‘zi kelgan'), ('unknown', 'CP18 dan oldin')] %}
+    {% for i in range([statuses|length, sources|length]|max) %}
+      <tr>
+        <td>{{ statuses[i] if i < statuses|length else '' }}</td>
+        <td class="num">{{ m.orders.get(statuses[i], 0) if i < statuses|length else '' }}</td>
+        <td>{{ sources[i][1] if i < sources|length else '' }}</td>
+        <td class="num">{{ m.sources.get(sources[i][0], 0) if i < sources|length else '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted">Eslatmalar holati: {% for k, n in m.reminders|dictsort %}{{ k }} {{ n }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}.
+    Sahifalar (yaratilgan): {% for k, n in m.pages|dictsort %}{{ k }} {{ n }}{% if not loop.last %} · {% endif %}{% else %}—{% endfor %}.
+    <a href="/admin/pages?shop={{ d.id }}">Sahifalar →</a></p>
+</section>
+
+<section class="panel">
+  <h2>Amallar</h2>
+  {% if d.status == 'paused' %}
+  <form method="post" action="/admin/shops/{{ d.id }}/resume" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label>Sabab (ixtiyoriy)<input name="reason" maxlength="300"></label>
+    <button type="submit" class="primary">Botni qayta yoqish</button>
+  </form>
+  {% else %}
+  <form method="post" action="/admin/shops/{{ d.id }}/pause" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label>Sabab (ixtiyoriy)<input name="reason" maxlength="300"></label>
+    <button type="submit" class="danger">Botni to‘xtatish</button>
+  </form>
+  {% endif %}
+  <p class="muted">To‘xtatilganda: eslatmalar kutadi, bot mijozga “vaqtincha ishlamayapti” deydi, sahifalardan buyurtma havolasi olinadi. Admin guruhi va joriy buyurtmalar ishlayveradi. Qayta yoqilganda 6 soatdan eskirgan eslatmalar yuborilmaydi.</p>
+
+  <form method="post" action="/admin/shops/{{ d.id }}/paid" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label>…gacha to‘langan<input type="date" name="paid_until" value="{{ v.default_paid_until }}" required></label>
+    <label>Summa (so‘m)<input name="amount_uzs" inputmode="numeric" required></label>
+    <label>Usul<select name="method"><option value="cash">naqd</option><option value="card_transfer">karta</option><option value="other">boshqa</option></select></label>
+    <label>Izoh<input name="note" maxlength="300"></label>
+    <button type="submit">To‘landi deb belgilash</button>
+  </form>
+
+  <form method="post" action="/admin/shops/{{ d.id }}/gift" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <input type="hidden" name="on" value="{{ '0' if d.gift_rule else '1' }}">
+    <button type="submit">Sovg‘a qoidasini {{ 'o‘chirish' if d.gift_rule else 'yoqish' }}</button>
+  </form>
+  <p class="muted">Sovg‘a qoidasi: mijozning shu do‘kondagi buyurtmasi tasdiqlanganda premium (musiqa, galereya, premium dizaynlar) unga ochiladi. O‘chirilsa — yangi sovg‘a berilmaydi, berilganlari qoladi.</p>
+</section>
+
+<section class="panel">
+  <h2>Faoliyat</h2>
+  {% if v.activity %}
+  <div class="scroll"><table>
+    <thead><tr><th>Vaqt (UTC)</th><th>Admin</th><th>Amal</th><th>Oldin → keyin</th><th>Sabab</th></tr></thead>
+    <tbody>
+    {% for e in v.activity %}
+      <tr><td>{{ e.at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ e.admin or '—' }}</td><td>{{ e.action }}</td>
+          <td class="wrap-text">{{ e.before or '' }} → {{ e.after or '' }}</td><td class="wrap-text">{{ e.reason or '' }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Hali hech narsa qilinmagan.</p>{% endif %}
+</section>
+{% endblock %}

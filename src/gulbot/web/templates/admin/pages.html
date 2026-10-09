@@ -1,0 +1,35 @@
+{% extends "admin/_layout.html" %}
+{% block main %}
+{% set s = v.summary %}
+<h1>Sahifalar{% if v.shop_id %} · do‘kon #{{ v.shop_id }}{% endif %}</h1>
+<div class="tiles">
+  <div class="tile"><span class="n">{{ s.by_kind.get('invite', 0) }}</span><span class="l">taklifnoma</span></div>
+  <div class="tile"><span class="n">{{ s.by_kind.get('yesno', 0) }}</span><span class="l">Ha/Yo‘q</span></div>
+  <div class="tile"><span class="n">{{ s.by_kind.get('apology', 0) }}</span><span class="l">Uzrnoma</span></div>
+  <div class="tile"><span class="n">{{ s.live }}</span><span class="l">ochiq</span></div>
+  <div class="tile{% if s.hidden %} bad{% endif %}"><span class="n">{{ s.hidden }}</span><span class="l">yashirilgan</span></div>
+  <div class="tile"><span class="n">{{ s.views }}</span><span class="l">ko‘rishlar</span></div>
+  <div class="tile"><span class="n">{{ s.cta_clicks }}</span><span class="l">“gul buyurtma” bosildi</span></div>
+  <div class="tile"><span class="n">{{ s.rsvps }}</span><span class="l">RSVP</span></div>
+  <div class="tile"><span class="n">{{ s.wishes }}</span><span class="l">tilaklar ({{ s.wishes_hidden }} yashirilgan)</span></div>
+  <div class="tile"><span class="n">{{ s.orders_attributed }}</span><span class="l">sahifadan buyurtma</span></div>
+</div>
+<section class="panel">
+  <h2>Oxirgi sahifalar</h2>
+  <p class="muted">Sahifa havolasi (token) uning siri — bu yerda ko‘rsatilmaydi. Yaratuvchi faqat ichki raqami bilan.</p>
+  <div class="scroll"><table>
+    <thead><tr><th>#</th><th>Turi</th><th>Do‘kon</th><th>Dizayn</th><th>Yaratuvchi</th><th>Yaratilgan</th><th class="num">Ko‘rish</th><th class="num">RSVP</th><th class="num">Tilak</th><th>Holat</th></tr></thead>
+    <tbody>
+    {% for p in v.rows %}
+      <tr>
+        <td><a href="/admin/pages/{{ p.id }}">{{ p.id }}</a></td><td>{{ p.kind }}</td>
+        <td><a href="/admin/shops/{{ p.shop_id }}">{{ p.shop_name }}</a></td><td>{{ p.template }}</td>
+        <td>{{ p.creator_ref }}</td><td>{{ p.created_at.strftime('%Y-%m-%d') }}</td>
+        <td class="num">{{ p.views }}</td><td class="num">{{ p.rsvps }}</td><td class="num">{{ p.wishes }}</td>
+        <td><span class="badge {{ {'live': 'ok', 'hidden': 'bad'}.get(p.state, '') }}">{{ p.state }}</span></td>
+      </tr>
+    {% else %}<tr><td colspan="10">Sahifalar yo‘q.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endblock %}

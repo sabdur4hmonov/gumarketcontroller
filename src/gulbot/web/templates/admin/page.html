@@ -1,0 +1,53 @@
+{% extends "admin/_layout.html" %}
+{% block main %}
+{% set p = v.p %}
+<h1>Sahifa #{{ p.id }} <span class="badge {{ {'live': 'ok', 'hidden': 'bad'}.get(p.state, '') }}">{{ p.state }}</span></h1>
+{% if v.notice == 'ok' %}<p class="notice">Bajarildi va jurnalga yozildi.</p>
+{% elif v.notice %}<p class="notice">Rad etildi: {{ v.notice }} (sabab yozish shart).</p>{% endif %}
+<section class="panel">
+  <dl class="facts">
+    <dt>Turi / dizayn</dt><dd>{{ p.kind }} · {{ p.template }}</dd>
+    <dt>Do‘kon</dt><dd><a href="/admin/shops/{{ p.shop_id }}">{{ p.shop_name }}</a></dd>
+    <dt>Yaratuvchi</dt><dd>{{ p.creator_ref }}</dd>
+    <dt>Ko‘rish / RSVP / tilak</dt><dd>{{ p.views }} / {{ p.rsvps }} / {{ p.wishes }}</dd>
+    {% if p.hidden_reason %}<dt>Yashirish sababi</dt><dd>{{ p.hidden_reason }}</dd>{% endif %}
+  </dl>
+  {% if p.state == 'hidden' %}
+  <form method="post" action="/admin/pages/{{ p.id }}/unhide" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label>Sabab (ixtiyoriy)<input name="reason" maxlength="300"></label>
+    <button type="submit">Qayta ko‘rsatish</button>
+  </form>
+  {% else %}
+  <form method="post" action="/admin/pages/{{ p.id }}/hide" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label>Sabab (majburiy)<input name="reason" maxlength="300" required></label>
+    <button type="submit" class="danger">Sahifani yashirish</button>
+  </form>
+  <p class="muted">Yashirilgan sahifa havolasi “sahifa mavjud emas” deb javob beradi. Matn o‘chirilmaydi; qaytarish mumkin.</p>
+  {% endif %}
+</section>
+<section class="panel">
+  <h2>Mehmonlar tilaklari</h2>
+  {% if v.wishes %}
+  <div class="scroll"><table>
+    <thead><tr><th>#</th><th>Ism</th><th>Tilak</th><th>Vaqt (UTC)</th><th>Holat</th><th></th></tr></thead>
+    <tbody>
+    {% for w in v.wishes %}
+      <tr>
+        <td>{{ w.id }}</td><td>{{ w.author }}</td><td class="wrap-text">{{ w.body }}</td>
+        <td>{{ w.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+        <td>{% if w.hidden_by_admin %}<span class="badge bad">admin yashirgan</span>{% elif w.hidden_by_creator %}<span class="badge warn">yaratuvchi yashirgan</span>{% else %}<span class="badge ok">ko‘rinadi</span>{% endif %}</td>
+        <td>{% if not w.hidden_by_admin %}
+          <form method="post" action="/admin/wishes/{{ w.id }}/hide" class="action">
+            <input type="hidden" name="csrf" value="{{ v.csrf }}">
+            <input name="reason" maxlength="300" placeholder="sabab" required>
+            <button type="submit" class="danger">Yashirish</button>
+          </form>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Tilaklar yo‘q.</p>{% endif %}
+</section>
+{% endblock %}

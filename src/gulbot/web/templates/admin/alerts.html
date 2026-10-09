@@ -1,0 +1,30 @@
+{% extends "admin/_layout.html" %}
+{% block main %}
+<h1>Ogohlantirishlar</h1>
+<div class="tiles">
+  <div class="tile{% if v.counts.get('dead_letter') %} bad{% endif %}"><span class="n">{{ v.counts.get('dead_letter', 0) }}</span><span class="l">yuborilmay qolganlar</span></div>
+  <div class="tile{% if v.counts.get('stalled_job') %} bad{% endif %}"><span class="n">{{ v.counts.get('stalled_job', 0) }}</span><span class="l">to‘xtagan ishlar</span></div>
+  <div class="tile{% if v.counts.get('bot') %} bad{% endif %}"><span class="n">{{ v.counts.get('bot', 0) }}</span><span class="l">ishlamayotgan bot</span></div>
+  <div class="tile{% if v.counts.get('unanswered_order') %} bad{% endif %}"><span class="n">{{ v.counts.get('unanswered_order', 0) }}</span><span class="l">javobsiz buyurtma</span></div>
+</div>
+<section class="panel">
+  {% if v.alerts %}
+  <div class="scroll"><table>
+    <thead><tr><th>Turi</th><th>Daraja</th><th>Do‘kon</th><th>Tafsilot</th><th class="num">Soni</th><th>Qachondan (UTC)</th></tr></thead>
+    <tbody>
+    {% for a in v.alerts %}
+      <tr>
+        <td>{{ a.kind }}</td>
+        <td><span class="badge {{ a.severity }}">{{ a.severity }}</span></td>
+        <td>{% if a.shop_id %}<a href="/admin/shops/{{ a.shop_id }}">{{ a.shop_name }}</a>{% else %}{{ a.shop_name }}{% endif %}</td>
+        <td class="wrap-text">{{ a.detail }}</td>
+        <td class="num">{{ a.count }}</td>
+        <td>{% if a.since %}{{ a.since.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p>Hech qanday ogohlantirish yo‘q.</p>{% endif %}
+  <p class="muted">“To‘xtagan ishlar” ishchi jarayondan mustaqil hisoblanadi: har bir davriy ish tugaganda vaqtini yozadi, panel esa kutilgan oraliqning ikki baravaridan oshganini ko‘radi. Tashqi monitor uchun: <code>/healthz/jobs</code>.</p>
+</section>
+{% endblock %}

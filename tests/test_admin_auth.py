@@ -281,7 +281,7 @@ async def test_the_router_has_admin_routes_and_only_the_login_pair_is_public(
     db: AsyncConnection,
 ) -> None:
     routes = _admin_routes(app_for(db))
-    assert len(routes) >= 4, routes
+    assert len(routes) >= 15, routes  # login pair, logout, 6 screens, 7 actions
     assert set(routes) >= admin_web.PUBLIC_ROUTES
     assert {
         ("GET", "/admin/login/{token}"),
