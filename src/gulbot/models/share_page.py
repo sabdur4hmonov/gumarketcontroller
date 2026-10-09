@@ -44,6 +44,7 @@ from sqlalchemy import (
     Numeric,
     SmallInteger,
     String,
+    Text,
     Time,
     UniqueConstraint,
     func,
@@ -222,6 +223,11 @@ class SharePage(IdMixin, TimestampMixin, Base):
     #: The Konvert seal's monogram, as the creator wrote it ("A&M"). NULL: the
     #: couple's initials.
     seal_monogram: Mapped[str | None] = mapped_column(String(MONOGRAM_MAX), nullable=True)
+    #: CP18 moderation: hidden from the public by a platform admin -- not
+    #: deleted (the text stays), and reversible. Who and why, always both.
+    hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    hidden_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    hidden_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     #: One of MUSIC_TRACKS, or NULL: no music (the default).
     music: Mapped[str | None] = mapped_column(String(16), nullable=True)
     #: The guest wishes wall (off until the creator switches it on).
@@ -241,6 +247,10 @@ class SharePage(IdMixin, TimestampMixin, Base):
         Index("ix_share_pages_shop_customer_created", "shop_id", "customer_id", "created_at"),
         Index("ix_share_pages_expires_at", "expires_at"),
         CheckConstraint(f"kind IN ({_sql_list(tuple(PageKind))})", name="kind_known"),
+        CheckConstraint(
+            "hidden_at IS NULL OR (hidden_by IS NOT NULL AND hidden_reason IS NOT NULL)",
+            name="hidden_has_reason",
+        ),
         CheckConstraint(
             "dress_colors IS NULL OR dress_colors ~ '^[a-z]{2,12}(,[a-z]{2,12}){0,4}$'",
             name="dress_colors_shape",
@@ -391,6 +401,9 @@ class SharePageWish(Base):
     author: Mapped[str] = mapped_column(String(WISH_NAME_MAX), nullable=False)
     body: Mapped[str] = mapped_column(String(WISH_TEXT_MAX), nullable=False)
     hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    #: CP18: hidden by a platform admin. Separate from `hidden` (the
+    #: creator's), so the creator cannot un-hide what moderation took down.
+    admin_hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

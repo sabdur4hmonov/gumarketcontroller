@@ -25,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.billing import PAYMENT_METHODS, SubscriptionPayment
 from gulbot.models.notification import ScheduledNotification
+from gulbot.models.share_page import SharePage, SharePageWish
 from gulbot.models.shop import Shop, ShopStatus
 from gulbot.scheduling.occurrences import DEFAULT_GRACE
 from gulbot.services.admin_auth import Admin, audit
@@ -34,7 +35,8 @@ REASON_MAX = 300
 
 
 class ActionRefused(Exception):
-    """`reason`: "shop" (no such shop), "status", "payment"."""
+    """`reason`: "shop", "page" or "wish" (no such row), "status", "payment",
+    "reason" (a hide needs one)."""
 
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
@@ -204,6 +206,103 @@ async def set_gift_rule(
         target_id=shop_id,
         before=before,
         after=after,
+        ip=ip,
+    )
+    return after
+
+
+async def set_page_hidden(
+    session: AsyncSession,
+    *,
+    admin: Admin,
+    page_id: int,
+    hidden: bool,
+    reason: str | None,
+    ip: str | None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Hide a page from the public, or show it again. Reversible, and not a
+    deletion: the creator's text stays; the link answers as a gone page.
+    Hiding needs a reason; showing again may give one."""
+    now = now or datetime.now(UTC)
+    row = (
+        await session.execute(
+            select(SharePage.shop_id, SharePage.hidden_at, SharePage.hidden_reason)
+            .where(SharePage.id == page_id)
+            .with_for_update()
+        )
+    ).one_or_none()
+    if row is None:
+        raise ActionRefused("page")
+    why = clean_reason(reason)
+    if hidden and why is None:
+        raise ActionRefused("reason")
+    before = {"hidden": row.hidden_at is not None, "hidden_reason": row.hidden_reason}
+    await session.execute(
+        update(SharePage)
+        .where(SharePage.id == page_id)
+        .values(
+            hidden_at=now if hidden else None,
+            hidden_by=admin.telegram_id if hidden else None,
+            hidden_reason=why if hidden else None,
+        )
+    )
+    after = {"hidden": hidden, "hidden_reason": why if hidden else None}
+    await audit(
+        session,
+        action="page_hide" if hidden else "page_unhide",
+        admin=admin.telegram_id,
+        shop_id=row.shop_id,
+        target_type="page",
+        target_id=page_id,
+        before=before,
+        after=after,
+        reason=why,
+        ip=ip,
+    )
+    return after
+
+
+async def hide_wish(
+    session: AsyncSession,
+    *,
+    admin: Admin,
+    wish_id: int,
+    reason: str | None,
+    ip: str | None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Hide a guest's wish. Moderation's own flag, so the creator cannot
+    un-hide it from the bot."""
+    now = now or datetime.now(UTC)
+    row = (
+        await session.execute(
+            select(SharePageWish.shop_id, SharePageWish.page_id, SharePageWish.admin_hidden_at)
+            .where(SharePageWish.id == wish_id)
+            .with_for_update()
+        )
+    ).one_or_none()
+    if row is None:
+        raise ActionRefused("wish")
+    why = clean_reason(reason)
+    if why is None:
+        raise ActionRefused("reason")
+    before = {"hidden_by_admin": row.admin_hidden_at is not None}
+    if row.admin_hidden_at is None:
+        await session.execute(
+            update(SharePageWish).where(SharePageWish.id == wish_id).values(admin_hidden_at=now)
+        )
+    after = {"hidden_by_admin": True, "page_id": row.page_id}
+    await audit(
+        session,
+        action="wish_hide",
+        admin=admin.telegram_id,
+        shop_id=row.shop_id,
+        target_type="wish",
+        target_id=wish_id,
+        before=before,
+        after=after,
+        reason=why,
         ip=ip,
     )
     return after

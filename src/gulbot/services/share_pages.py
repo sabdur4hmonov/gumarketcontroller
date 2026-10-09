@@ -528,7 +528,8 @@ async def load_public_page(
     if row is None:
         return None
     page, shop_name, shop_tz, shop_status = row
-    live = page.deleted_at is None and page.expires_at > now
+    # CP18: a page hidden by moderation is, to the public, simply gone.
+    live = page.deleted_at is None and page.expires_at > now and page.hidden_at is None
     return PublicPage(
         page=page,
         shop_name=shop_name,
@@ -549,27 +550,40 @@ async def record_cta(
 ) -> tuple[str | None, bool] | None:
     """Count a tap on the shop's link. Returns (bot_username, live), or None
     for an unknown token. A PAUSED shop's link has no bot to go to (CP18):
-    the username comes back None, so the tap lands on the page again."""
+    the username comes back None, so the tap lands on the page again.
+
+    Only a tap that can GO somewhere is counted (CP18): a deleted, expired or
+    hidden page, or a paused shop, offers no link, so a hit on /go there is
+    not a customer choosing the shop -- found by the moderation test, which
+    saw a hidden page's counter move."""
     now = now or datetime.now(UTC)
     row = (
         await session.execute(
-            update(SharePage)
-            .where(SharePage.token == token)
-            .values(cta_click_count=SharePage.cta_click_count + 1)
-            .returning(
+            select(
+                SharePage.id,
                 SharePage.bot_username,
                 SharePage.deleted_at,
                 SharePage.expires_at,
-                select(Shop.status).where(Shop.id == SharePage.shop_id).scalar_subquery(),
+                SharePage.hidden_at,
+                Shop.status,
             )
+            .join(Shop, Shop.id == SharePage.shop_id)
+            .where(SharePage.token == token)
         )
     ).one_or_none()
     if row is None:
         return None
-    username, deleted_at, expires_at, shop_status = row
+    page_id, username, deleted_at, expires_at, hidden_at, shop_status = row
+    live = deleted_at is None and expires_at > now and hidden_at is None
     if shop_status == ShopStatus.PAUSED.value:
         username = None
-    return username, deleted_at is None and expires_at > now
+    if live and username is not None:
+        await session.execute(
+            update(SharePage)
+            .where(SharePage.id == page_id)
+            .values(cta_click_count=SharePage.cta_click_count + 1)
+        )
+    return username, live
 
 
 @dataclass(frozen=True)
@@ -592,6 +606,7 @@ async def answer_yes(
         SharePage.token == token,
         SharePage.kind.in_(ANSWERABLE_KINDS),
         SharePage.deleted_at.is_(None),
+        SharePage.hidden_at.is_(None),  # CP18: hidden by moderation
         SharePage.expires_at > now,
     )
     row = (
@@ -652,6 +667,7 @@ async def submit_rsvp(
             SharePage.kind == PageKind.INVITE.value,
             SharePage.rsvp_enabled.is_(True),
             SharePage.deleted_at.is_(None),
+            SharePage.hidden_at.is_(None),  # CP18: hidden by moderation
             SharePage.expires_at > now,
         )
         .with_for_update()
@@ -954,6 +970,7 @@ async def choose(
             SharePage.kind == PageKind.YESNO.value,
             SharePage.answered_at.is_not(None),
             SharePage.deleted_at.is_(None),
+            SharePage.hidden_at.is_(None),  # CP18: hidden by moderation
             SharePage.expires_at > now,
         )
         .with_for_update()

@@ -209,6 +209,7 @@ async def photo_for_token(
             SharePagePhoto.id == photo_id,
             SharePage.token == token,
             SharePage.deleted_at.is_(None),
+            SharePage.hidden_at.is_(None),  # CP18: hidden by moderation
             SharePage.expires_at > now,
         )
     )

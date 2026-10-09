@@ -77,6 +77,7 @@ async def leave_wish(
             SharePage.kind == PageKind.INVITE.value,
             SharePage.wishes_enabled.is_(True),
             SharePage.deleted_at.is_(None),
+            SharePage.hidden_at.is_(None),  # CP18: hidden by moderation
             SharePage.expires_at > now,
         )
         .with_for_update()
@@ -111,7 +112,12 @@ async def visible_wishes(session: AsyncSession, *, page_id: int) -> list[ShownWi
     """What the page shows: not hidden, newest first, at most WISHES_SHOWN."""
     rows = await session.execute(
         select(SharePageWish.author, SharePageWish.body)
-        .where(SharePageWish.page_id == page_id, SharePageWish.hidden.is_(False))
+        .where(
+            SharePageWish.page_id == page_id,
+            SharePageWish.hidden.is_(False),
+            # CP18: hidden by moderation, which the creator cannot undo.
+            SharePageWish.admin_hidden_at.is_(None),
+        )
         .order_by(SharePageWish.created_at.desc(), SharePageWish.id.desc())
         .limit(WISHES_SHOWN)
     )
