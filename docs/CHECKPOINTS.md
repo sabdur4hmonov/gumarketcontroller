@@ -31,6 +31,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
 | CP18 | Platform admin panel (/admin), pause, subscriptions, order source, gift unlock, moderation, photo purge, health + heartbeats | done, one commit per stage; live-proven locally except the platform bot's Telegram delivery (needs PLATFORM_BOT_TOKEN) |
 | CP19 | Brand name in one setting, staff allowlist for order decisions, dev scripts under the gate, the two flaky tests | done, one commit per item; code-only (nothing here needed a live bot) |
+| CP20 | The shop owner's own panel (/shop), holiday campaigns | done, one commit per feature; code-only, screens shot at 360 px on a throwaway database |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -1174,6 +1175,87 @@ and the test_concurrency section's CP19 entry.
 | 1 brand | 13/13 |
 | 2 staff allowlist | 21/21 |
 | 4 lock hold | 2/2 |
+
+## What CP20 guarantees
+
+Two features a shop pays for. Code-only again: proved by tests, mutations and
+screens rendered by the real page server at 360 px against a throwaway
+database of synthetic data (`docs/screenshots/shop/`), then dropped.
+
+**A shop owner's panel that sees one shop and nothing else (`/shop`).**
+- The way in mirrors `/admin`, bound to one shop: `/panel` in THAT shop's
+  bot, from one of its owners, answers with a one-time link (10 minutes, one
+  use, preview off, at most 5 per 10 minutes). Opening it shows a button;
+  only the POST spends it. Cookie HttpOnly, Secure, SameSite=Strict,
+  Path=/shop, one hour. Ownership is checked at minting, at spending and on
+  every request; removing an owner ends their sessions at once.
+- `/panel` is answered by an update middleware ahead of the pause check and
+  the customer middleware: a paused shop's owner still gets in, and an owner
+  asking for the panel is never registered as a customer. Anyone else's
+  `/panel` passes through untouched.
+- ONE gate for every `/shop` route; every POST needs the session's CSRF
+  token. NO ROUTE TAKES A SHOP: every screen reads the session's shop, and
+  the test walks every route as shop A's owner with shop B's data planted --
+  also with `?shop=<B>` -- and finds none of it.
+- Customers (phones in full: they are the shop's own), saved dates in the
+  next 30 days, orders filtered by status, source and dates, CSV exports
+  (audit-logged, formula cells neutralised). The log (`shop_audit_log`) is
+  append-only by trigger.
+
+**Holiday campaigns.** Three conditions, all required: the shop runs the
+holiday (`/shop/holidays`), the customer opted in (Settings, "Bayram
+tabriklari"; `consent_events`, default off), and for a lunar holiday the
+platform admin entered that year's date (`/admin/holidays`). A holiday is one
+more date in the same per-customer plan (a stable negative spec id in the
+pure engine), so the send window, merging and the weekly cap cover it with no
+second copy of any rule; its rows go through the existing outbox. Opting out
+or switching a holiday off drops what was planned at once. An order from the
+holiday's bouquet button is `source = holiday`.
+
+### Decisions made during CP20, each with its reason
+
+- **`/panel` lives in the shop's bot, as a middleware.** Only that bot knows
+  which shop is asking, and a router handler would run after the customer
+  middleware had already registered the owner as a customer.
+- **The CRM shows full phone numbers; `/admin` masks them.** These are the
+  shop's own customers, whom it calls; the platform admin is a third party
+  to them.
+- **Saved dates show the customer's own label and the date only.** Nothing
+  else about the person is stored, and the panel adds nothing.
+- **The panel is in Uzbek**, like `/admin`; bot texts keep their languages.
+- **New Year is 31 December.** The evening people buy flowers for, not the
+  morning after.
+- **Holidays use the customer's own offsets and send time.** The same
+  preference that governs their personal reminders; no second setting.
+- **A tie for "soonest line" goes to the person.** A merged reminder whose
+  earliest line is a birthday keeps the person's button; the date the
+  customer saved outranks the shop's campaign.
+- **A new callback prefix for holiday orders**, not a field on OrderStartCB:
+  reminder buttons already in customers' chats keep their shape.
+- **The new CHECKs on `scheduled_notifications` were added validated**, not
+  in CONTRIBUTING's NOT VALID / VALIDATE steps: existing rows satisfy them
+  trivially and no production database exists yet (DEPLOY has never been
+  run), so there is no table to lock.
+- **Owner-facing CRM routes are not IP-restricted** (DEPLOY step 9): shop
+  owners log in from their own phones.
+
+### Found while building, each fixed and tested
+
+- **A message of only whitespace crashed the `/panel` check** --
+  `split()[0]` on nothing -- in front of every handler, for every customer.
+  The order-flow tests type blank answers on purpose and found it; it has
+  its own commit and test.
+- **"Planned, then pruned in the same run" hid a mutant.** Planning
+  holidays for everyone was invisible because the same materialize run's
+  prune deleted the rows again; the test now pins what the run inserted,
+  not only what remains.
+
+**Mutation totals, all caught on assertions:**
+
+| Feature | Mutants |
+|---|---|
+| 1 shop panel | 20/20 (+1 judged equivalent: the orders query's shop WHERE, behind its JOIN to the shop's own customers) |
+| 2 holiday campaigns | 18/18 |
 
 ## Briefs already agreed for future checkpoints
 

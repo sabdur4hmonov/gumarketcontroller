@@ -150,9 +150,9 @@ sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
   .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
 ```
 
-`current` and `heads` must print the same revision (`0956590ccce1` at CP19).
+`current` and `heads` must print the same revision (`8f2d6c41b9a3` at CP20).
 **A report of "applied" is not evidence** -- on this project it has been wrong
-twice; read it here. Every migration is additive. Four DOWNGRADES change data,
+twice; read it here. Every migration is additive. Five DOWNGRADES change data,
 because the old CHECKs cannot hold it -- back up before ever going below them:
 
 | Below | What the downgrade does |
@@ -160,7 +160,8 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `360f0694be06` | English-speaking customers become Uzbek |
 | `c5a8e2d61f37` | Uzrnoma pages are deleted |
 | `b996b9032869` | purged photo rows are deleted |
-| `4b6e1d9c2a07`, the CP18 revisions and `0956590ccce1` | their columns and tables are dropped (CP19: every shop's staff list) |
+| `4b6e1d9c2a07`, the CP18 revisions, `0956590ccce1`, `3c8e5a1f7d20` | their columns and tables are dropped (CP19: every shop's staff list; CP20: the shop panel's logins and audit log) |
+| `8f2d6c41b9a3` | holiday reminder rows and holiday consent are deleted, holiday orders lose their source |
 
 ## 8. The processes
 
@@ -188,9 +189,10 @@ Check each one's log (`journalctl -u gulbot-bot -n 50`):
 
 Copy `deploy/Caddyfile` to `/etc/caddy/Caddyfile`, put your hostname in, and
 `systemctl reload caddy`. Caddy obtains and renews the certificate itself. The
-pages and `/admin` share the one hostname. **Do not add a `log` directive**
-(see the file). Recommended: uncomment the block that lets only your own IP
-addresses reach `/admin` at all.
+pages, `/admin` and the shop owners' `/shop` (CP20) share the one hostname.
+**Do not add a `log` directive** (see the file). Recommended: uncomment the
+block that lets only your own IP addresses reach `/admin` at all. Never put
+`/shop` behind that allow-list: shop owners log in from their own phones.
 
 ## 10. Verify from outside the server
 
@@ -199,7 +201,7 @@ addresses reach `/admin` at all.
   `Strict-Transport-Security`.
 - `curl https://pages.<domain>/healthz/jobs` -> `ok` once the worker has run
   for two minutes (`stale: ...` names any job that is not finishing).
-- `curl -I https://pages.<domain>/admin` -> 401.
+- `curl -I https://pages.<domain>/admin` -> 401, and `/shop` -> 401 too.
 - On a phone: `/demo/yesno`, `/demo/invite`, `/demo/apology/konvert`.
 - In the pilot shop's bot: make a Ha/Yo'q page. The reply carries **Ochish**
   and **Ulashish** buttons (https only). Open it, press Ha: the "they said Ha"
