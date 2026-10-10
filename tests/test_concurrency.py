@@ -227,7 +227,9 @@ async def test_two_processes_racing_a_merged_group_send_it_once_and_whole(
     results = await run_two_workers(committed_world["shop"])
 
     assert len({r["pid"] for r in results}) == 2
-    assert sum(len(r["calls"]) for r in results) == 1, "a merged group was sent twice"
+    assert sum(len(r["calls"]) for r in results) == 1, (
+        f"a merged group was not sent exactly once; workers: {results}{snapshot(committed_world)}"
+    )
 
     rows = (
         committed_world["conn"]
@@ -239,7 +241,7 @@ async def test_two_processes_racing_a_merged_group_send_it_once_and_whole(
     )
     assert len(rows) == 3, f"a row vanished AFTER being planted{snapshot(committed_world)}"
     assert {r[0] for r in rows} == {"sent"}, (
-        f"the group was not marked whole{snapshot(committed_world)}"
+        f"the group was not marked whole; workers: {results}{snapshot(committed_world)}"
     )
     assert len({r[1] for r in rows}) == 1, (
         f"the group was marked by two different sends{snapshot(committed_world)}"
@@ -274,7 +276,13 @@ async def test_two_processes_split_disjoint_work_rather_than_blocking(
 
     assert len({r["pid"] for r in results}) == 2
     total = sum(len(r["calls"]) for r in results)
-    assert total == 6, f"expected each message exactly once, got {total}"
+    # The snapshot AND both workers' own counters: on 2026-10-04 this failed
+    # with "got 0" from two cleanly exiting workers, and the bare count could
+    # not say why (CP19).
+    assert total == 6, (
+        f"expected each message exactly once, got {total}; workers: {results}"
+        f"{snapshot(committed_world)}"
+    )
 
     states = (
         committed_world["conn"]

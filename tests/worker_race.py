@@ -16,6 +16,7 @@ import asyncio
 import json
 import os
 import sys
+from dataclasses import asdict
 from datetime import datetime
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -71,14 +72,15 @@ async def main() -> None:
     finally:
         await engine.dispose()
 
+    # EVERY counter, not three (CP19): a run where both workers exited cleanly
+    # and sent nothing (2026-10-04) could not say whether they saw no rows,
+    # expired them, deferred them or lost every claim.
     print(
         json.dumps(
             {
+                **{k: v for k, v in asdict(result).items() if k != "waited_seconds"},
                 "pid": os.getpid(),
                 "marker": marker,
-                "sent": result.sent,
-                "skipped_claimed": result.skipped_claimed,
-                "groups": result.groups,
                 "calls": transport.calls,
             }
         )
