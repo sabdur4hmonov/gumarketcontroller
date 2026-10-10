@@ -424,6 +424,15 @@ async def test_a_paused_shops_owner_still_gets_in(world: dict) -> None:
     assert [r for r in replies if "/shop/login/" in str(r.text)], [r.text for r in replies]
 
 
+@pytest.mark.parametrize("body", ["   ", "\n", "/panelx", "panel"])
+async def test_text_that_is_not_the_command_passes_through(world: dict, body: str) -> None:
+    """A message of only whitespace once raised IndexError in the middleware
+    -- for every customer, in front of every handler. Found by the order-flow
+    tests, which type blank answers on purpose."""
+    sent = await _shop_bot_says(world["db"], world["a"], OWNER_A, body)
+    assert not any("/shop/login/" in str(s.text) for s in sent)
+
+
 # --- the screens' content ------------------------------------------------------
 
 

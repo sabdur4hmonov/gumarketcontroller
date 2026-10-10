@@ -36,7 +36,9 @@ COMMAND = "/panel"
 def _asks_for_the_panel(message: Message | None) -> bool:
     if message is None or message.chat.type != "private" or message.from_user is None:
         return False
-    first = (message.text or "").split(maxsplit=1)[0] if message.text else ""
+    # A message of only whitespace splits into nothing: not a command.
+    words = (message.text or "").split(maxsplit=1)
+    first = words[0] if words else ""
     return first == COMMAND or first.startswith(COMMAND + "@")
 
 
