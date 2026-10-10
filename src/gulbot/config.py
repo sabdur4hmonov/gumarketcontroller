@@ -11,12 +11,16 @@ from collections.abc import Mapping
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Uzbekistan is UTC+5 with no DST, but we resolve it through zoneinfo rather
 # than hardcoding an offset -- a fixed +5 is an assumption that rots silently.
 TASHKENT = ZoneInfo("Asia/Tashkent")
+
+#: Settings.brand_name bounds: HTML-special and format-special characters.
+BRAND_FORBIDDEN = frozenset("<>&{}")
+BRAND_MAX = 40
 
 
 class Settings(BaseSettings):
@@ -67,6 +71,26 @@ class Settings(BaseSettings):
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
     log_level: str = "INFO"
+    #: The product's name wherever a person reads it (CP19). The brand is not
+    #: decided; this is the ONE place it is written. Read it through
+    #: gulbot.brand.brand_name(); tests/test_brand.py fails the build if it is
+    #: typed anywhere else.
+    brand_name: str = "Gulbot"
+
+    @field_validator("brand_name")
+    @classmethod
+    def _brand_fits_every_surface(cls, value: str) -> str:
+        """Bot messages are Telegram HTML, catalog strings are str.format'ed, and
+        the name sits in a page title: refuse what would break any of them."""
+        value = value.strip()
+        if not value:
+            raise ValueError("brand_name is empty")
+        if len(value) > BRAND_MAX:
+            raise ValueError(f"brand_name is longer than {BRAND_MAX} characters")
+        if BRAND_FORBIDDEN & set(value):
+            forbidden = "".join(sorted(BRAND_FORBIDDEN))
+            raise ValueError(f"brand_name may not contain any of {forbidden}")
+        return value
 
     def database_url(self, *, database: str | None = None, driver: str = "asyncpg") -> str:
         name = database or self.postgres_db

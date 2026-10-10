@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{% block title %}Gulbot · Admin{% endblock %}</title>
+<title>{% block title %}{{ brand() }} · Admin{% endblock %}</title>
 <link rel="stylesheet" href="{{ static('css/admin.css') }}">
 </head>
 <body class="admin">
 {% if v.admin is defined and v.admin %}
 <header class="bar">
-  <a class="brand" href="/admin">Gulbot · Admin</a>
+  <a class="brand" href="/admin">{{ brand() }} · Admin</a>
   <nav>
     <a href="/admin"{% if v.nav == 'shops' %} aria-current="page"{% endif %}>Do‘konlar</a>
     <a href="/admin/alerts"{% if v.nav == 'alerts' %} aria-current="page"{% endif %}>Ogohlantirishlar</a>

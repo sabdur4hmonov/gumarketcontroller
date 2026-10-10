@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+from gulbot.brand import brand_name
 from gulbot.models.share_page import PageKind, SharePage
 from gulbot.web import sections, strings
 
@@ -98,6 +99,8 @@ def environment() -> Environment:
         lstrip_blocks=False,
     )
     env.globals["static"] = static_url
+    # A callable, so the name is read at render time from its one place.
+    env.globals["brand"] = brand_name
     return env
 
 
@@ -387,6 +390,12 @@ def _fold(line: str) -> str:
     return "\r\n".join(out)
 
 
+def calendar_product_id() -> str:
+    """The calendar file's PRODID, which a calendar app may show. The UID below
+    stays `@gulbot`: it is an identifier a phone already holds, not copy."""
+    return f"-//{_ics_escape(brand_name())}//Taklifnoma//UZ"
+
+
 def ics(page: SharePage, *, tz_name: str, page_url: str, now: datetime | None = None) -> str:
     assert page.event_type and page.event_date and page.event_time
     now = now or datetime.now(UTC)
@@ -400,7 +409,7 @@ def ics(page: SharePage, *, tz_name: str, page_url: str, now: datetime | None = 
     lines = [
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Gulbot//Taklifnoma//UZ",
+        f"PRODID:{calendar_product_id()}",
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         "BEGIN:VEVENT",

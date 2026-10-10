@@ -28,10 +28,14 @@ from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.brand import brand_name
 from gulbot.db.session import build_session_factory, session_scope
 from gulbot.models.shop import DEFAULT_WORKING_HOURS, Shop
 
-DEV_SHOP_NAME = "Gulbot Dev Shop"
+
+def dev_shop_name() -> str:
+    """The dev shop's default name: the product's, from its one place (CP19)."""
+    return f"{brand_name()} Dev Shop"
 
 
 class SeedConflict(RuntimeError):
@@ -102,7 +106,7 @@ async def ensure_shop(
 
 async def seed_dev_shop(
     *,
-    name: str = DEV_SHOP_NAME,
+    name: str | None = None,
     channel_id: int | None = None,
     group_chat_id: int | None = None,
     owner_ids: Sequence[int] = (),
@@ -114,7 +118,7 @@ async def seed_dev_shop(
     async with session_scope(factory) as session:
         return await ensure_shop(
             session,
-            name=name,
+            name=name or dev_shop_name(),
             channel_id=channel_id,
             group_chat_id=group_chat_id,
             owner_ids=owner_ids,
@@ -128,7 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("--name", default=DEV_SHOP_NAME, help="the shop to create or find")
+    parser.add_argument("--name", default=dev_shop_name(), help="the shop to create or find")
     parser.add_argument("--channel-id", type=int, default=None, help="its catalogue channel")
     parser.add_argument("--group-chat-id", type=int, default=None, help="its admin group")
     parser.add_argument(

@@ -74,7 +74,7 @@ def test_the_default_is_still_the_dev_shop(monkeypatch: pytest.MonkeyPatch) -> N
     monkeypatch.setattr(seed, "seed_dev_shop", recording)
     monkeypatch.setattr(sys, "argv", ["seed"])
     seed.main()
-    assert called.get("name") == seed.DEV_SHOP_NAME
+    assert called.get("name") == seed.dev_shop_name() == "Gulbot Dev Shop"
 
 
 # --- against the database ------------------------------------------------------

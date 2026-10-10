@@ -1,7 +1,7 @@
 {% extends "admin/_layout.html" %}
 {% block main %}
 <section class="panel narrow">
-  <h1>Gulbot boshqaruv paneli</h1>
+  <h1>{{ brand() }} boshqaruv paneli</h1>
   <p>Kirish uchun tugmani bosing. Havola bir martalik.</p>
   <form method="post" action="/admin/login">
     <input type="hidden" name="token" value="{{ v.token }}">

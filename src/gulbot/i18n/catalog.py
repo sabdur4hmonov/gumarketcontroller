@@ -12,9 +12,16 @@ from typing import Final
 LANGUAGES: Final = ("uz", "ru")
 DEFAULT_LANGUAGE: Final = "uz"
 
+#: The product's name inside a string (CP19). Never type the name itself:
+#: `t()` fills this from Settings.brand_name, and tests/test_brand.py fails the
+#: build on the name typed here. Uzbek suffixes attach directly ("{brand}ga"):
+#: right after a name ending in a vowel or most consonants; a name ending in
+#: k or q would want "-ka" / "-qa" there.
+BRAND: Final = "{brand}"
+
 CATALOG: Final[dict[str, dict[str, str]]] = {
     "start.choose_language": {
-        "uz": "🌸 Assalomu alaykum! Gulbotga xush kelibsiz.\nQaysi tilda gaplashamiz?",
+        "uz": "🌸 Assalomu alaykum! {brand}ga xush kelibsiz.\nQaysi tilda gaplashamiz?",
         "ru": "Здравствуйте! Выберите язык:",
     },
     "start.welcome_back": {
@@ -35,11 +42,11 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     },
     "help.text": {
         "uz": (
-            "Gulbot muhim sanalaringizni eslatib turadi va gul buyurtma "
+            "{brand} muhim sanalaringizni eslatib turadi va gul buyurtma "
             "berishga yordam beradi.\n\nSavollar bo'lsa, operatorga yozing."
         ),
         "ru": (
-            "Gulbot напоминает о ваших важных датах и помогает заказать "
+            "{brand} напоминает о ваших важных датах и помогает заказать "
             "цветы.\n\nЕсли есть вопросы, напишите оператору."
         ),
     },
@@ -662,7 +669,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     # --- shop-owner onboarding, on the PLATFORM bot ------------------------
     "owner.welcome": {
         "uz": (
-            "🌸 Assalomu alaykum! Keling, do‘koningizni Gulbotga ulaymiz — bir necha "
+            "🌸 Assalomu alaykum! Keling, do‘koningizni {brand}ga ulaymiz — bir necha "
             "daqiqa oladi.\n\n"
             "<b>1-qadam. O‘z botingizni yarating</b>\n"
             "1. Telegramda @BotFather ni oching.\n"
@@ -677,7 +684,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
             "saqlaymiz va xabaringizni o‘chirib yuboramiz."
         ),
         "ru": (
-            "🌸 Здравствуйте! Давайте подключим ваш магазин к Gulbot — это займёт пару "
+            "🌸 Здравствуйте! Давайте подключим ваш магазин к {brand} — это займёт пару "
             "минут.\n\n"
             "<b>Шаг 1. Создайте своего бота</b>\n"
             "1. Откройте в Telegram @BotFather.\n"
@@ -950,8 +957,8 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         ),
     },
     "owner.group_test_message": {
-        "uz": "✅ Gulbot: bu do‘konning yangi buyurtmalari shu guruhga keladi.",
-        "ru": "✅ Gulbot: новые заказы этого магазина будут приходить в эту группу.",
+        "uz": "✅ {brand}: bu do‘konning yangi buyurtmalari shu guruhga keladi.",
+        "ru": "✅ {brand}: новые заказы этого магазина будут приходить в эту группу.",
     },
     "owner.group_not_found": {
         "uz": (
@@ -1290,12 +1297,12 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "pages.ask_music": {
         "uz": (
             "🎵 Sahifa uchun kuy tanlang. U o'z-o'zidan chalinmaydi — "
-            "mehmon tugmani bosgandagina yangraydi. Kuylar Gulbot uchun "
+            "mehmon tugmani bosgandagina yangraydi. Kuylar {brand} uchun "
             "yozilgan, litsenziyasi ochiq."
         ),
         "ru": (
             "🎵 Выберите мелодию для страницы. Она не играет сама — только "
-            "когда гость нажмёт кнопку. Мелодии написаны для Gulbot, "
+            "когда гость нажмёт кнопку. Мелодии написаны для {brand}, "
             "лицензия открытая."
         ),
     },
@@ -1727,7 +1734,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
 # together with every key of the page flows, so a new page-flow key that forgets
 # English fails the build.
 _EN: Final[dict[str, str]] = {
-    "start.choose_language": "Hello! Welcome to Gulbot. Which language shall we use?",
+    "start.choose_language": "Hello! Welcome to {brand}. Which language shall we use?",
     "start.welcome_back": "Welcome back, {name}!",
     "language.saved": (
         "Great, we'll continue in English. Invitations and Yes/No pages are fully in "
@@ -1736,7 +1743,7 @@ _EN: Final[dict[str, str]] = {
     "menu.title": "Main menu. What shall we do?",
     "settings.title": "Settings",
     "help.text": (
-        "Gulbot reminds you of important dates and helps you order flowers.\n\n"
+        "{brand} reminds you of important dates and helps you order flowers.\n\n"
         "If you have questions, write to the operator."
     ),
     "nav.cancelled": "Cancelled.",
@@ -1999,7 +2006,7 @@ _EN["ibtn.pages.music_none"] = "🔇 No music"
 _EN["pages.ask_music"] = (
     "🎵 Pick a tune for the page. It never plays by itself — only "
     "when a guest taps the button. The tunes were written for "
-    "Gulbot and are openly licensed."
+    "{brand} and are openly licensed."
 )
 _EN["pages.track_bahor"] = "Spring"
 _EN["pages.track_oqshom"] = "Evening"

@@ -45,7 +45,9 @@ def test_every_trilingual_key_has_all_three() -> None:
 
 
 def _placeholders(text: str) -> set[str]:
-    return {name for _, name, _, _ in string.Formatter().parse(text) if name}
+    """The caller's arguments. `{brand}` is not one: `t()` fills it itself
+    (CP19), so a language that does not name the product loses nothing."""
+    return {name for _, name, _, _ in string.Formatter().parse(text) if name and name != "brand"}
 
 
 def test_the_three_translations_take_the_same_placeholders() -> None:

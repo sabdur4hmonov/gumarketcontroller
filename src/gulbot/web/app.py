@@ -41,6 +41,7 @@ from aiohttp import web
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot.brand import brand_name
 from gulbot.models.share_page import (
     MAX_GUESTS,
     PAGE_LANGUAGES,
@@ -187,9 +188,11 @@ def _html(body: str, status: int = 200) -> web.Response:
 
 
 def _gone(
-    theme: str = "minimal", lang: str = "uz", shop: str = "Gulbot", status: int = 410
+    theme: str = "minimal", lang: str = "uz", shop: str | None = None, status: int = 410
 ) -> web.Response:
-    view = render.gone_view(theme, lang, render.Branding(shop_name=shop, cta_url=None))
+    """No shop to name (an unknown or malformed link): the product's name."""
+    branding = render.Branding(shop_name=shop or brand_name(), cta_url=None)
+    view = render.gone_view(theme, lang, branding)
     return _html(render.render("gone.html", view), status=status)
 
 
