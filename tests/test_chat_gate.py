@@ -50,6 +50,7 @@ from gulbot.bot.middlewares import (
     ChatGateMiddleware,
 )
 from gulbot.bot.states import AdminOrder
+from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 from gulbot.models.shop import DEFAULT_WORKING_HOURS
 
@@ -128,7 +129,7 @@ async def test_start_in_a_group_is_ignored(harness: Harness, chat_type: str) -> 
     own admin group."""
     replies = await harness.feed(message_from(chat_type, "/start", chat_id=GROUP_ID))
     assert replies == []
-    assert CATALOG["start.choose_language"]["uz"] not in replies
+    assert t("start.choose_language", "uz") not in replies
 
 
 @pytest.mark.parametrize("chat_type", ["group", "supergroup"])
@@ -163,7 +164,7 @@ async def test_a_private_message_is_still_served(harness: Harness) -> None:
     """Guards the guard. A gate that dropped everything would pass every test
     above and ship a bot that does nothing at all."""
     replies = await harness.feed(message_from("private", "/start", chat_id=ADMIN_ID))
-    assert CATALOG["start.choose_language"]["uz"] in replies
+    assert t("start.choose_language", "uz") in replies
 
 
 async def test_a_private_message_still_creates_the_customer(harness: Harness) -> None:

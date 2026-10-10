@@ -1155,6 +1155,18 @@ and the test_concurrency section's CP19 entry.
   commit is on main (eight by patch id, H5 as `aa9d2da` after a rebase, its
   test file identical).
 
+### Found by the gate during CP19
+
+- **Four tests compared a sent message with the RAW catalog string,** which
+  after CP19.1 holds `{brand}` while the bot sends the name. Three went red.
+  The fourth was worse: `test_chat_gate` asserts the welcome is NOT sent to a
+  group, and against a string that can never be sent that assertion could
+  never fail -- a guard gone vacuous without a sound. All four now compare
+  with `t()`, which is what the bot sends. The targeted runs before the
+  commit had not included those files; the full gate did.
+- `.env.example` must name every setting as a real key (a commented-out
+  `BRAND_NAME` did not count); `test_infrastructure` caught it.
+
 **Mutation totals, all caught on assertions:**
 
 | Item | Mutants |

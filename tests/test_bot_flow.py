@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from tests.bot_harness import RecordingSession, bound_session_factory, feed, make_bot, text_update
 
 from gulbot.bot.factory import build_dispatcher
+from gulbot.i18n import t
 from gulbot.i18n.catalog import CATALOG
 
 USER_ID = 900_001
@@ -56,7 +57,7 @@ async def test_start_registers_the_customer_and_asks_for_language(
     await feed(dispatcher, bot, text_update("/start", user_id=USER_ID))
 
     assert await _customer_count(db, shop_id, USER_ID) == 1
-    assert CATALOG["start.choose_language"]["uz"] in recorder.sent_texts
+    assert t("start.choose_language", "uz") in recorder.sent_texts
 
 
 @pytest.mark.infra
@@ -123,7 +124,7 @@ async def test_help_button_answers_in_the_customers_language(
         text_update(CATALOG["btn.menu.help"]["uz"], user_id=USER_ID, update_id=4),
     )
 
-    assert CATALOG["help.text"]["uz"] in recorder.sent_texts
+    assert t("help.text", "uz") in recorder.sent_texts
 
 
 @pytest.mark.infra
