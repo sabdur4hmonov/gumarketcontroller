@@ -42,7 +42,7 @@ class RecordingSession(BaseSession):
 
     @property
     def sent_texts(self) -> list[str]:
-        return [c.text for c in self.calls if getattr(c, "text", None) is not None]
+        return [str(c.text) for c in self.calls if getattr(c, "text", None) is not None]  # type: ignore[attr-defined]
 
     async def close(self) -> None:
         return None
@@ -62,7 +62,7 @@ class RecordingSession(BaseSession):
             text=getattr(method, "text", ""),
         )
 
-    async def stream_content(self, *args: Any, **kwargs: Any) -> Any:
+    async def stream_content(self, *args: Any, **kwargs: Any) -> Any:  # type: ignore[override]
         raise NotImplementedError
 
 

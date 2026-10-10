@@ -93,9 +93,12 @@ async def place(shop_id: int, product_id: int, *, pin: bool) -> int | None:
             "SELECT id, telegram_user_id FROM customers WHERE shop_id = %s ORDER BY id LIMIT 1",
             (shop_id,),
         ).fetchone()
-        group = conn.execute(
+        shop_row = conn.execute(
             "SELECT group_chat_id FROM shops WHERE id = %s", (shop_id,)
-        ).fetchone()[0]
+        ).fetchone()
+        if shop_row is None:
+            raise SystemExit(f"no shop {shop_id}")
+        group = shop_row[0]
         product = conn.execute(
             "SELECT id, name, price_uzs FROM products "
             "WHERE id = %s AND shop_id = %s AND finalized_at IS NOT NULL",
@@ -128,7 +131,7 @@ async def place(shop_id: int, product_id: int, *, pin: bool) -> int | None:
     async def no_op_answer(self: CallbackQuery, *args: Any, **kwargs: Any) -> bool:
         return True
 
-    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign]
+    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign,assignment]
 
     user = customer[1]
     counter = {"n": 0}

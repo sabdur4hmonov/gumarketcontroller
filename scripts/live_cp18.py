@@ -32,7 +32,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from aiogram import Bot  # noqa: E402
 from aiogram.methods import SendMessage  # noqa: E402
-from aiogram.types import User  # noqa: E402
+from aiogram.types import LinkPreviewOptions, User  # noqa: E402
 from tests.bot_harness import RecordingSession, feed, text_update  # noqa: E402
 
 from gulbot.bot.factory import build_platform_dispatcher  # noqa: E402
@@ -73,7 +73,10 @@ async def main(admin_id: int) -> str:
     for reply in replies:
         shown = re.sub(r"/admin/login/[A-Za-z0-9_-]+", "/admin/login/<secret>", reply.text)
         preview = (
-            "off" if reply.link_preview_options and reply.link_preview_options.is_disabled else "ON"
+            "off"
+            if isinstance(reply.link_preview_options, LinkPreviewOptions)
+            and reply.link_preview_options.is_disabled
+            else "ON"
         )
         print(f"   bot -> {shown!r} (link preview {preview})")
     found = re.search(

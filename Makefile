@@ -30,12 +30,12 @@ ps:
 	docker compose ps
 
 fmt:
-	$(PY) -m ruff format src tests migrations
-	$(PY) -m ruff check --fix src tests migrations
+	$(PY) -m ruff format src tests migrations scripts
+	$(PY) -m ruff check --fix src tests migrations scripts
 
 lint:
-	$(PY) -m ruff check src tests migrations
-	$(PY) -m ruff format --check src tests migrations
+	$(PY) -m ruff check src tests migrations scripts
+	$(PY) -m ruff format --check src tests migrations scripts
 
 typecheck:
 	$(PY) -m mypy

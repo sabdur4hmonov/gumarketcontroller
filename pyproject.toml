@@ -74,7 +74,8 @@ select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC"]
 python_version = "3.11"
 strict = true
 mypy_path = "src"
-packages = ["gulbot"]
+# The dev scripts too: outside the gate they rotted unseen (CP19).
+files = ["src/gulbot", "scripts"]
 
 [[tool.mypy.overrides]]
 # Celery ships no py.typed marker and no stubs.

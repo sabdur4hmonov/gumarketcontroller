@@ -51,6 +51,7 @@ from aiogram.types import (  # noqa: E402
 )
 
 from gulbot.bot.callbacks import OrderAdminCB  # noqa: E402
+from gulbot.bot.channel import noop_scheduler  # noqa: E402
 from gulbot.bot.factory import build_dispatcher  # noqa: E402
 from gulbot.bot.registry import registry_for  # noqa: E402
 from gulbot.config import get_settings  # noqa: E402
@@ -75,15 +76,18 @@ def show(title: str) -> None:
     print(f"\n{'-' * 68}\n{title}\n{'-' * 68}")
 
 
-def order_row(order_id: int) -> tuple:
+def order_row(order_id: int) -> tuple[Any, ...]:
     with psycopg.connect(dsn(), autocommit=True) as conn:
-        return conn.execute(
+        row = conn.execute(
             "SELECT status, rejection_reason, status_changed_at FROM orders WHERE id = %s",
             (order_id,),
         ).fetchone()
+    if row is None:
+        raise SystemExit(f"order {order_id} is gone")
+    return row
 
 
-def ping_states(order_id: int) -> list[tuple]:
+def ping_states(order_id: int) -> list[tuple[Any, ...]]:
     with psycopg.connect(dsn(), autocommit=True) as conn:
         return conn.execute(
             "SELECT ping_number, state FROM order_reminders WHERE order_id = %s "
@@ -92,7 +96,7 @@ def ping_states(order_id: int) -> list[tuple]:
         ).fetchall()
 
 
-def ledger(order_id: int) -> list[tuple]:
+def ledger(order_id: int) -> list[tuple[Any, ...]]:
     with psycopg.connect(dsn(), autocommit=True) as conn:
         return conn.execute(
             "SELECT template_key, transition_key, status, error_code FROM message_log "
@@ -151,7 +155,9 @@ def make_probe_order(shop_id: int, customer_tg: int) -> tuple[int, int, int]:
                 date.today() + timedelta(days=2),
                 f"{PROBE_TOKEN}{int(datetime.now(UTC).timestamp())}",
             ),
-        ).fetchone()[0]
+        ).fetchone()
+        assert order_id is not None  # RETURNING always answers an INSERT
+        order_id = order_id[0]
         conn.execute(
             "INSERT INTO order_reminders (shop_id, order_id, ping_number, due_at_utc) "
             "VALUES (%s, %s, 0, now() - interval '1 second')",
@@ -267,7 +273,7 @@ async def run(args: argparse.Namespace) -> None:
             print(f"  [callback answer] {text}")
         return True
 
-    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign]
+    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign,assignment]
 
     order_id, shop_id, group_id = make_probe_order(args.shop_id, args.customer_tg)
     session_factory = build_session_factory()
@@ -280,7 +286,7 @@ async def run(args: argparse.Namespace) -> None:
     async with session_factory() as session:
         result = await run_order_ping_tick(
             session,
-            transport=transport,  # type: ignore[arg-type]
+            transport=transport,
             now_utc=datetime.now(UTC),
             only_order_id=order_id,
         )
@@ -296,7 +302,7 @@ async def run(args: argparse.Namespace) -> None:
         session_factory=session_factory,
         shop_id=shop_id,
         storage=MemoryStorage(),
-        schedule_finalize=lambda **kwargs: None,
+        schedule_finalize=noop_scheduler,
     )
 
     admin_tg = args.admin_tg or args.customer_tg

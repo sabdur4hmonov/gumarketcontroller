@@ -94,7 +94,7 @@ async def main(shop_id: int, customer_id: int) -> None:
     async def no_op_answer(self: CallbackQuery, *args: Any, **kwargs: Any) -> bool:
         return True
 
-    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign]
+    CallbackQuery.answer = no_op_answer  # type: ignore[method-assign,assignment]
     counter = {"n": 0}
 
     async def feed(update: Any) -> None:

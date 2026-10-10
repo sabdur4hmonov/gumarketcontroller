@@ -30,12 +30,12 @@ $Steps = @{
     "logs"      = { Invoke-Step "docker" @("compose", "logs", "-f", "--tail=100") }
     "ps"        = { Invoke-Step "docker" @("compose", "ps") }
     "fmt"       = {
-        Invoke-Step $PY @("-m", "ruff", "format", "src", "tests", "migrations")
-        Invoke-Step $PY @("-m", "ruff", "check", "--fix", "src", "tests", "migrations")
+        Invoke-Step $PY @("-m", "ruff", "format", "src", "tests", "migrations", "scripts")
+        Invoke-Step $PY @("-m", "ruff", "check", "--fix", "src", "tests", "migrations", "scripts")
     }
     "lint"      = {
-        Invoke-Step $PY @("-m", "ruff", "check", "src", "tests", "migrations")
-        Invoke-Step $PY @("-m", "ruff", "format", "--check", "src", "tests", "migrations")
+        Invoke-Step $PY @("-m", "ruff", "check", "src", "tests", "migrations", "scripts")
+        Invoke-Step $PY @("-m", "ruff", "format", "--check", "src", "tests", "migrations", "scripts")
     }
     "typecheck" = { Invoke-Step $PY @("-m", "mypy") }
     "shadow"    = { Invoke-Step $PY @("-m", "gulbot.bot.shadow_sweep") }
