@@ -23,6 +23,8 @@ from gulbot.bot.callbacks import (
     DayCB,
     EditOccasionCB,
     FlowerCB,
+    HolidayOptCB,
+    HolidayOrderCB,
     MonthCB,
     OccasionActionCB,
     OccasionKindCB,
@@ -85,7 +87,44 @@ def main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
 
 
 def settings_keyboard(lang: str) -> ReplyKeyboardMarkup:
-    return _kb([[t("btn.settings.change_language", lang)], [t("btn.nav.back", lang)]])
+    return _kb(
+        [
+            [t("btn.settings.change_language", lang)],
+            # CP20: holiday greetings, off until the customer turns them on.
+            [t("btn.settings.holidays", lang)],
+            [t("btn.nav.back", lang)],
+        ]
+    )
+
+
+def holiday_order_button(lang: str, product_id: int) -> InlineKeyboardMarkup:
+    """The button under a holiday campaign's bouquet (CP20): the same order
+    flow, recorded as source = holiday."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.order_now", lang),
+                    callback_data=HolidayOrderCB(product_id=product_id).pack(),
+                )
+            ]
+        ]
+    )
+
+
+def holiday_opt_keyboard(lang: str, *, now_on: bool) -> InlineKeyboardMarkup:
+    """One button: the opposite of the current state."""
+    choice = "off" if now_on else "on"
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t(f"ibtn.holidays.{choice}", lang),
+                    callback_data=HolidayOptCB(choice=choice).pack(),
+                )
+            ]
+        ]
+    )
 
 
 # --- inline keyboards for the occasion flow --------------------------------

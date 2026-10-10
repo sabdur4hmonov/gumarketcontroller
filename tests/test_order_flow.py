@@ -35,6 +35,7 @@ from tests.bot_harness import (
 )
 
 from gulbot.bot.callbacks import (
+    HolidayOrderCB,
     OrderConfirmCB,
     OrderDateCB,
     OrderHourCB,
@@ -751,6 +752,27 @@ async def test_the_order_records_whether_it_came_from_a_reminder(
         )
     ).scalars()
     assert list(sources) == ["reminder", "direct"]
+
+
+async def test_an_order_from_a_holiday_campaigns_button_is_a_holiday_order(
+    driver: Driver,
+) -> None:
+    """CP20: the holiday button starts the same flow, with no person to name,
+    and the order says where it came from."""
+    await driver.tap(HolidayOrderCB(product_id=driver.product).pack())
+    await driver.tap(OrderDateCB(offset=1).pack())
+    await driver.tap(OrderHourCB(hour=14).pack())
+    await driver.tap(OrderLocationCB(mode="text").pack())
+    await driver.say("Chilonzor 5")
+    await driver.say("Ko'k eshik")
+    await driver.say("Onajonim")
+    await driver.tap(OrderConfirmCB(action="submit").pack())
+    sources = (
+        await driver.db.execute(
+            text("SELECT source, recipient_id FROM orders WHERE shop_id = :s"), {"s": driver.shop}
+        )
+    ).all()
+    assert [tuple(row) for row in sources] == [("holiday", None)]
 
 
 async def test_the_browse_path_has_no_name_to_offer(driver: Driver) -> None:

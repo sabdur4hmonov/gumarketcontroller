@@ -63,6 +63,8 @@ class OrderDraft:
     #: CP18: the flow began at a reminder's bouquet button (the only button
     #: that names a person). Decides orders.source; see `order_source`.
     from_reminder: bool = False
+    #: CP20: the flow began at a holiday campaign's bouquet button.
+    from_holiday: bool = False
 
 
 #: A page visit counts for an order placed this long after it, at most.
@@ -75,18 +77,21 @@ async def order_source(
     shop_id: int,
     customer_id: int,
     from_reminder: bool,
+    from_holiday: bool = False,
     now: datetime | None = None,
 ) -> tuple[str, int | None]:
     """(source, source_page_id) for an order being placed now.
 
-    The reminder's button wins: it is what the customer tapped. Otherwise the
-    most recent page through which the customer arrived in THIS shop's bot
-    within the window. Otherwise direct. Never another shop's page: the
-    referral is looked up by this shop, and the composite FK on orders would
-    refuse one anyway.
+    A button the customer tapped wins: a reminder's, then a holiday
+    campaign's (CP20). Otherwise the most recent page through which the
+    customer arrived in THIS shop's bot within the window. Otherwise direct.
+    Never another shop's page: the referral is looked up by this shop, and the
+    composite FK on orders would refuse one anyway.
     """
     if from_reminder:
         return OrderSource.REMINDER.value, None
+    if from_holiday:
+        return OrderSource.HOLIDAY.value, None
     now = now or datetime.now(UTC)
     page_id = await session.scalar(
         select(SharePageReferral.page_id)
@@ -205,7 +210,11 @@ async def create_order(session: AsyncSession, *, shop_id: int, customer_id: int,
     price = product.price_uzs if product is not None else draft.price_uzs
     file_id = product.telegram_file_id if product is not None else draft.telegram_file_id
     source, source_page_id = await order_source(
-        session, shop_id=shop_id, customer_id=customer_id, from_reminder=draft.from_reminder
+        session,
+        shop_id=shop_id,
+        customer_id=customer_id,
+        from_reminder=draft.from_reminder,
+        from_holiday=draft.from_holiday,
     )
 
     statement = (

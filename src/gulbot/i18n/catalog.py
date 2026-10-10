@@ -245,6 +245,29 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "• {label} — {kind}, {date} ({when})",
         "ru": "• {label} — {kind}, {date} ({when})",
     },
+    # CP20: a holiday campaign's reminder -- one holiday alone, or a holiday
+    # line inside a merged reminder.
+    "reminder.single_holiday": {
+        "uz": "{when} — {holiday}, {date}. Yaqinlaringizni gul bilan tabriklaysizmi?",
+        "ru": "{when}: {holiday}, {date}. Поздравите близких цветами?",
+    },
+    "reminder.holiday_item": {
+        "uz": "• {holiday} — {date} ({when})",
+        "ru": "• {holiday} — {date} ({when})",
+    },
+    "holiday.valentines": {"uz": "Sevishganlar kuni", "ru": "День святого Валентина"},
+    "holiday.womens_day": {
+        "uz": "8-mart — Xalqaro xotin-qizlar kuni",
+        "ru": "8 Марта — Международный женский день",
+    },
+    "holiday.navruz": {"uz": "Navro‘z bayrami", "ru": "Навруз"},
+    "holiday.teachers_day": {
+        "uz": "O‘qituvchi va murabbiylar kuni",
+        "ru": "День учителей и наставников",
+    },
+    "holiday.new_year": {"uz": "Yangi yil", "ru": "Новый год"},
+    "holiday.ramazon_hayit": {"uz": "Ramazon hayiti", "ru": "Рамазан хайит"},
+    "holiday.qurbon_hayit": {"uz": "Qurbon hayiti", "ru": "Курбан хайит"},
     # Capitalised variants, for when the phrase OPENS a sentence. Separate keys
     # rather than .capitalize(): a numeric "3 kundan keyin" would be untouched
     # by it, so the two cases only look the same by accident.
@@ -644,6 +667,35 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "🌐 Tilni o'zgartirish",
         "ru": "🌐 Сменить язык",
     },
+    # CP20: holiday greetings from this shop. OFF until turned on here. The
+    # wording is versioned: HOLIDAY_GREETINGS_TEXT_VERSION in models/consent.py.
+    "btn.settings.holidays": {"uz": "🎉 Bayram tabriklari", "ru": "🎉 Праздничные поздравления"},
+    "settings.holidays.on": {
+        "uz": (
+            "🎉 Bayram tabriklari <b>yoqilgan</b>: do‘kon tanlagan bayramlar oldidan "
+            "(masalan, 8-mart, Navro‘z) sizga eslatma va buket taklifi keladi. "
+            "Istalgan payt shu yerda o‘chirishingiz mumkin."
+        ),
+        "ru": (
+            "🎉 Праздничные поздравления <b>включены</b>: перед праздниками, которые выбрал "
+            "магазин (например, 8 Марта, Навруз), придёт напоминание и букет. "
+            "Выключить можно здесь в любой момент."
+        ),
+    },
+    "settings.holidays.off": {
+        "uz": (
+            "🎉 Bayram tabriklari <b>o‘chiq</b>. Yoqsangiz, do‘kon tanlagan bayramlar "
+            "oldidan (masalan, 8-mart, Navro‘z) eslatma va buket taklifi yuboramiz. "
+            "Istalgan payt o‘chirishingiz mumkin."
+        ),
+        "ru": (
+            "🎉 Праздничные поздравления <b>выключены</b>. Если включите, перед праздниками, "
+            "которые выбрал магазин (например, 8 Марта, Навруз), пришлём напоминание и букет. "
+            "Выключить можно в любой момент."
+        ),
+    },
+    "ibtn.holidays.on": {"uz": "✅ Yoqish", "ru": "✅ Включить"},
+    "ibtn.holidays.off": {"uz": "🔕 O‘chirish", "ru": "🔕 Выключить"},
     "btn.share_phone": {
         "uz": "📱 Raqamimni yuborish",
         "ru": "📱 Отправить номер",
@@ -1846,6 +1898,7 @@ _EN: Final[dict[str, str]] = {
     "btn.nav.back": "⬅️ Back",
     "btn.nav.cancel": "✖️ Cancel",
     "btn.settings.change_language": "🌐 Change language",
+    "btn.settings.holidays": "🎉 Holiday greetings",
     "btn.language.uz": "🇺🇿 O'zbekcha",
     "btn.language.ru": "🇷🇺 Русский",
     "btn.language.en": "🇬🇧 English",

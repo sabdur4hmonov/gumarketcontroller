@@ -1,0 +1,35 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+<h1>Bayram tabriklari</h1>
+{% if v.notice == 'ok' %}<p class="notice">Saqlandi va jurnalga yozildi.</p>
+{% elif v.notice %}<p class="notice">Rad etildi.</p>{% endif %}
+<p class="muted">Tanlagan bayramingiz oldidan botingiz tabriklarni yoqqan mijozlarga eslatma va buket taklifini yuboradi — shaxsiy sanalar eslatmalari bilan bir xil vaqt oralig‘ida va haftalik chegara ichida. Mijoz tabriklarni o‘zi yoqmaguncha unga hech narsa yuborilmaydi.</p>
+<div class="tiles">
+  <div class="tile"><span class="n">{{ v.listeners }}</span><span class="l">mijoz tabriklarni yoqqan</span></div>
+  <div class="tile"><span class="n">{{ v.enabled|length }}</span><span class="l">bayram tanlangan</span></div>
+</div>
+<section class="panel">
+  <ol class="log">
+    {% for h in v.holidays %}
+    {% set on = h.key in v.enabled %}
+    <li>
+      <div class="log-head">
+        <strong>{{ v.names[h.key] }}</strong>
+        <span class="badge {{ 'ok' if on else '' }}">{{ 'yoqilgan' if on else 'o‘chiq' }}</span>
+      </div>
+      <div class="muted log-meta">
+        {% if h.month %}{{ '%02d.%02d'|format(h.day, h.month) }}
+        {% elif v.lunar.get(h.key) %}{{ v.lunar[h.key][0].strftime('%d.%m.%Y') }}
+        {% else %}sana hali kiritilmagan — kiritilguncha eslatma yuborilmaydi{% endif %}
+      </div>
+      <form method="post" action="/shop/holidays" class="inline">
+        <input type="hidden" name="csrf" value="{{ v.csrf }}">
+        <input type="hidden" name="holiday" value="{{ h.key }}">
+        <input type="hidden" name="on" value="{{ '0' if on else '1' }}">
+        <button type="submit" class="{{ 'link' if on else 'primary' }}">{{ 'O‘chirish' if on else 'Yoqish' }}</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endblock %}

@@ -29,6 +29,9 @@ from gulbot.db.base import Base, IdMixin
 
 class ConsentType(StrEnum):
     STORE_DATES = "store_dates"
+    #: CP20: holiday campaign greetings from this shop. OFF until the
+    #: customer turns it on in settings; the latest row decides.
+    HOLIDAY_GREETINGS = "holiday_greetings"
 
 
 # Bump this whenever the consent WORDING changes, so old rows keep meaning what
@@ -36,6 +39,10 @@ class ConsentType(StrEnum):
 # the current text to this version and fails the build if the text is edited
 # without a bump.
 STORE_DATES_TEXT_VERSION = "store_dates.v2"
+#: The same rule for the holiday greetings screen (settings.holidays.*).
+HOLIDAY_GREETINGS_TEXT_VERSION = "holiday_greetings.v1"
+
+CONSENT_TYPES_SQL = ", ".join(f"'{c.value}'" for c in ConsentType)
 
 
 class ConsentSource(StrEnum):
@@ -64,7 +71,7 @@ class ConsentEvent(IdMixin, Base):
             ["customers.id", "customers.shop_id"],
             ondelete="CASCADE",
         ),
-        CheckConstraint("type IN ('store_dates')", name="type_known"),
+        CheckConstraint(f"type IN ({CONSENT_TYPES_SQL})", name="type_known"),
         CheckConstraint("source IN ('first_occasion', 'settings')", name="source_known"),
         Index("ix_consent_events_customer_type", "customer_id", "type"),
     )

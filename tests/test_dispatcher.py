@@ -646,10 +646,24 @@ def test_transition_key_shape_is_stable() -> None:
     class Row:
         merge_key = None
         occasion_id = 42
+        holiday = None  # CP20: every real row has the column; personal rows hold NULL
         occurrence_year = 2027
         offset_days = -7
 
     assert transition_key_for(Row()) == "occ:42:2027:-7"  # type: ignore[arg-type]
+
+
+def test_a_lone_holiday_row_keys_on_the_holiday() -> None:
+    """CP20. A holiday row has no occasion; its key must not read "occ:None"."""
+
+    class Row:
+        merge_key = None
+        occasion_id = None
+        holiday = "navruz"
+        occurrence_year = 2027
+        offset_days = -1
+
+    assert transition_key_for(Row()) == "hol:navruz:2027:-1"  # type: ignore[arg-type]
 
 
 # --- a block survives across ticks, not just within one batch ---------------

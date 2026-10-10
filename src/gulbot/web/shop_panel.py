@@ -32,8 +32,10 @@ from typing import Any, Final
 from aiohttp import web
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot.holidays import BY_KEY, HOLIDAYS
+from gulbot.i18n import t
 from gulbot.scheduling.occurrences import TASHKENT
-from gulbot.services import shop_auth, shop_crm
+from gulbot.services import holiday_campaigns, shop_auth, shop_crm
 from gulbot.web import render
 
 log = logging.getLogger("gulbot.web.shop_panel")
@@ -260,6 +262,57 @@ async def export_orders(request: web.Request) -> web.Response:
     return _csv_response(body, "buyurtmalar")
 
 
+# --- holiday campaigns (CP20) ---------------------------------------------------
+
+
+async def holidays_screen(request: web.Request) -> web.Response:
+    shop_id = request[KEY_OWNER].shop_id
+    today = datetime.now(UTC).astimezone(TASHKENT).date()
+    async with request.app[KEY_SHOP_SESSIONS]() as session:
+        enabled = await holiday_campaigns.enabled_holidays(session, shop_id=shop_id)
+        lunar = await holiday_campaigns.lunar_dates(session)
+        listeners = len(await holiday_campaigns.opted_in_customers(session, shop_id=shop_id))
+        view = await _view(
+            request,
+            session,
+            "holidays",
+            holidays=HOLIDAYS,
+            names={h.key: t(f"holiday.{h.key}", "uz") for h in HOLIDAYS},
+            enabled=enabled,
+            lunar={key: [d for d in dates if d >= today][:1] for key, dates in lunar.items()},
+            listeners=listeners,
+            notice=request.query.get("done", ""),
+        )
+    return _html(render.render("shop/holidays.html", view))
+
+
+async def switch_holiday(request: web.Request) -> web.Response:
+    owner = request[KEY_OWNER]
+    form = await request.post()
+    holiday, choice = form.get("holiday"), form.get("on")
+    if not isinstance(holiday, str) or holiday not in BY_KEY or choice not in ("1", "0"):
+        raise web.HTTPSeeOther(PREFIX + "/holidays?done=refused")
+    async with request.app[KEY_SHOP_SESSIONS]() as session:
+        changed = await holiday_campaigns.set_shop_holiday(
+            session,
+            shop_id=owner.shop_id,
+            holiday=holiday,
+            on=choice == "1",
+            owner_id=owner.telegram_id,
+        )
+        if changed:
+            await shop_auth.audit(
+                session,
+                shop_id=owner.shop_id,
+                action="holiday_on" if choice == "1" else "holiday_off",
+                owner=owner.telegram_id,
+                detail={"holiday": holiday},
+                ip=_ip(request),
+            )
+        await session.commit()
+    raise web.HTTPSeeOther(PREFIX + "/holidays?done=ok")
+
+
 def add_routes(app: web.Application, *, session_factory: async_sessionmaker[AsyncSession]) -> None:
     app[KEY_SHOP_SESSIONS] = session_factory
     app.router.add_get(PREFIX + "/login/{token}", login_page)
@@ -270,3 +323,5 @@ def add_routes(app: web.Application, *, session_factory: async_sessionmaker[Asyn
     app.router.add_get(PREFIX + "/orders", orders_screen)
     app.router.add_get(PREFIX + "/export/customers.csv", export_customers)
     app.router.add_get(PREFIX + "/export/orders.csv", export_orders)
+    app.router.add_get(PREFIX + "/holidays", holidays_screen)
+    app.router.add_post(PREFIX + "/holidays", switch_holiday)

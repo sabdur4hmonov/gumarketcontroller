@@ -243,6 +243,34 @@ class OrderStartCB(CallbackData, prefix="ordstart"):
         return [cls(product_id=1).pack(), cls(product_id=1, recipient_id=7).pack()]
 
 
+class HolidayOrderCB(CallbackData, prefix="ordhol"):
+    """The button under a HOLIDAY campaign's bouquet (CP20).
+
+    A prefix of its own rather than a field on OrderStartCB: reminder buttons
+    already sit in customers' chats with OrderStartCB's shape, and a new field
+    would change it under them. Starts the same order flow; the order is
+    recorded as source = holiday. Only the product id rides in it, and it goes
+    through the same sellability check as every other order button.
+    """
+
+    product_id: int
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(product_id=1).pack()]
+
+
+class HolidayOptCB(CallbackData, prefix="holopt"):
+    """The customer's answer on the holiday greetings screen (CP20): "on" or
+    "off". SERVICE SET: anything else is refused before it is recorded."""
+
+    choice: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(choice=c).pack() for c in ("on", "off")]
+
+
 class OrderRecipientCB(CallbackData, prefix="ordrecip"):
     """Accepting the name the bot already knows, or asking to type another.
 
@@ -624,6 +652,8 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     SealCB,
     MusicCB,
     StaffCB,
+    HolidayOrderCB,
+    HolidayOptCB,
 )
 
 

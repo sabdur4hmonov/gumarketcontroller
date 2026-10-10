@@ -13,6 +13,8 @@ and, for a POST, its CSRF token matched.
     POST /admin/pages/<id>/hide|unhide
     POST /admin/wishes/<id>/hide
     GET  /admin/audit                    the audit log
+    GET  /admin/holidays                 CP20: the lunar holidays' dates
+    POST /admin/holidays                 enter or correct one
 
 An action answers with 303 back to the screen it came from (POST-redirect-GET),
 so a refresh never repeats it.
@@ -25,7 +27,9 @@ from datetime import UTC, date, datetime, timedelta
 from aiohttp import web
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.services import admin_auth, admin_panel, shop_admin
+from gulbot.holidays import BY_KEY, LUNAR_KEYS
+from gulbot.i18n import t
+from gulbot.services import admin_auth, admin_panel, holiday_campaigns, shop_admin
 from gulbot.web import render
 
 MAX_DAYS = 365
@@ -294,8 +298,59 @@ async def audit_log(request: web.Request) -> web.Response:
     )
 
 
+async def holidays(request: web.Request) -> web.Response:
+    """CP20: the lunar holidays' dates, which only the platform admin enters."""
+    async with _sessions(request)() as session:
+        dates = await holiday_campaigns.lunar_dates(session)
+    lunar = [BY_KEY[key] for key in LUNAR_KEYS]
+    return _html(
+        render.render(
+            "admin/holidays.html",
+            _view(
+                request,
+                "holidays",
+                lunar=lunar,
+                dates=dates,
+                names={h.key: t(f"holiday.{h.key}", "uz") for h in lunar},
+                notice=request.query.get("done", ""),
+            ),
+        )
+    )
+
+
+async def set_holiday_date(request: web.Request) -> web.Response:
+    form = await _form(request)
+    holiday = form.get("holiday", "")
+    try:
+        falls_on = date.fromisoformat(form.get("date", ""))
+    except ValueError:
+        raise web.HTTPSeeOther("/admin/holidays?done=refused-date") from None
+    if holiday not in LUNAR_KEYS:
+        raise web.HTTPSeeOther("/admin/holidays?done=refused-holiday")
+    if not 2020 <= falls_on.year <= 2100:
+        raise web.HTTPSeeOther("/admin/holidays?done=refused-date")
+    admin = _admin(request)
+    async with _sessions(request)() as session:
+        previous = await holiday_campaigns.set_lunar_date(
+            session, holiday=holiday, falls_on=falls_on, admin=admin.telegram_id
+        )
+        await admin_auth.audit(
+            session,
+            action="holiday_date_set",
+            admin=admin.telegram_id,
+            target_type="holiday",
+            before={"holiday": holiday, "date": previous.isoformat() if previous else None},
+            after={"holiday": holiday, "date": falls_on.isoformat()},
+            ip=_ip(request),
+        )
+        await session.commit()
+    raise web.HTTPSeeOther("/admin/holidays?done=ok")
+
+
 def add_routes(app: web.Application) -> None:
     r = app.router
+    r.add_get("/admin/holidays", holidays)
+    r.add_post("/admin/holidays", set_holiday_date)
     r.add_get("/admin", overview)
     r.add_get(r"/admin/shops/{shop_id:\d{1,18}}", shop)
     r.add_post(r"/admin/shops/{shop_id:\d{1,18}}/pause", _status_action("paused"))

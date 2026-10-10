@@ -25,7 +25,7 @@ from collections.abc import Callable
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.bot.keyboards import order_button
+from gulbot.bot.keyboards import holiday_order_button, order_button
 from gulbot.i18n import t
 from gulbot.models.recipient import Recipient
 from gulbot.sending.dispatcher import DueGroup
@@ -44,13 +44,25 @@ def leading_recipient(group: DueGroup) -> Recipient | None:
     is `-offset_days`, so the soonest occasion is the largest offset (closest
     to zero), not the smallest.
     """
-    if not group.rows:
+    if not group.rows or leads_with_a_holiday(group):
         return None
     soonest = max(group.rows, key=lambda row: row.offset_days)
     occasion = next((o for o in group.occasions if o.id == soonest.occasion_id), None)
     if occasion is None:  # pragma: no cover - context is loaded together
         return None
     return next((r for r in group.recipients if r.id == occasion.recipient_id), None)
+
+
+def leads_with_a_holiday(group: DueGroup) -> bool:
+    """CP20: is the soonest line of this reminder a holiday campaign's? Then
+    the bouquet under it is offered for the holiday, and an order from it is
+    recorded as source = holiday. Ties go to the person: their date is the one
+    the customer saved."""
+    if not group.rows:
+        return False
+    soonest = max(row.offset_days for row in group.rows)
+    leading = [row for row in group.rows if row.offset_days == soonest]
+    return all(row.holiday is not None for row in leading)
 
 
 def caption_for(group: DueGroup, bouquet: Bouquet, *, render: Renderer) -> str:
@@ -89,13 +101,13 @@ async def attach_bouquet(
     # CP10. The whole point of showing a bouquet is that it can be ordered;
     # the button carries only the product id, so the order flow is reachable
     # the same way from a future browse screen.
-    return Attachment(
-        file_id=bouquet.telegram_file_id,
-        caption=caption,
+    if leads_with_a_holiday(group):
+        markup = holiday_order_button(group.lang, bouquet.product_id)
+    else:
         # The person the reminder is ABOUT, so the order flow can offer their
         # label as a one-tap answer to "who is this for" -- and so the order
         # finally records which recipient it came from.
-        reply_markup=order_button(
+        markup = order_button(
             group.lang, bouquet.product_id, recipient.id if recipient is not None else 0
-        ),
-    )
+        )
+    return Attachment(file_id=bouquet.telegram_file_id, caption=caption, reply_markup=markup)

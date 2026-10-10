@@ -41,6 +41,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.callbacks import (
+    HolidayOrderCB,
     OrderBackCB,
     OrderConfirmCB,
     OrderDateCB,
@@ -130,9 +131,50 @@ async def start_order(
     browse card or reminder card could start and complete an order for a bouquet
     the shop had withdrawn. Found in the pre-deployment audit.
     """
-    await callback.answer()
     data = OrderStartCB.unpack(callback.data or "")
-    product = await load_product(session, shop_id=customer.shop_id, product_id=data.product_id)
+    await _begin(
+        callback,
+        state,
+        session,
+        customer,
+        lang,
+        product_id=data.product_id,
+        recipient_hint=data.recipient_id,
+        from_holiday=False,
+    )
+
+
+async def start_holiday_order(
+    callback: CallbackQuery, state: FSMContext, session: AsyncSession, customer: Customer, lang: str
+) -> None:
+    """CP20: the bouquet under a holiday campaign's reminder. The same flow,
+    with no person to name, recorded as source = holiday."""
+    data = HolidayOrderCB.unpack(callback.data or "")
+    await _begin(
+        callback,
+        state,
+        session,
+        customer,
+        lang,
+        product_id=data.product_id,
+        recipient_hint=0,
+        from_holiday=True,
+    )
+
+
+async def _begin(
+    callback: CallbackQuery,
+    state: FSMContext,
+    session: AsyncSession,
+    customer: Customer,
+    lang: str,
+    *,
+    product_id: int,
+    recipient_hint: int,
+    from_holiday: bool,
+) -> None:
+    await callback.answer()
+    product = await load_product(session, shop_id=customer.shop_id, product_id=product_id)
     target = _target(callback)
     if product is None:
         await state.clear()
@@ -149,12 +191,12 @@ async def start_order(
     # sweep. Looked up through the customer-scoped `get_recipient`, and dropped
     # unless it is one of this customer's own, still-active people.
     recipient_id: int | None = None
-    if data.recipient_id:
+    if recipient_hint:
         owned = await get_recipient(
             session,
             shop_id=customer.shop_id,
             customer_id=customer.id,
-            recipient_id=data.recipient_id,
+            recipient_id=recipient_hint,
         )
         if owned is not None and owned.active:
             recipient_id = owned.id
@@ -175,7 +217,9 @@ async def start_order(
         # CP18, orders.source: a button that names a person is rendered only
         # under a reminder. Kept even if the person is gone by now -- the
         # reminder is still where the order came from.
-        from_reminder=bool(data.recipient_id),
+        from_reminder=bool(recipient_hint),
+        # CP20: the holiday campaign's own button.
+        from_holiday=from_holiday,
     )
     await _show_dates(target, state, session, customer.shop_id, lang)
 
@@ -539,6 +583,7 @@ async def submit_order(
         location_lat=data.get("location_lat"),
         location_lon=data.get("location_lon"),
         from_reminder=bool(data.get("from_reminder")),
+        from_holiday=bool(data.get("from_holiday")),
     )
     order, created = await create_order(
         session, shop_id=customer.shop_id, customer_id=customer.id, draft=draft
@@ -680,6 +725,10 @@ def build_orders_router() -> Router:
     # One handler for both, so the order flow has a single entry point.
     router.callback_query.register(
         start_order, StateFilter(None, Browse.viewing), OrderStartCB.filter()
+    )
+    # CP20: a holiday campaign's reminder. Same states, same flow.
+    router.callback_query.register(
+        start_holiday_order, StateFilter(None, Browse.viewing), HolidayOrderCB.filter()
     )
 
     # Back first, per state, so it is never shadowed by the step's own handler.

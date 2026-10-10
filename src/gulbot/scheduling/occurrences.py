@@ -110,6 +110,10 @@ class OccasionSpec:
     day: int
     label: str = ""
     year: int | None = None
+    #: CP20: explicit occurrence dates, for a date that moves every year (a
+    #: lunar holiday). When given, these ARE the occurrences and month/day are
+    #: ignored; a year with no entry has no occurrence at all.
+    dates: tuple[date, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -151,11 +155,16 @@ def _candidate_years(start: date, end: date) -> tuple[int, ...]:
 
 
 def _occurrences(occasions: Iterable[OccasionSpec], start: date, end: date) -> list[_Occurrence]:
-    found = [
-        _Occurrence(spec, year, occurrence_date_for(spec.month, spec.day, year))
-        for spec in occasions
-        for year in _candidate_years(start, end)
-    ]
+    years = _candidate_years(start, end)
+    found: list[_Occurrence] = []
+    for spec in occasions:
+        if spec.dates:
+            found.extend(_Occurrence(spec, on.year, on) for on in spec.dates if on.year in years)
+        else:
+            found.extend(
+                _Occurrence(spec, year, occurrence_date_for(spec.month, spec.day, year))
+                for year in years
+            )
     # Canonical order. Sorting by (date, occasion_id) is what makes clustering
     # independent of the order the caller supplied the occasions in.
     found.sort(key=lambda o: (o.occurrence_date, o.spec.occasion_id, o.occurrence_year))

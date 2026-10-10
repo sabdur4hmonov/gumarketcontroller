@@ -16,6 +16,7 @@
     <a href="/admin/alerts"{% if v.nav == 'alerts' %} aria-current="page"{% endif %}>Ogohlantirishlar</a>
     <a href="/admin/pages"{% if v.nav == 'pages' %} aria-current="page"{% endif %}>Sahifalar</a>
     <a href="/admin/audit"{% if v.nav == 'audit' %} aria-current="page"{% endif %}>Jurnal</a>
+    <a href="/admin/holidays"{% if v.nav == 'holidays' %} aria-current="page"{% endif %}>Bayramlar</a>
   </nav>
   <form method="post" action="/admin/logout" class="inline">
     <input type="hidden" name="csrf" value="{{ v.csrf }}">

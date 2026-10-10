@@ -46,6 +46,8 @@ class _Entry:
     kind_plain: str
     date: str
     days: int
+    #: CP20: a holiday campaign's line instead of a person's date.
+    holiday: bool = False
 
 
 def describe_when(days_ahead: int, lang: str, *, capitalised: bool = False) -> str:
@@ -68,10 +70,23 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
 
     entries: list[_Entry] = []
     for row in sorted(group.rows, key=lambda r: (r.occurrence_year, r.offset_days)):
-        occasion = by_occasion.get(row.occasion_id)
+        occurrence = send_day - timedelta(days=row.offset_days)
+        if row.holiday is not None:
+            entries.append(
+                _Entry(
+                    label=t(f"holiday.{row.holiday}", lang),
+                    is_custom=False,
+                    kind_possessive="",
+                    kind_plain="",
+                    date=format_date_long(occurrence.day, occurrence.month, None, lang),
+                    days=(occurrence - send_day).days,
+                    holiday=True,
+                )
+            )
+            continue
+        occasion = by_occasion.get(row.occasion_id) if row.occasion_id is not None else None
         if occasion is None:  # pragma: no cover - context is loaded together
             continue
-        occurrence = send_day - timedelta(days=row.offset_days)
         # The recipient is the source of truth for both; an occasion carries a
         # copy of each, used only if the recipient row is somehow absent.
         recipient = recipients.get(occasion.recipient_id)
@@ -100,7 +115,16 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
     heading = t("reminder.heading", lang)
     footer = t("reminder.footer", lang)
 
-    if len(unique) == 1:
+    if len(unique) == 1 and unique[0].holiday:
+        only = unique[0]
+        body = t(
+            "reminder.single_holiday",
+            lang,
+            when=describe_when(only.days, lang, capitalised=True),
+            holiday=only.label,
+            date=only.date,
+        )
+    elif len(unique) == 1:
         only = unique[0]
         # A preset takes the possessive sentence; a custom label takes the
         # appositive one, which needs no suffix and so is safe for any text.
@@ -115,6 +139,14 @@ def render_reminder(group: DueGroup, *, today: date | None = None) -> str:
     else:
         lines = [
             t(
+                "reminder.holiday_item",
+                lang,
+                holiday=entry.label,
+                date=entry.date,
+                when=describe_when(entry.days, lang),
+            )
+            if entry.holiday
+            else t(
                 "reminder.item",
                 lang,
                 label=entry.label,

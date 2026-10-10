@@ -147,6 +147,8 @@ class DueGroup:
     rows: tuple[ScheduledNotification, ...]
     occasions: tuple[Occasion, ...]
     recipients: tuple[Recipient, ...]
+    #: CP20: the holiday campaigns this message covers (rows with no occasion).
+    holidays: tuple[str, ...] = ()
 
     @property
     def transition_key(self) -> str:
@@ -166,6 +168,8 @@ def transition_key_for(row: ScheduledNotification) -> str:
     """
     if row.merge_key:
         return row.merge_key
+    if row.holiday is not None:
+        return f"hol:{row.holiday}:{row.occurrence_year}:{row.offset_days:+d}"
     return f"occ:{row.occasion_id}:{row.occurrence_year}:{row.offset_days:+d}"
 
 
@@ -255,7 +259,7 @@ async def select_due_rows(
 async def _load_group_context(
     session: AsyncSession, rows: Sequence[ScheduledNotification]
 ) -> tuple[dict[int, Occasion], dict[int, Recipient], dict[int, Customer]]:
-    occasion_ids = {row.occasion_id for row in rows}
+    occasion_ids = {row.occasion_id for row in rows if row.occasion_id is not None}
     customer_ids = {row.customer_id for row in rows}
     occasions = {
         o.id: o
@@ -306,6 +310,7 @@ def group_due_rows(
                     for o in bucket_occasions
                     if o.recipient_id in recipients
                 ),
+                holidays=tuple(sorted({row.holiday for row in bucket if row.holiday})),
             )
         )
     groups.sort(key=lambda g: (min(r.due_at_utc for r in g.rows), g.key))

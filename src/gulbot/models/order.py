@@ -122,6 +122,8 @@ class OrderSource(StrEnum):
     REMINDER = "reminder"
     PAGE = "page"
     DIRECT = "direct"
+    #: CP20: the bouquet button under a holiday campaign's reminder.
+    HOLIDAY = "holiday"
 
 
 ORDER_STATUSES_SQL = ", ".join(f"'{s.value}'" for s in OrderStatus)

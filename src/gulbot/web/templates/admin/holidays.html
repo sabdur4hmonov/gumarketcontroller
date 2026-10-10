@@ -1,0 +1,19 @@
+{% extends "admin/_layout.html" %}
+{% block main %}
+<h1>Oy taqvimidagi bayramlar</h1>
+{% if v.notice == 'ok' %}<p class="notice">Saqlandi va jurnalga yozildi.</p>
+{% elif v.notice %}<p class="notice">Rad etildi: {{ v.notice }}</p>{% endif %}
+<p class="muted">Ramazon va Qurbon hayitining sanasi har yili o‘zgaradi. Shu yil sanasi bu yerda kiritilmaguncha, uni tanlagan do‘konlar ham bu bayram uchun eslatma yubormaydi. Sana tuzatilsa, eski sana bo‘yicha rejalashtirilgan eslatmalar o‘chiriladi va keyingi rejalashtirishda yangisi tuziladi.</p>
+{% for h in v.lunar %}
+<section class="panel">
+  <h2>{{ v.names[h.key] }}</h2>
+  <p>{% for d in v.dates.get(h.key, []) %}<span class="badge">{{ d.strftime('%d.%m.%Y') }}</span> {% else %}<span class="muted">hali hech bir yil kiritilmagan</span>{% endfor %}</p>
+  <form method="post" action="/admin/holidays" class="action">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <input type="hidden" name="holiday" value="{{ h.key }}">
+    <label>Sana<input type="date" name="date" required></label>
+    <button type="submit" class="primary">Saqlash</button>
+  </form>
+</section>
+{% endfor %}
+{% endblock %}

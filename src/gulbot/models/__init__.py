@@ -4,6 +4,7 @@ from gulbot.models.admin import AdminAuditEntry, AdminLoginLink, AdminSession
 from gulbot.models.billing import SubscriptionPayment
 from gulbot.models.consent import ConsentEvent, ConsentSource, ConsentType
 from gulbot.models.customer import Customer, CustomerStatus
+from gulbot.models.holiday import HolidayDate, ShopHoliday
 from gulbot.models.message_log import MessageLog, MessageStatus
 from gulbot.models.notification import (
     NotificationChannel,
@@ -34,6 +35,8 @@ from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
 
 __all__ = [
+    "HolidayDate",
+    "ShopHoliday",
     "ShopAuditEntry",
     "ShopLoginLink",
     "ShopSession",

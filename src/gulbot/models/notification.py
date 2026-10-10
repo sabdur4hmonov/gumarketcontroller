@@ -35,6 +35,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gulbot.db.base import Base, IdMixin
+from gulbot.holidays import HOLIDAY_KEYS_SQL, KEY_LENGTH
 
 
 class NotificationState(StrEnum):
@@ -80,7 +81,10 @@ class ScheduledNotification(IdMixin, Base):
 
     shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
     customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
-    occasion_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    #: A personal date's reminder names its occasion; a holiday campaign's
+    #: names its holiday instead (CP20). Exactly one of the two, by CHECK.
+    occasion_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    holiday: Mapped[str | None] = mapped_column(String(KEY_LENGTH), nullable=True)
 
     occurrence_year: Mapped[int] = mapped_column(Integer, nullable=False)
     offset_days: Mapped[int] = mapped_column(SmallInteger, nullable=False)
@@ -103,6 +107,22 @@ class ScheduledNotification(IdMixin, Base):
     __table_args__ = (
         # LOAD-BEARING. The entire anti-duplicate design rests on this one line.
         UniqueConstraint("occasion_id", "occurrence_year", "offset_days", "channel"),
+        # ...and, for holiday rows (whose occasion_id is NULL, which a UNIQUE
+        # never compares), on this one: one per customer, holiday, year, offset.
+        Index(
+            "uq_scheduled_notifications_holiday",
+            "customer_id",
+            "holiday",
+            "occurrence_year",
+            "offset_days",
+            "channel",
+            unique=True,
+            postgresql_where=text("holiday IS NOT NULL"),
+        ),
+        CheckConstraint("(occasion_id IS NULL) <> (holiday IS NULL)", name="occasion_or_holiday"),
+        CheckConstraint(
+            f"holiday IS NULL OR holiday IN ({HOLIDAY_KEYS_SQL})", name="holiday_known"
+        ),
         ForeignKeyConstraint(
             ["occasion_id", "shop_id"],
             ["occasions.id", "occasions.shop_id"],
