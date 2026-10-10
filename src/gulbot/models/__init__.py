@@ -30,9 +30,13 @@ from gulbot.models.share_page import (
     SharePageWish,
 )
 from gulbot.models.shop import Shop
+from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
 
 __all__ = [
+    "ShopAuditEntry",
+    "ShopLoginLink",
+    "ShopSession",
     "AdminAuditEntry",
     "AdminLoginLink",
     "AdminSession",

@@ -29,6 +29,7 @@ from gulbot.bot.middlewares import (
     PrivateOnlyMiddleware,
     ShopPausedMiddleware,
 )
+from gulbot.bot.owner_panel import OwnerPanelMiddleware
 from gulbot.bot.routers import build_platform_routers, build_routers
 from gulbot.config import get_settings
 from gulbot.worker.debounce import schedule_album_finalize
@@ -144,6 +145,10 @@ def build_dispatcher(
         ChatGateMiddleware(shop_id=shop_id, session_factory=session_factory)
     )
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
+    # CP20: an owner's /panel is answered here and goes no further -- before
+    # the pause (a paused shop's owner still gets in) and before the customer
+    # middleware (an owner asking for the panel is not a customer).
+    dispatcher.update.outer_middleware(OwnerPanelMiddleware(shop_id))
     # CP18: before the customer is resolved, so a paused shop creates no rows.
     dispatcher.update.outer_middleware(ShopPausedMiddleware(shop_id))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))

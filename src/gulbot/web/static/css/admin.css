@@ -302,6 +302,11 @@ ol.log li {
   overflow-wrap: anywhere;
 }
 
+/* A card's plain text line (the shop panel, CP20): not a diff, so no monospace. */
+.log-body {
+  overflow-wrap: anywhere;
+}
+
 .log-reason {
   font-style: italic;
 }

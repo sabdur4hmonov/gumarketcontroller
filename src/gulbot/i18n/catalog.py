@@ -767,6 +767,25 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Панель управления работает только по HTTPS и ещё не настроена.",
         "en": "The admin panel works only over HTTPS and is not set up yet.",
     },
+    # CP20: the shop owner's own panel, asked for with /panel in the shop's bot.
+    "panel.link": {
+        "uz": (
+            "🔐 Do‘kon paneliga kirish havolasi ({minutes} daqiqa, bir martalik):\n{url}\n\n"
+            "Hech kimga yubormang."
+        ),
+        "ru": (
+            "🔐 Ссылка для входа в панель магазина ({minutes} мин, одноразовая):\n{url}\n\n"
+            "Никому её не пересылайте."
+        ),
+    },
+    "panel.link_refused": {
+        "uz": "Hozircha yangi havola berilmaydi — bir ozdan keyin qayta urinib ko‘ring.",
+        "ru": "Сейчас новую ссылку выдать нельзя — попробуйте чуть позже.",
+    },
+    "panel.unavailable": {
+        "uz": "Do‘kon paneli faqat HTTPS orqali ishlaydi va hali sozlanmagan.",
+        "ru": "Панель магазина работает только по HTTPS и ещё не настроена.",
+    },
     "premium.locked": {
         "uz": (
             "⭐ Bu — sovg‘a: ⭐ belgili dizaynlar, musiqa va suratlar shu do‘kondan "

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{% block title %}{% if v.shop_name is defined and v.shop_name %}{{ v.shop_name }} · {% endif %}{{ brand() }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ static('css/admin.css') }}">
+</head>
+<body class="admin">
+{% if v.owner is defined and v.owner %}
+<header class="bar">
+  <a class="brand" href="/shop">{{ v.shop_name }}</a>
+  <nav>
+    <a href="/shop"{% if v.nav == 'customers' %} aria-current="page"{% endif %}>Mijozlar</a>
+    <a href="/shop/dates"{% if v.nav == 'dates' %} aria-current="page"{% endif %}>Sanalar</a>
+    <a href="/shop/orders"{% if v.nav == 'orders' %} aria-current="page"{% endif %}>Buyurtmalar</a>
+  </nav>
+  <form method="post" action="/shop/logout" class="inline">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link">Chiqish</button>
+  </form>
+</header>
+{% endif %}
+<main class="wrap">
+{% block main %}{% endblock %}
+</main>
+</body>
+</html>

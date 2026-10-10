@@ -50,7 +50,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.services import share_page_photos, share_page_wishes, share_pages
-from gulbot.web import admin, render, strings
+from gulbot.web import admin, render, shop_panel, strings
 
 log = logging.getLogger("gulbot.web")
 
@@ -140,8 +140,10 @@ async def secure_headers(
 def _harden(request: web.Request, response: web.StreamResponse) -> None:
     settings = request.app[KEY_SETTINGS]
     headers = response.headers
-    # The admin panel posts forms to this origin; the public pages never do.
-    headers["Content-Security-Policy"] = admin.CSP if _is_admin(request) else CSP
+    # The admin panel and the shop owner's panel (CP20) post forms to this
+    # origin; the public pages never do.
+    panel = _is_admin(request) or shop_panel.is_panel_path(request.path)
+    headers["Content-Security-Policy"] = admin.CSP if panel else CSP
     headers["X-Content-Type-Options"] = "nosniff"
     headers["Referrer-Policy"] = "no-referrer"
     headers["X-Frame-Options"] = "DENY"
@@ -544,8 +546,12 @@ def build_app(
     wish_limit: int = 6,
     admin_login_limit: int = 10,
     admin_ids: Callable[[], frozenset[int]] | None = None,
+    shop_panel_on: bool = False,
 ) -> web.Application:
-    app = web.Application(middlewares=[secure_headers, admin.admin_gate], client_max_size=4096)
+    app = web.Application(
+        middlewares=[secure_headers, admin.admin_gate, shop_panel.shop_gate],
+        client_max_size=4096,
+    )
     app[KEY_SESSIONS] = session_factory
     app[KEY_NOTIFY] = notify
     app[KEY_SETTINGS] = WebSettings(public_base_url=public_base_url, trust_proxy=trust_proxy)
@@ -554,6 +560,7 @@ def build_app(
         "rsvp": RateLimiter(limit=rsvp_limit, window=60.0),
         "wish": RateLimiter(limit=wish_limit, window=60.0),
         "admin_login": RateLimiter(limit=admin_login_limit, window=60.0),
+        "shop_login": RateLimiter(limit=admin_login_limit, window=60.0),
     }
     app.router.add_get("/p/{token}", page)
     app.router.add_post("/p/{token}/yes", answer_yes)
@@ -574,4 +581,8 @@ def build_app(
     # list source is given -- the page server's entrypoint always gives one.
     if admin_ids is not None:
         admin.add_routes(app, session_factory=session_factory, admin_ids=admin_ids)
+    # CP20: the shop owner's panel. Off unless asked for, like /admin; the
+    # page server's entrypoint turns it on.
+    if shop_panel_on:
+        shop_panel.add_routes(app, session_factory=session_factory)
     return app

@@ -1,0 +1,29 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+{% set p = v.page %}
+<h1>Mijozlar <span class="muted">({{ p.total }})</span></h1>
+<p><a href="/shop/export/customers.csv">CSV yuklab olish</a></p>
+<section class="panel">
+  {% if p.rows %}
+  <ol class="log">
+    {% for c in p.rows %}
+    <li>
+      <div class="log-head">
+        <strong>{% if c.phone %}<a href="tel:{{ c.phone }}">{{ c.phone }}</a>{% else %}telefon yo‘q{% endif %}</strong>
+        <span class="muted">#{{ c.id }}</span>
+      </div>
+      <div class="log-body">{{ c.saved_dates }} ta saqlangan sana · {{ c.orders }} ta buyurtma</div>
+      <div class="muted log-meta">oxirgi buyurtma: {{ v.local(c.last_order_at) }} · qo‘shilgan: {{ v.local(c.since) }}</div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p>Hali mijozlar yo‘q.</p>{% endif %}
+  {% if p.pages > 1 %}
+  <p>
+    {% if p.page > 1 %}<a href="/shop?page={{ p.page - 1 }}">← oldingi</a>{% endif %}
+    <span class="muted">{{ p.page }} / {{ p.pages }}</span>
+    {% if p.page < p.pages %}<a href="/shop?page={{ p.page + 1 }}">keyingi →</a>{% endif %}
+  </p>
+  {% endif %}
+</section>
+{% endblock %}

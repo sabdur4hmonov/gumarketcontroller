@@ -1,0 +1,45 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+{% set f = v.flt %}
+<h1>Buyurtmalar</h1>
+<div class="tiles">
+  {% for key in ['reminder', 'holiday', 'direct', 'page'] %}
+  <div class="tile"><span class="n">{{ v.counts.get(key, 0) }}</span><span class="l">{{ v.sources[key] }}</span></div>
+  {% endfor %}
+</div>
+<section class="panel">
+  <form method="get" action="/shop/orders" class="action">
+    <label>Holat
+      <select name="status">
+        <option value="">hammasi</option>
+        {% for key, label in v.statuses.items() %}<option value="{{ key }}"{% if f.status == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Qayerdan
+      <select name="source">
+        <option value="">hammasi</option>
+        {% for key in ['reminder', 'holiday', 'direct', 'page'] %}<option value="{{ key }}"{% if f.source == key %} selected{% endif %}>{{ v.sources[key] }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Dan<input type="date" name="since" value="{{ f.since.isoformat() if f.since else '' }}"></label>
+    <label>Gacha<input type="date" name="until" value="{{ f.until.isoformat() if f.until else '' }}"></label>
+    <button type="submit" class="primary">Ko‘rsatish</button>
+  </form>
+  <p><a href="/shop/export/orders.csv{% if v.query %}?{{ v.query }}{% endif %}">Shu ro‘yxatni CSV yuklab olish</a></p>
+  {% if v.orders %}
+  <ol class="log">
+    {% for o in v.orders %}
+    <li>
+      <div class="log-head">
+        <strong>#{{ o.id }}</strong>
+        <span class="badge {{ {'confirmed': 'ok', 'delivered': 'ok', 'rejected': 'bad', 'placed': 'warn'}.get(o.status, '') }}">{{ v.statuses.get(o.status, o.status) }}</span>
+        <span>{{ v.sources.get(o.source, o.source or '—') }}</span>
+      </div>
+      <div class="log-body">{{ o.product }}{% if o.price_uzs %} · {{ '{:,}'.format(o.price_uzs).replace(',', ' ') }} so‘m{% endif %} · yetkazish {{ o.delivery_date.strftime('%d.%m.%Y') }}</div>
+      <div class="muted log-meta">{{ v.local(o.created_at) }} · {% if o.phone %}<a href="tel:{{ o.phone }}">{{ o.phone }}</a>{% else %}telefon yo‘q{% endif %}</div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p>Bu filtr bo‘yicha buyurtma yo‘q.</p>{% endif %}
+</section>
+{% endblock %}

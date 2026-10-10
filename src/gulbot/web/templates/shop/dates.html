@@ -1,0 +1,21 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+<h1>Yaqin {{ v.days }} kundagi sanalar <span class="muted">({{ v.dates|length }})</span></h1>
+<p class="muted">Mijozlaringiz saqlagan sanalar: kimga ekanini mijoz yozgan nom va sana. Qo‘ng‘iroq qilib, guldastani oldindan tayyorlashingiz mumkin.</p>
+<section class="panel">
+  {% if v.dates %}
+  <ol class="log">
+    {% for d in v.dates %}
+    <li>
+      <div class="log-head">
+        <strong>{{ d.on.strftime('%d.%m') }}</strong>
+        <span class="badge {{ 'warn' if d.days <= 1 else '' }}">{% if d.days == 0 %}bugun{% elif d.days == 1 %}ertaga{% else %}{{ d.days }} kundan keyin{% endif %}</span>
+      </div>
+      <div class="log-body">{{ d.label }} · {{ {'birthday': 'tug‘ilgan kun', 'anniversary': 'yubiley', 'other': 'boshqa'}.get(d.kind, d.kind) }}</div>
+      <div class="muted log-meta">{% if d.phone %}<a href="tel:{{ d.phone }}">{{ d.phone }}</a>{% else %}telefon yo‘q{% endif %} · mijoz #{{ d.customer_id }}</div>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p>Yaqin {{ v.days }} kunda saqlangan sana yo‘q.</p>{% endif %}
+</section>
+{% endblock %}
