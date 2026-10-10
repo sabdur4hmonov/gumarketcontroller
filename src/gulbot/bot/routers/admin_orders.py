@@ -34,7 +34,7 @@ from datetime import UTC, datetime, timedelta
 from aiogram import F, Router
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, User
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.callbacks import OrderAdminCB
@@ -52,6 +52,7 @@ from gulbot.services.order_status import (
     confirm_order,
     reject_order,
 )
+from gulbot.services.shop_staff import may_decide
 from gulbot.utils.render import escape, visible_length
 
 log = logging.getLogger("gulbot.bot.admin_orders")
@@ -73,6 +74,21 @@ async def _acting_in_the_shops_own_chat(
     card went, rather than a second list that could disagree with it.
     """
     return chat_id in await ping_targets(session, shop_id=shop_id)
+
+
+async def _may_decide(session: AsyncSession, *, shop_id: int, user: User | None) -> bool:
+    """CP19: is THIS PERSON allowed to decide, inside a chat that is allowed?
+
+    Asked of the tapper, never of anything the callback says, so a crafted
+    order id or a tap on someone else's prompt changes nothing. An empty staff
+    list answers yes for everyone, which is the rule every shop had before.
+    """
+    if user is None:  # pragma: no cover - Telegram always says who tapped
+        return False
+    allowed = await may_decide(session, shop_id=shop_id, telegram_id=user.id)
+    if not allowed:
+        log.info("shop %s: %s is not on the staff list", shop_id, user.id)
+    return allowed
 
 
 async def _stamp_card(
@@ -193,6 +209,9 @@ async def confirm(
         log.warning("confirm from chat %s, which is not shop %s", message.chat.id, shop_id)
         await callback.answer()
         return
+    if not await _may_decide(session, shop_id=shop_id, user=callback.from_user):
+        await callback.answer(t("group.not_staff", lang), show_alert=True)
+        return
 
     order_id = callback_data.order_id
     transition = await confirm_order(session, shop_id=shop_id, order_id=order_id)
@@ -251,6 +270,9 @@ async def ask_for_a_reason(
         log.warning("reject from chat %s, which is not shop %s", message.chat.id, shop_id)
         await callback.answer()
         return
+    if not await _may_decide(session, shop_id=shop_id, user=callback.from_user):
+        await callback.answer(t("group.not_staff", lang), show_alert=True)
+        return
 
     await callback.answer()
     await state.set_state(AdminOrder.entering_reject_reason)
@@ -292,6 +314,11 @@ async def enter_reason(
         return
 
     await state.clear()
+    # Asked again: the prompt was allowed, but the owner may have taken this
+    # person off the list since.
+    if not await _may_decide(session, shop_id=shop_id, user=message.from_user):
+        await message.answer(t("group.not_staff", lang))
+        return
     reason = (message.text or "").strip()[:REJECTION_REASON_MAX_LENGTH]
     transition = await reject_order(session, shop_id=shop_id, order_id=order_id, reason=reason)
     # Same phase boundary as `confirm`. One commit covers the status change AND
@@ -331,7 +358,9 @@ async def enter_reason(
 async def abort_rejection(
     callback: CallbackQuery,
     callback_data: OrderAdminCB,
+    session: AsyncSession,
     state: FSMContext,
+    shop_id: int,
     lang: str,
 ) -> None:
     """Withdraw a Reject that was never finalised.
@@ -339,6 +368,9 @@ async def abort_rejection(
     Nothing was written when the prompt went up, so nothing has to be undone:
     the order is still 'placed' and the card still carries both buttons.
     """
+    if not await _may_decide(session, shop_id=shop_id, user=callback.from_user):
+        await callback.answer(t("group.not_staff", lang), show_alert=True)
+        return
     await callback.answer()
     await state.clear()
     message = callback.message

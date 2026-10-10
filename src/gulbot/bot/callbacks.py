@@ -312,6 +312,27 @@ class OnboardBrandingCB(CallbackData, prefix="obrand"):
         return [cls(answer=a).pack() for a in ("yes", "no")]
 
 
+class StaffCB(CallbackData, prefix="staff"):
+    """The owner's staff list, on the PLATFORM bot (CP19).
+
+    SCOPED ID: `shop_id` and `person` are the callback's to choose, so every
+    action re-checks that the TAPPER owns `shop_id` (services/shop_staff.py)
+    before reading or changing anything. A crafted shop id finds nothing.
+    """
+
+    action: str
+    shop_id: int
+    person: int = 0
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [
+            cls(action="open", shop_id=1).pack(),
+            cls(action="add", shop_id=1).pack(),
+            cls(action="remove", shop_id=1, person=2).pack(),
+        ]
+
+
 # --- Ha/Yo'q pages and taklifnomas --------------------------------------------
 #
 # Every value below is re-checked by bot/routers/share_pages.py against the set
@@ -602,6 +623,7 @@ ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     WishCB,
     SealCB,
     MusicCB,
+    StaffCB,
 )
 
 

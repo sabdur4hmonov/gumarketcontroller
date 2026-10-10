@@ -322,6 +322,43 @@ async def test_the_alerts_name_what_is_wrong(world: dict[str, Any]) -> None:
     assert "send_due_reminders" in stalled, "a job that never ran was not reported"
 
 
+async def test_the_shop_screen_warns_while_anyone_in_the_group_can_decide(
+    world: dict[str, Any],
+) -> None:
+    """CP19: no staff list is today's rule, and the panel says what it means.
+    Once a list exists the screen shows how many -- never who."""
+    db = world["db"]
+    # Another shop's list says nothing about this one.
+    elsewhere = await db.scalar(
+        text(
+            "INSERT INTO shops (name, working_hours) VALUES ('Boshqa', CAST(:wh AS jsonb)) "
+            "RETURNING id"
+        ),
+        {"wh": json.dumps(DEFAULT_WORKING_HOURS)},
+    )
+    await db.execute(
+        text("INSERT INTO shop_staff (shop_id, telegram_id, added_by) VALUES (:s, 700801, 1)"),
+        {"s": elsewhere},
+    )
+    app = app_for(db)
+    path = f"/admin/shops/{world['shop']}"
+    async with TestClient(TestServer(app)) as client:
+        await logged_in(client, db)
+        before = await (await client.get(path)).text()
+        await db.execute(
+            text(
+                "INSERT INTO shop_staff (shop_id, telegram_id, label, added_by) "
+                "VALUES (:s, 700800, 'Gulnora Xodim', 700900)"
+            ),
+            {"s": world["shop"]},
+        )
+        after = await (await client.get(path)).text()
+    assert "ro‘yxat yo‘q" in before and "guruhdagi har kim" in before
+    assert "ro‘yxat yo‘q" not in after
+    assert "ro‘yxatdagi 1 xodim" in after
+    assert "Gulnora" not in after and "700800" not in after
+
+
 @pytest.mark.parametrize(
     ("phone", "shown"),
     [

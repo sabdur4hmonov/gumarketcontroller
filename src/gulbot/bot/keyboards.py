@@ -10,6 +10,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     KeyboardButton,
     KeyboardButtonRequestChat,
+    KeyboardButtonRequestUsers,
     ReplyKeyboardMarkup,
 )
 
@@ -39,6 +40,7 @@ from gulbot.bot.callbacks import (
     RecipientListCB,
     ReminderCountCB,
     SendTimeCB,
+    StaffCB,
     YearSkipCB,
     YesNoCB,
 )
@@ -725,6 +727,69 @@ def pick_group_keyboard(lang: str) -> ReplyKeyboardMarkup:
         text=t("btn.owner.pick_group", lang),
         request_chat=KeyboardButtonRequestChat(
             request_id=OWNER_GROUP_REQUEST_ID, chat_is_channel=False
+        ),
+    )
+    return ReplyKeyboardMarkup(
+        keyboard=[[picker], [KeyboardButton(text=t("btn.nav.cancel", lang))]],
+        resize_keyboard=True,
+    )
+
+
+# --- the staff list, on the PLATFORM bot (CP19) ---------------------------
+
+#: Telegram echoes this back in `users_shared.request_id`.
+STAFF_REQUEST_ID = 2
+
+
+def staff_shops_keyboard(lang: str, shops: Sequence[tuple[int, str]]) -> InlineKeyboardMarkup:
+    """An owner of several shops picks one first."""
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=name[:60], callback_data=StaffCB(action="open", shop_id=shop_id).pack()
+                )
+            ]
+            for shop_id, name in shops
+        ]
+    )
+
+
+def staff_list_keyboard(
+    lang: str, shop_id: int, members: Sequence[tuple[int, str]]
+) -> InlineKeyboardMarkup:
+    """One row per listed person to take them off, then Add."""
+    rows = [
+        [
+            InlineKeyboardButton(
+                text=t("ibtn.staff.remove", lang, name=name),
+                callback_data=StaffCB(action="remove", shop_id=shop_id, person=person).pack(),
+            )
+        ]
+        for person, name in members
+    ]
+    rows.append(
+        [
+            InlineKeyboardButton(
+                text=t("ibtn.staff.add", lang),
+                callback_data=StaffCB(action="add", shop_id=shop_id).pack(),
+            )
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def staff_pick_keyboard(lang: str) -> ReplyKeyboardMarkup:
+    """Telegram's own user picker: it hands back the person's id, which is
+    the one thing an owner cannot easily find out by themself."""
+    picker = KeyboardButton(
+        text=t("btn.staff.pick", lang),
+        request_users=KeyboardButtonRequestUsers(
+            request_id=STAFF_REQUEST_ID,
+            user_is_bot=False,
+            max_quantity=1,
+            request_name=True,
+            request_username=True,
         ),
     )
     return ReplyKeyboardMarkup(

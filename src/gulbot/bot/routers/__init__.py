@@ -89,16 +89,25 @@ def build_routers() -> tuple[Router, ...]:
 
 
 def build_platform_routers() -> tuple[Router, ...]:
-    """The PLATFORM bot's routers: shop-owner onboarding, and nothing else.
+    """The PLATFORM bot's routers: shop-owner onboarding, the owners' staff
+    lists, and the platform admin's login link.
 
     Never mixed into `build_routers()`: a shop's bot serves its customers, and
-    the platform bot serves people who are about to own a shop.
+    the platform bot serves people who own, or are about to own, a shop.
     """
     # /admin first: it matches only a listed admin, in any state, so an admin
     # mid-onboarding can still get a link; everyone else falls through.
     from gulbot.bot.routers.platform_admin import build_platform_admin_router
 
-    return (build_platform_admin_router(), build_shop_onboarding_router())
+    # CP19: /staff matches only an owner of a shop, in any state; its adding
+    # step steps aside for onboarding's Cancel and /start.
+    from gulbot.bot.routers.shop_staff import build_shop_staff_router
+
+    return (
+        build_platform_admin_router(),
+        build_shop_staff_router(),
+        build_shop_onboarding_router(),
+    )
 
 
 __all__ = ["build_platform_routers", "build_routers"]

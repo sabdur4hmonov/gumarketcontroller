@@ -334,6 +334,9 @@ class ShopDetail:
     gift_rule: bool
     reminder_offsets: list[int]
     created_at: datetime
+    #: CP19. 0 = no list: anyone in the shop's group may decide its orders,
+    #: and the shop screen says so.
+    staff_count: int = 0
 
 
 async def shop_detail(session: AsyncSession, *, shop_id: int, now: datetime) -> ShopDetail | None:
@@ -344,7 +347,9 @@ async def shop_detail(session: AsyncSession, *, shop_id: int, now: datetime) -> 
                 SELECT id, name, status, status_changed_at, lang, timezone, channel_id,
                        group_chat_id, cardinality(owner_telegram_ids) AS owners, owner_phone,
                        subscription_status, paid_until, gift_premium_after_order,
-                       reminder_offsets, created_at
+                       reminder_offsets, created_at,
+                       (SELECT count(*) FROM shop_staff st WHERE st.shop_id = shops.id)
+                           AS staff
                   FROM shops WHERE id = :s
                 """
             ),
@@ -369,6 +374,7 @@ async def shop_detail(session: AsyncSession, *, shop_id: int, now: datetime) -> 
         gift_rule=bool(r.gift_premium_after_order),
         reminder_offsets=list(r.reminder_offsets or []),
         created_at=r.created_at,
+        staff_count=int(r.staff or 0),
     )
 
 

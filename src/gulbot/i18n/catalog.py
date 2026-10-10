@@ -511,6 +511,12 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "uz": "Buyurtma topilmadi.",
         "ru": "Заказ не найден.",
     },
+    # CP19: the shop has a staff list and this person is not on it. Shown as
+    # an alert to them alone, so the group is not told who tried.
+    "group.not_staff": {
+        "uz": "Buyurtmani faqat do‘kon egasi tanlagan xodimlar tasdiqlay yoki rad eta oladi.",
+        "ru": "Подтверждать и отклонять заказы могут только сотрудники, выбранные владельцем.",
+    },
     # The honest half of a best-effort notification. The shop decided; the
     # customer could not be reached. Saying so in the group is what turns a
     # silent failure into a phone call someone actually makes.
@@ -1026,6 +1032,70 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
         "ru": "Чтобы подключить новый магазин, отправьте /start.",
     },
     "btn.owner.pick_group": {"uz": "👥 Guruhni tanlash", "ru": "👥 Выбрать группу"},
+    # --- the staff list, on the platform bot (CP19) -------------------------
+    "staff.pick_shop": {
+        "uz": "Qaysi do‘konning xodimlari?",
+        "ru": "Сотрудники какого магазина?",
+    },
+    "staff.title": {
+        "uz": "👥 <b>{shop}</b>: buyurtmani kim tasdiqlaydi",
+        "ru": "👥 <b>{shop}</b>: кто подтверждает заказы",
+    },
+    "staff.empty": {
+        "uz": (
+            "Ro‘yxat bo‘sh, shuning uchun guruhdagi har kim buyurtmani tasdiqlay yoki "
+            "rad eta oladi.\n\nBirinchi xodimni qo‘shsangiz, buni faqat ro‘yxatdagilar "
+            "va siz qila olasiz."
+        ),
+        "ru": (
+            "Список пуст, поэтому подтвердить или отклонить заказ может любой участник "
+            "группы.\n\nКогда вы добавите первого сотрудника, это смогут делать только "
+            "люди из списка и вы."
+        ),
+    },
+    "staff.listed": {
+        "uz": "Buyurtmani faqat shu ro‘yxatdagilar va do‘kon egalari tasdiqlay oladi:\n{names}",
+        "ru": "Подтверждать заказы могут только люди из этого списка и владельцы:\n{names}",
+    },
+    "staff.add_ask": {
+        "uz": ("Pastdagi tugma bilan xodimni tanlang yoki uning Telegram ID raqamini yuboring."),
+        "ru": "Выберите сотрудника кнопкой ниже или пришлите его Telegram ID.",
+    },
+    "staff.added": {
+        "uz": "✅ {name} ro‘yxatga qo‘shildi.",
+        "ru": "✅ {name} добавлен(а) в список.",
+    },
+    "staff.already": {
+        "uz": "{name} ro‘yxatda bor edi.",
+        "ru": "{name} уже в списке.",
+    },
+    "staff.removed": {
+        "uz": "{name} ro‘yxatdan olindi.",
+        "ru": "{name} удалён(а) из списка.",
+    },
+    "staff.not_listed": {
+        "uz": "Bu odam ro‘yxatda yo‘q edi.",
+        "ru": "Этого человека не было в списке.",
+    },
+    "staff.refused.not_owner": {
+        "uz": "Bu do‘kon sizniki emas.",
+        "ru": "Это не ваш магазин.",
+    },
+    "staff.refused.bad_id": {
+        "uz": "Bu Telegram ID emas. Raqamni tekshirib, qayta yuboring.",
+        "ru": "Это не Telegram ID. Проверьте число и пришлите ещё раз.",
+    },
+    "staff.refused.is_owner": {
+        "uz": "Bu do‘kon egasi: egalar buyurtmani doim tasdiqlay oladi.",
+        "ru": "Это владелец магазина: владельцы всегда могут подтверждать заказы.",
+    },
+    "staff.refused.full": {
+        "uz": "Ro‘yxatda {max} kishidan ko‘p bo‘lmaydi. Avval kimnidir olib tashlang.",
+        "ru": "В списке не больше {max} человек. Сначала удалите кого-нибудь.",
+    },
+    "btn.staff.pick": {"uz": "👤 Xodimni tanlash", "ru": "👤 Выбрать сотрудника"},
+    "ibtn.staff.add": {"uz": "➕ Xodim qo‘shish", "ru": "➕ Добавить сотрудника"},
+    "ibtn.staff.remove": {"uz": "✖️ {name}", "ru": "✖️ {name}"},
     # --- the date plan (CP17) ----------------------------------------------
     "pages.ask_plan": {
         "uz": (

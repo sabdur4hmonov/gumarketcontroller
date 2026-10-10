@@ -30,6 +30,7 @@ from gulbot.models.share_page import (
     SharePageWish,
 )
 from gulbot.models.shop import Shop
+from gulbot.models.staff import ShopStaff
 
 __all__ = [
     "AdminAuditEntry",
@@ -67,5 +68,6 @@ __all__ = [
     "SharePageRsvp",
     "Shop",
     "ShopHealthSnapshot",
+    "ShopStaff",
     "SubscriptionPayment",
 ]

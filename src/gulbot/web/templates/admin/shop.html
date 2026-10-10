@@ -19,6 +19,7 @@
     <dt>Oxirgi post</dt><dd>{% if row and row.last_indexed_at %}{{ row.last_indexed_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</dd>
     {% if row and row.health_reason %}<dt>Sabab</dt><dd>{{ row.health_reason }}</dd>{% endif %}
     <dt>Egalari</dt><dd>{{ d.owner_count }} · tel. {{ d.owner_phone_masked }}</dd>
+    <dt>Kim tasdiqlaydi</dt><dd>{% if d.staff_count %}ro‘yxatdagi {{ d.staff_count }} xodim va egalari{% else %}<span class="badge warn">ro‘yxat yo‘q</span> guruhdagi har kim buyurtmani tasdiqlay yoki rad eta oladi (ega /staff bilan ro‘yxat tuzadi){% endif %}</dd>
     <dt>Til / vaqt zonasi</dt><dd>{{ d.lang }} · {{ d.timezone }}</dd>
     <dt>Eslatma kunlari</dt><dd>{{ d.reminder_offsets|join(', ') }}</dd>
     <dt>Sovg‘a qoidasi</dt><dd>{{ 'yoqilgan' if d.gift_rule else 'o‘chirilgan' }}</dd>

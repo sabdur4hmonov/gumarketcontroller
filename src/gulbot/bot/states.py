@@ -141,6 +141,15 @@ class ShopOnboarding(StatesGroup):
     sharing_phone = State()
 
 
+class StaffAdmin(StatesGroup):
+    """A shop OWNER putting someone on the staff list, on the PLATFORM bot
+    (CP19). One step: Telegram's user picker, or a typed Telegram id. Which
+    shop is in the state data, and is checked against the owner again when
+    the answer arrives."""
+
+    adding = State()
+
+
 class ApologyPage(StatesGroup):
     """Making an Uzrnoma (CP17). One text step: the letter."""
 
