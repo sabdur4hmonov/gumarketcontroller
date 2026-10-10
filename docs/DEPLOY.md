@@ -91,6 +91,8 @@ Fill it in. Every variable is commented there. The essentials:
   trailing slash). Until it is https, the bots answer the pages menu with
   "coming soon" and the platform bot sends no admin link -- deliberately.
 - `WEB_TRUST_PROXY=true`, only because Caddy is in front.
+- `BRAND_NAME`: the product's name in every bot text, the panel and the
+  pages. Leave it unset for the working name until the brand is decided.
 
 ## 5. Postgres and Redis
 
@@ -148,7 +150,7 @@ sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
   .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
 ```
 
-`current` and `heads` must print the same revision (`d5e841dbb2be` at CP18).
+`current` and `heads` must print the same revision (`0956590ccce1` at CP19).
 **A report of "applied" is not evidence** -- on this project it has been wrong
 twice; read it here. Every migration is additive. Four DOWNGRADES change data,
 because the old CHECKs cannot hold it -- back up before ever going below them:
@@ -158,7 +160,7 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `360f0694be06` | English-speaking customers become Uzbek |
 | `c5a8e2d61f37` | Uzrnoma pages are deleted |
 | `b996b9032869` | purged photo rows are deleted |
-| `4b6e1d9c2a07` and the CP18 revisions | their columns and tables are dropped |
+| `4b6e1d9c2a07`, the CP18 revisions and `0956590ccce1` | their columns and tables are dropped (CP19: every shop's staff list) |
 
 ## 8. The processes
 
@@ -274,8 +276,9 @@ checklist gives a recommendation for each.
 - **The health check shares the worker's queue** with the ticks. Bounded by
   the breakers and the time limits; a dedicated queue is real infrastructure
   for a benefit that bites only at volume.
-- **Order-card permission is by chat, not by person**: anyone in a shop's
-  group can confirm or reject.
+- **Order-card permission**: by chat until a shop's owner makes a staff list
+  with `/staff` on the platform bot (CP19). The admin panel's shop screen
+  warns for every shop still without one.
 - **One late duplicate reminder** is possible after a database loss (CP6's
   deliberate trade).
 - **One long-poll per shop** in one process: right for tens of shops; at the

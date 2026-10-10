@@ -30,6 +30,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP16 | Ha/Yo'q pages and taklifnomas: made in every shop's bot, served as unguessable links | code done, live-proven locally; **going live blocked**: needs a domain and HTTPS (`docs/DEPLOY.md`, "Public pages") |
 | CP17 | Date plans, Uzrnoma, editable invitations, photos, sections, wishes, seal, music, ten more designs | done, one commit per stage, live-proven locally; going live needs the same domain + HTTPS as CP16 |
 | CP18 | Platform admin panel (/admin), pause, subscriptions, order source, gift unlock, moderation, photo purge, health + heartbeats | done, one commit per stage; live-proven locally except the platform bot's Telegram delivery (needs PLATFORM_BOT_TOKEN) |
+| CP19 | Brand name in one setting, staff allowlist for order decisions, dev scripts under the gate, the two flaky tests | done, one commit per item; code-only (nothing here needed a live bot) |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -1096,6 +1097,72 @@ checked with `alembic current`.
 `PLATFORM_BOT_TOKEN` and `PLATFORM_ADMIN_TELEGRAM_IDS`, send /admin, and
 confirm the link arrives in the DM. The handler path is the one above.
 
+## What CP19 guarantees
+
+Code-only hardening; the owner could not test anything by hand, so every
+claim below is a test, a measurement or a mutation.
+
+**The product's name is one setting.** `Settings.brand_name` (`BRAND_NAME`,
+default the working name "Gulbot", undecided) is the only place it is
+written. Bot texts say `{brand}` and `t()` fills it; the admin templates call
+`brand()`; the gone page, the calendar file's PRODID and the dev seed ask
+`gulbot.brand.brand_name()`. `tests/test_brand.py` fails the build on the
+name typed anywhere a person reads it: Python literals (not docstrings), every
+catalog value, every template, the pages' JS and CSS. Lowercase `gulbot` in
+code is the package, logger, task and Redis-key namespace and is exempt; so
+are the music license records (provenance). The setting refuses `< > & { }`,
+empty, and over 40 characters.
+
+**A staff list decides who may confirm and reject orders** (AUDIT.md
+section 3, A, closed). `shop_staff`, managed by the owner with `/staff` on the
+platform bot. No list = anyone in the shop's group, exactly as before; one
+person on it = only the list and the owners. Checked on the tapper for
+confirm, reject, abort and the typed reason, after the chat check.
+
+**The dev scripts are under the gate.** All seven already named their shop
+and used per-shop bots (CP-MT2, L1); none was tied to the single bot. They
+were outside ruff and mypy and had drifted (16 mypy errors, one real dormant
+bug: a sync lambda where an async scheduler is awaited). Now linted and
+typechecked with everything else.
+
+**The lock-hold test asks the lock, not a stopwatch; the race tests say why
+they fail.** See CONTRIBUTING, "A stopwatch in a test measures the machine",
+and the test_concurrency section's CP19 entry.
+
+### Decisions made during CP19, each with its reason
+
+- **An empty staff list keeps today's rule**, rather than "owners only". The
+  brief asked that nothing break today; every existing shop's group is its
+  staff. The admin panel's shop screen warns while a shop has no list.
+- **Owners always decide and cannot be listed.** An owner who lists a clerk
+  must not lock themself out, and a listed owner would be a second source of
+  truth about who owns the shop.
+- **The list is managed on the platform bot, not in the shop's group.** The
+  group is exactly where the people the list is meant to exclude can read
+  everything; the platform bot already knows owners.
+- **Telegram's user picker first, a typed id as the fallback.** The picker
+  hands back the id an owner cannot easily find. A label is kept for the
+  owner's own list only; the admin panel shows a count, never who.
+- **At most 20 people per shop.** A list is a shop's handful of people, not a
+  second group; the cap also bounds the owner's screen.
+- **`{brand}` is filled by plain replacement, not `format`,** so a catalog
+  string with literal braces and no arguments still comes back unchanged.
+  Uzbek suffixes attach directly ("{brand}ga"): right for a name ending as
+  the working name does; a name ending in k or q would want "-ka"/"-qa".
+- **The calendar UID keeps "@gulbot".** It is an identifier a phone already
+  holds; changing it with the brand would make old events unmatchable.
+- **The stale `origin/mt2-audit` branch was deleted** after checking every
+  commit is on main (eight by patch id, H5 as `aa9d2da` after a rebase, its
+  test file identical).
+
+**Mutation totals, all caught on assertions:**
+
+| Item | Mutants |
+|---|---|
+| 1 brand | 13/13 |
+| 2 staff allowlist | 21/21 |
+| 4 lock hold | 2/2 |
+
 ## Briefs already agreed for future checkpoints
 
 **CP9** attaches bouquet suggestions to the reminder by widening
@@ -1167,8 +1234,10 @@ operator yet. Deferred with CP14's monitoring work.
 owner-facing UI. A small deferred follow-up, not a blocker: the values have
 sensible defaults and no shop has asked to change them yet.
 
-**Per-person permission on the order card.** Deliberately not built;
-recorded so it is a decision rather than a rediscovery. Today **any member of
+**Per-person permission on the order card.** BUILT AT CP19 as the staff
+list (see "What CP19 guarantees"); kept here as the record of why.
+Deliberately not built before; recorded so it was a decision rather than a
+rediscovery. Today **any member of
 the shop's group can confirm or reject any order.** Permission is by CHAT, not
 by person: `routers/admin_orders.py` checks that a tap came from one of the
 chats `ping_targets` sent the card to, and never asks who tapped. That is

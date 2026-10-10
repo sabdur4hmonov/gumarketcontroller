@@ -477,6 +477,48 @@ does not claim it. The 2026-09-09 one was the harness. The merged-group test
 now asserts something structurally guaranteed rather than probabilistically
 likely.
 
+### Since the fix, 2026-10-04 to 2026-10-10 (CP19)
+
+The merged-group invariant has not failed since. Every failure in this file
+after F4 was the harness, and readable as such:
+
+| When | Test | What it was |
+|---|---|---|
+| 2026-10-04, two gates | the loser test, disjoint work | a worker SUBPROCESS died with `MemoryError` at import: mutation runs were sharing the RAM. "One heavy job at a time" is the fix, and it is a working rule, not code |
+| 2026-10-04 | disjoint work | "got 0" from two workers that both exited cleanly. Not explained: the worker printed only `sent`, `skipped_claimed` and `groups` |
+
+CP19 made the last one impossible to repeat blind: `worker_race.py` prints
+the WHOLE tick result (groups, sent, skipped, expired, failed, deferred,
+handed back, errors), and both race tests put it in their failure message
+with the database snapshot.
+
+Evidence under load, CP19: `test_concurrency.py` ten times in a row beside 16
+CPU-spinning processes on the 8-core dev laptop -- 40/40 passed -- plus every
+full gate since.
+
+## A stopwatch in a test measures the machine
+
+Found at CP19 in `test_audit_lock_hold.py`, which failed once in a loaded full
+gate (2026-10-09). It timed a competing claim against a 1-second bound while
+the fake Telegram slept 3 seconds. Measured beside 16 spinning processes, the
+part of the timed span that was NOT the lock -- a fresh engine and a connection
+through Docker's port proxy -- took median 0.80 s, max 3.74 s (idle: 0.06 s),
+and even an uncontended advisory lock took up to 0.4 s to grant.
+
+It was wrong in both directions. It could fail with no defect, as above. And it
+could pass WITH the defect: a competitor delayed past 3 seconds would find the
+call over and the lock free.
+
+**The rule:** a test about blocking asks the blocking primitive, not a clock.
+Hold the slow thing open until the test releases it (an `asyncio.Event`, not a
+sleep), set up every connection before it starts, and take the lock under
+`lock_timeout` -- Postgres counts only time spent waiting for a lock, so a free
+lock is granted whatever the load and a held one is refused. Then mutate the
+code back to the defect and watch it fail. (Its first mutation run hung
+instead: an assertion skipped awaiting the background submit, whose open
+transaction then blocked the fixture's teardown. Background work started by a
+test is awaited in a `finally`.)
+
 ## Time-dependent tests: never capture `now` before you insert the row
 
 Found 2026-09-07, after a full-suite run on a loaded machine took 1818s instead
