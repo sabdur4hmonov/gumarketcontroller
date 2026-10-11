@@ -1,0 +1,13 @@
+# Nightly at 03:10 Tashkent: after the 03:00 materializer, before the 03:30
+# page scrub, and long before the 09:00 reminder window opens.
+[Unit]
+Description=Gulbot: nightly database backup
+
+[Timer]
+OnCalendar=*-*-* 03:10:00 Asia/Tashkent
+# A server that was off at 03:10 backs up when it comes back.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

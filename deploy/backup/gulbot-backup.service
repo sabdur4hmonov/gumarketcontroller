@@ -1,0 +1,14 @@
+# The nightly database backup (docs/DEPLOY.md, step 13). Run by
+# gulbot-backup.timer; as root, because it talks to Docker.
+[Unit]
+Description=Gulbot: back up the database (pg_dump + row counts, 14 days kept)
+# Wants, not Requires: if Docker is down the script fails loudly on its own,
+# and the unit stays loadable wherever docker.service is not a unit.
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/gulbot/deploy/backup/gulbot-backup.sh
+Nice=10
+IOSchedulingClass=idle

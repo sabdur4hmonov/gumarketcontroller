@@ -82,7 +82,8 @@ Fill it in. Every variable is commented there. The essentials:
 - `ENVIRONMENT=production` -- arms the guard (step 6).
 - `BOT_TOKEN`, `PLATFORM_BOT_TOKEN`, `PLATFORM_ADMIN_TELEGRAM_IDS`.
 - `SHOP_TOKEN_ENCRYPTION_KEY`: generate once with the command in the file.
-  **Back it up with the database password, never inside the database**: lose
+  **Back it up OUTSIDE the server** (password manager), with the database
+  password, never inside the database and never only on this server: lose
   it and every stored shop token is unreadable. To rotate, set
   `<new>,<old>` (the first encrypts, all decrypt) and drop the old one only
   once every token has been re-stored.
@@ -261,14 +262,53 @@ itself). See the owner's checklist for the choice of service.
 
 ## 13. Backups
 
-- Nightly, as root: `docker exec gulbot-postgres pg_dump -U <user> -Fc <db> >
-  /var/backups/gulbot/gulbot-$(date +%F).dump`, keep 14 days, and copy them
-  OFF the server. Photos are in the database (CP17), so the dump grows with
-  them; the nightly purge drops expired pages' photo bytes.
-- The env file and above all `SHOP_TOKEN_ENCRYPTION_KEY`: in a password
-  manager, never only on the server.
-- Once, before going live: restore a dump into a scratch database and run
-  `alembic current` against it. A backup never restored is a hope.
+**First, before anything else: `SHOP_TOKEN_ENCRYPTION_KEY` is backed up
+OUTSIDE the server** -- in your password manager, with the rest of the env
+file. Never only on the server, never next to the dumps, never in the
+database. A dump without its key restores every shop with an unreadable bot
+token; a server lost with the only copy of the key loses every shop's bot.
+
+The nightly backup (CP21; `deploy/backup/`):
+
+```
+cp /opt/gulbot/deploy/backup/gulbot-backup.service \
+   /opt/gulbot/deploy/backup/gulbot-backup.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now gulbot-backup.timer
+systemctl list-timers gulbot-backup.timer     # next run: 03:10 Tashkent
+systemctl start gulbot-backup.service         # one now, to see it work
+journalctl -u gulbot-backup -n 5              # "backup: /var/backups/gulbot/..."
+```
+
+Each run writes `/var/backups/gulbot/gulbot-<UTC stamp>.dump` (pg_dump custom
+format) and `.counts` (every table's row count), both root-only, and deletes
+those older than 14 days (`KEEP_DAYS`). The counts are taken in the very
+snapshot that was dumped, so they are exact on a busy database: that is what
+makes the restore drill a real comparison. 03:10 is after the 03:00
+materializer and before the 03:30 page scrub. Photos are in the database
+(CP17), so the dump grows with them; the nightly purge drops expired pages'
+photo bytes.
+
+**Copy the dumps OFF the server** (rsync/rclone/scp to another machine,
+nightly). A backup on the disk it protects is not a backup. That copy is
+yours to set up; the script deliberately holds no credentials for it.
+
+**The restore drill, once before going live and after any Postgres upgrade:**
+
+```
+/opt/gulbot/deploy/backup/restore-drill.sh /var/backups/gulbot/gulbot-<stamp>.dump
+```
+
+It creates a throwaway database beside the live one, restores into it,
+compares every table's row count with the backup's own counts, prints the
+restored and live alembic revisions, and drops the throwaway database. It
+exits 0 and prints `RESTORE DRILL PASS` only when every table matches. A
+backup never restored is a hope.
+
+**Restoring for real** (the drill rehearses this): stop the four units,
+`docker exec -i gulbot-postgres pg_restore --clean --if-exists --no-owner
+-U <user> -d <db> < <dump>`, put the env file back from the password manager
+(the same `SHOP_TOKEN_ENCRYPTION_KEY`), run step 7, start the units.
 
 ## 14. Upgrading to a new version
 
