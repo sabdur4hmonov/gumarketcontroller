@@ -20,6 +20,7 @@ DEFAULT_LANGUAGE: Final = "uz"
 BRAND: Final = "{brand}"
 
 CATALOG: Final[dict[str, dict[str, str]]] = {
+    "btn.menu.announcement": {"uz": "📢 E'lon joylash", "ru": "📢 Разместить объявление"},
     "start.choose_language": {
         "uz": "🌸 Assalomu alaykum! {brand}ga xush kelibsiz.\nQaysi tilda gaplashamiz?",
         "ru": "Здравствуйте! Выберите язык:",
@@ -1892,6 +1893,7 @@ _EN: Final[dict[str, str]] = {
     "common.unknown": "Please choose one of the buttons below 🙂",
     "btn.menu.settings": "⚙️ Settings",
     "btn.menu.help": "ℹ️ Help",
+    "btn.menu.announcement": "📢 Publish announcement",
     "btn.menu.browse": "💐 Order flowers",
     "btn.menu.occasions": "📅 My dates",
     "btn.menu.pages": "💌 Invitations · Yes/No",

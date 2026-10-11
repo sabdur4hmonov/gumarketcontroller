@@ -208,6 +208,13 @@ class InvitePage(StatesGroup):
     entering_seal = State()
 
 
+class Announcement(StatesGroup):
+    photos = State()
+    review = State()
+    editing = State()
+    styling = State()
+
+
 class EditPage(StatesGroup):
     """Changing a page after it is made (CP17). One text step, shared by every
     text field; the rest are pickers, a location share, or a toggle that saves

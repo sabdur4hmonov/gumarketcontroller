@@ -603,7 +603,36 @@ class EditValueCB(CallbackData, prefix="pgedv"):
         return [cls(action=a).pack() for a in ("reset", "clear", "back")]
 
 
+class AnnouncementCB(CallbackData, prefix="ann"):
+    action: str
+    draft: int
+    revision: int
+    value: str = ""
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        pairs = [
+            ("edit", "price"),
+            ("confirm", ""),
+            ("review", ""),
+            ("captions", ""),
+            ("images", ""),
+            ("caption", "classic"),
+            ("image", "none"),
+            ("favourite", ""),
+            ("preview", ""),
+            ("publish", ""),
+            ("styles", ""),
+            ("flower", "atirgul"),
+            ("colour", "qizil"),
+        ]
+        return [
+            cls(action=action, draft=1, revision=1, value=value).pack() for action, value in pairs
+        ]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
+    AnnouncementCB,
     OccasionTypeCB,
     MonthCB,
     DayCB,

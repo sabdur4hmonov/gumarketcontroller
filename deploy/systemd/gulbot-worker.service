@@ -10,7 +10,7 @@ User=gulbot
 Group=gulbot
 WorkingDirectory=/opt/gulbot
 EnvironmentFile=/etc/gulbot/gulbot.env
-ExecStart=/opt/gulbot/.venv/bin/celery -A gulbot.worker.app worker --pool=prefork --concurrency=2 --loglevel=info
+ExecStart=/opt/gulbot/.venv/bin/celery -A gulbot.worker.app worker -Q celery --pool=prefork --concurrency=2 --loglevel=info
 Restart=always
 RestartSec=5
 # Give a running tick time to finish its soft limit before it is killed.

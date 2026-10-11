@@ -1,5 +1,19 @@
 > Ported after CP20/CP21 were verified in origin/main at 85bfebe. This is the preparation design; implementation evidence and changes are tracked in CHECKPOINTS.md.
 
+> Integration status: the historical proposals below are retained for review.
+> CP22.2 implements the flow in `gulbot.announcements`, the announcement router,
+> service and dedicated worker. The actual benchmark is
+> `python scripts/benchmark_stt.py --manifest docs/cp22-samples.json --engine faster-whisper --model <local-path> --output <report.json>`.
+> The measured editor-pro latency justifies initial soft/hard limits of
+> **360/420 seconds**, replacing the preparation's provisional 150/180.
+> A separate guardian covers hard-kill audio deletion. Spelling uses the
+> unmodified GPL-3.0 roots with conservative unique one-edit corrections shown
+> in the mandatory review; no affix expansion or invented frequencies. URLs,
+> handles, domain and numeral spans are protected. Negated flower/colour
+> mentions become review warnings. Caption headers keep the CP8 product name
+> first and CP7 price second, before all owner strings. See CHECKPOINTS and
+> DEPLOY section 17 for current evidence, resource budgets and pending live work.
+
 # CP22 preparation: announcement authoring in a shop bot
 
 Prepared 2026-10-11 (Asia/Tashkent). Scope: design and standalone text-processing code only. CP20/CP21 are being implemented in another session. Start repository integration only after the user reports that CP21 is pushed to main, then verify the commit and re-read the resulting contracts. All artifacts here belong in `D:\Coding projects\gulbot-cp22-prep`; neither project is modified.

@@ -32,6 +32,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP18 | Platform admin panel (/admin), pause, subscriptions, order source, gift unlock, moderation, photo purge, health + heartbeats | done, one commit per stage; live-proven locally except the platform bot's Telegram delivery (needs PLATFORM_BOT_TOKEN) |
 | CP19 | Brand name in one setting, staff allowlist for order decisions, dev scripts under the gate, the two flaky tests | done, one commit per item; code-only (nothing here needed a live bot) |
 | CP20 | The shop owner's own panel (/shop), holiday campaigns | done, one commit per feature; code-only, screens shot at 360 px on a throwaway database |
+| CP22 | Staff-only photo/voice/text announcements, correction, confirmation, 20 captions and 10 overlays, channel publication and catalog indexing | code and text live proof done; real STT benchmark awaits the owner's ten recordings |
 
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
@@ -1537,7 +1538,7 @@ identical across 09:00 / 10:00 / 13:00 / 20:00, pinned by
   provisional; nothing is lost, but nothing is searchable either.
 
 
-## CP22 — announcement authoring (in progress)
+## CP22 — announcement authoring (code and text live proof complete)
 
 ### CP22.1 — preparation port
 
@@ -1561,3 +1562,156 @@ was 0.89 GiB; no speech model was downloaded or loaded. Ported code separately
 retained **8/8 assertion-only mutation catches, zero errors**, and 10/10
 text prompt checks (`cp22-parser-proof.json`). A configured-secret scan passed
 on every phase file before commit/push.
+
+### CP22.2 — local authoring, review and publication
+
+Implementation includes 1–10 photos/albums, Uzbek voice or text, corrected
+field review and edits, explicit confirmation, 20 Latin-Uzbek captions,
+10 original Pillow overlays plus no overlay, shop favourites, an exact
+Telegram preview, channel publication and link. Picker labels are Uzbek;
+internal style IDs stay stable. All captions use a controlled CP8 name,
+labelled CP7 integer price before owner strings, and canonical hashtags.
+All 20 styles are tested with three prices and hostile worst-case owner text,
+HTML escaping and the stricter 1024 UTF-16-unit budget including entities.
+
+Announcement publishing requires an explicit owner or ShopStaff membership
+in an active shop. CP19's empty-list permission for order cards cannot authorize
+publishing to a channel; that legacy behaviour is intentionally not reused.
+Every callback/service/worker result rechecks actor, shop and draft revision.
+Customer/foreign-owner callbacks and a shared owner's draft from another shop
+are refused for every action. The two new tables have root shop FKs; favourites
+and alias reads are shop scoped. Migration `9c22e4d87b10` is additive and has a
+fresh named-revision downgrade/upgrade test, in addition to existing full-chain
+round-trip and model-drift checks.
+
+Every edit clears confirmation/preview. A text replacement supersedes queued
+speech. The publication claim is committed BEFORE Telegram I/O and returned
+receipts BEFORE indexing. Successful retries index without reposting; an
+ambiguous timeout/crash requires inspecting the channel, never a blind resend.
+The final send uses the exact preview caption and Telegram file IDs, including
+the uploaded first-photo overlay. Indexing calls the SAME CP8 ingest/finalize
+functions, always, so it does not rely on Telegram delivering an own-post
+update. Real-dispatcher tests feed later own-post updates too and prove one
+finalized catalog row for 1-, 2- and 10-photo posts.
+
+STT uses local-only paths, CPU/int8/Uzbek, two threads and one resident model.
+Missing paths fail to text entry; no runtime model download. The dedicated
+`stt` queue/unit is concurrency 1, prefetch 1, soft/hard 360/420 seconds; the
+normal worker consumes only `celery`. The longer bounds replace the prep
+proposal because the recorded Uzbek fine-tune clip already took about twice
+audio duration. Task-owned DB/Bot clients close per run; only synchronous
+weights are cached. Audio is erased before text persistence/notification;
+an independent private-directory guardian handles hard-killed workers. No
+audio or voice file IDs are stored in the new tables. Optional Gemini is off
+and requires a flag, key and explicit reviewed model, with changing free-tier
+terms documented. A timeout error callback runs on the normal queue; a queued
+job that expires before execution may need the owner's always-available text
+replacement rather than an automatic timeout edit.
+
+The spelling data is unmodified u2b3k/uz-hunspell GPL-3.0 at
+`a27cccf4f7dd06734b0bc66d56ce759f9fc28b61`; both `.dic/.aff`, licence/readme,
+hashes and source link are committed. The original corrector uses unique
+one-edit root suggestions, preserves punctuation/order and protects domain,
+number, URL/email/handle/tag spans and capitalized proper names. Corrections
+are shown beside raw text before confirmation. Missing dictionary data leaves
+text/domain extraction usable. Common negated colour/flower mentions are
+excluded with a warning, not silently chosen. Noto Sans Regular/Semibold and
+OFL licence are pinned to `ffebf8c1ee449e544955a7e813c54f9b73848eac`; glyph tests
+cover Uzbek Latin/Cyrillic. No editor-pro source, media or model was copied.
+
+STT comparison and provisional choice (no new speech run on this laptop):
+
+| Candidate | Licence / planned download | CPU/RAM evidence | Bouquet accuracy / latency | Decision |
+|---|---|---|---|---|
+| Generic multilingual faster-whisper small | MIT, ~486 MB | upstream int8 ~1.48 GB; reserve 1.5–2.5 GiB | not measured; recorded editor-pro Uzbek 61.372 s clip: load 5.06 s, inference 79.38 s | baseline |
+| yuldashev222 Uzbek small CT2 / OvozifyLabs parent | Apache-2.0, ~972 MB, existing cache metadata | int8 CPU budget 1.5–2.5 GiB, not newly measured | not measured; same recorded clip: load 5.9 s, inference 127.24 s; project reported better Uzbek text | provisional primary |
+| navai-uz Uzbek small | Apache-2.0, source ~0.98 GB; CT2 int8 estimate 250–350 MB | same small-model planning budget; conversion needs another capable host | not measured; publisher corpus WER is not bouquet field accuracy | independent comparator |
+| Vosk small Uzbek 0.22 | Apache-2.0, 49 MB ZIP | generic small-model guidance ~300 MB; plan 0.3–0.6 GiB | no local bouquet accuracy/timing | low-memory comparator |
+
+Sources/licence links and the precise read-only editor-pro evidence are in
+`CP22_DESIGN.md`. Choose finally by exact price correctness, then flower/count,
+then latency/RAM on the owner's ten recordings. The fine-tune is provisional,
+not a completed accuracy evaluation. DEPLOY recommends 2 vCPU/4 GiB minimum,
+8 GiB preferred for this stack with small Whisper. No large model download or
+recognition benchmark was run. The benchmark's no-recordings path returns 2
+without loading a model; its real path records CPU, decode settings, local
+model metadata/revision, load time, p50/p95 latency, peak RSS, field accuracy and
+normalized WER. Run one engine per process/command, serially.
+
+Evidence: the first integrated contract test failed on an assertion before
+router installation. Further regression reds covered description references,
+missing dictionary data and negation. Fake STT covers success/error, FFmpeg
+mono 16 kHz PCM arguments, queue boundaries, exact ack edit and audio cleanup;
+hard-kill cleanup uses a real killed child process. Guard proof is in
+`cp22-guard-proof.json`: **31/31 CP22.2 assertion-only catches, zero errors**,
+with original sources restored and a green final baseline. Including CP22.1,
+this feature has **39/39** assertion-only mutations. The configured-secret
+scan is also mutation-proven: even a fake-looking configured credential is
+refused, with only its file path printed. Exact synthetic CP21 fixture tokens
+are exempted by hash; no file is exempted. Git preserves vendored asset bytes
+and tests verify every upstream licence/font/dictionary hash.
+
+Gallery: `cp22-gallery/index.html`, 20 caption screenshots, 10 image screenshots,
+no-overlay screenshot and overview under `cp22-gallery/screenshots/`. The
+sample bouquet is original schematic artwork for demonstration, not a real
+stock photo. The in-app browser tool could not initialize its installed
+assets, so screenshots were rendered with existing Chrome/Playwright in a
+fresh headless profile; no browser download or personal profile access.
+Every overlay was visually inspected in a contact sheet; premium caption and
+gold-corner card inspected at full resolution. Reproduce with
+`scripts/gallery_cp22.py` and `scripts/capture_cp22_gallery.cjs`.
+
+Final CP22.2 repository gate: **passed**. `make.ps1 check` completed with
+lint/format (351 files), strict mypy (161 source files), zero shop/platform
+shadow violations, and **2429 tests passed in 4661.58 seconds (1:17:41)**.
+The whole gate took 5174.20 seconds, exited 0, and was sleep-inhibited.
+Free RAM before this corrected run was 1.74 GiB; no large speech model was
+downloaded, loaded or benchmarked. The configured-secret scan passed across
+all 662 tracked files, including the live proof. Only documentation recording
+these results changed after the green gate; gated sources stayed frozen.
+The next full run lost its log handle while the D: workspace volume was
+temporarily unavailable. Its wrapper exit was not accepted as green evidence
+without the final pytest summary. Once D: returned, `gulbot_test` alone was
+dropped again and the entire gate restarted with sleep inhibition and a log
+under the system TEMP directory. No application/test source changed between
+these runs; no other project's processes were stopped.
+The first integration gate exposed the existing exact Celery task inventory
+and `.env.example` setting inventory: both required CP22 additions. That failed
+run was stopped before the slow shadow-mutant tests; only its verified process
+tree was stopped, and `gulbot_test` was dropped immediately. The repaired
+inventory/deployment tests pass against a newly rebuilt test DB. No test was
+weakened: both bounded STT task names and all seven settings are now explicit.
+
+The stable-log full run reached completion: 2428 passed, one assertion failure
+in the existing CP9 reminder import-boundary guard. Shared keyboards imported
+the announcement menu context, whose eager permission-service import pulled
+CP8's indexer into CP9's read-only reminder path. The permission import now
+occurs only during the middleware's private bot-update authorization check.
+The existing guard was reproduced red unchanged, then the reminder-scope and
+menu tests passed (13 tests), with strict mypy clean. Reintroducing the eager
+import was separately mutation-proven: one assertion failure, zero errors,
+with a green restored baseline. The corrected full gate is rerun below.
+
+Live evidence passed using the channel supplied by the user, `@guldokonkanal`
+(`-1003987514504`). Bot API confirmed `@Flowersmarketcontroller_bot` is an
+administrator with posting permission; the channel creator was used as the
+dev owner after verifying their private chat is accessible to that bot.
+Only the empty local Shop 1 wiring was populated. Its dev database was upgraded
+from `d5e841dbb2be` through the additive chain to `9c22e4d87b10`.
+
+`scripts/live_cp22.py` exercised the production parse/review confirmation,
+premium caption, gold-corner exact preview, channel publication and SAME CP8
+indexing services. Actual post: `https://t.me/guldokonkanal/13`; finalized
+catalog Product 23 is "Atirgul buketi — 51 dona", 450000 UZS. Receipt and
+catalog evidence are in `cp22-live-proof.json`; the actual returned Telegram
+photo and post/catalog evidence page are `cp22-live-post.jpg` and
+`cp22-live-evidence.html`. These are real Bot API/channel results with choices
+supplied by the CLI, not a claim of human Telegram taps. No voice recording
+was supplied, so the explicitly allowed text fallback was used.
+
+No own `channel_post` update arrived during the measured 8.5-second observation
+window; zero updates were pending before and after, and none were acknowledged
+or dropped. This is an observation, not a Telegram delivery guarantee. The
+catalog entry was finalized independently of own-post update delivery.
+Real STT accuracy/latency evaluation still awaits the owner's ten recordings;
+the one-command benchmark and sample manifest are ready.

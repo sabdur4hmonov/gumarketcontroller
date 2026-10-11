@@ -20,6 +20,7 @@ from aiogram.fsm.strategy import FSMStrategy
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot.bot.announcement_menu import AnnouncementMenuMiddleware
 from gulbot.bot.channel import FinalizeScheduler, build_channel_router
 from gulbot.bot.middlewares import (
     ChatGateMiddleware,
@@ -152,6 +153,7 @@ def build_dispatcher(
     # CP18: before the customer is resolved, so a paused shop creates no rows.
     dispatcher.update.outer_middleware(ShopPausedMiddleware(shop_id))
     dispatcher.update.outer_middleware(CustomerMiddleware(shop_id))
+    dispatcher.update.outer_middleware(AnnouncementMenuMiddleware(shop_id))
 
     # Injected as workflow data so the channel handlers stay plain module-level
     # functions. Tests hand in a recorder; production hands in the Redis-backed

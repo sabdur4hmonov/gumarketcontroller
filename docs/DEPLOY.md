@@ -28,7 +28,7 @@ beat, and the page server; **Caddy** in front of the page server for HTTPS.
 
 ## 0. Before you start: what only the owner can provide
 
-- **A VPS**: Ubuntu 24.04 LTS, 2 vCPU / 2 GB RAM / 40 GB disk is enough for
+- **A VPS**: Ubuntu 24.04 LTS, 2 vCPU / 4 GB RAM (8 GB preferred with local STT) / 40 GB disk is enough for
   the pilot and the first tens of shops. Root SSH access.
 - **A domain**, and one hostname for the pages and the panel, e.g.
   `pages.<your-domain>.uz`, with an `A` record (and `AAAA` if the server has
@@ -312,7 +312,7 @@ restored and live alembic revisions, and drops the throwaway database. It
 exits 0 and prints `RESTORE DRILL PASS` only when every table matches. A
 backup never restored is a hope.
 
-**Restoring for real** (the drill rehearses this): stop the four units,
+**Restoring for real** (the drill rehearses this): stop the four units (plus `gulbot-stt` if installed),
 `docker exec -i gulbot-postgres pg_restore --clean --if-exists --no-owner
 -U <user> -d <db> < <dump>`, put the env file back from the password manager
 (the same `SHOP_TOKEN_ENCRYPTION_KEY`), run step 7, start the units.
@@ -361,3 +361,112 @@ checklist gives a recommendation for each.
   hundreds, webhooks are the better shape (`bot/run.py`).
 - **Page rate limits are in memory, per page-server process**: right for one
   page server; more than one would want them in Redis.
+
+## 17. CP22 local voice announcements
+
+The bot processes no speech on its event loop. Install a separate speech
+worker, even when it runs on the same server. The normal worker consumes only
+`celery`; `gulbot-stt.service` consumes only `stt`, prefork concurrency **1**,
+prefetch **1**, soft/hard limits **360/420 seconds**. Windows `solo` ignores
+those limits; use Linux prefork in production. The normal-queue error callback
+edits the acknowledgement after a killed speech task. Owners can type a text
+description to supersede a queued/failed voice job at any time.
+
+Plan **2 vCPU / 4 GiB RAM minimum, 8 GiB preferred** for small Whisper and the
+rest of this stack. This replaces the earlier 2 GiB pilot recommendation when
+local Whisper is enabled. Generic small int8 upstream uses about 1.48 GB for
+recognition; budget **1.5–2.5 GiB for the speech worker** plus database, other
+workers, bots and OS. Uzbek fine-tune RAM is a planning estimate until the
+owner's bouquet recordings are measured. Vosk small Uzbek is a lighter option:
+49 MB archive, roughly **0.3–0.6 GiB** recognition budget; verify domain accuracy
+before switching. CPU latency depends on recording/model: the read-only
+editor-pro results in `CP22_DESIGN.md` are supporting evidence, not a bouquet
+accuracy benchmark. Do not promise real-time recognition from those results.
+
+```
+apt install ffmpeg
+sudo -u gulbot .venv/bin/pip install -e '.[stt]'
+free -h     # before any model download/load or benchmark; one heavy job at a time
+```
+
+Models are deliberately **never downloaded automatically**. Store an explicitly
+reviewed, commercial-use-licensed model under `/opt/gulbot/models/` and set:
+
+```
+STT_ENGINE=faster-whisper
+STT_MODEL_PATH=/opt/gulbot/models/whisper-small-uz-v1-ct2
+STT_CPU_THREADS=2
+STT_AUDIO_DIR=/run/gulbot-stt
+STT_GEMINI_ENABLED=false
+```
+
+Provisional model: `yuldashev222/whisper-small-uz-v1-ct2` (Apache-2.0;
+revision `2a14636265bdb33c58cbb7c5b16447882c6676f4`), about **972 MB** downloaded
+including float32 weights/config/tokenizer; CPU execution converts to int8.
+Keep its publisher/model licence and model card beside the installation.
+Generic Systran small MIT alternative: about **486 MB**. Low-memory baseline:
+`vosk-model-small-uz-0.22`, Apache-2.0, **49 MB** zip; unpack then choose
+`STT_ENGINE=vosk`. The independent Apache-2.0 `navai-uz/whisper-small-uzbek`
+candidate needs conversion to CTranslate2; budget about **0.98 GB source** plus
+estimated **250–350 MB int8 conversion** and extra conversion RAM. Model cards,
+provenance, licence scope and exact downloads are linked in the design.
+
+Copy the new unit, then start it with the other services:
+
+```
+cp deploy/systemd/gulbot-stt.service /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now gulbot-stt
+systemctl restart gulbot-worker
+journalctl -u gulbot-stt -n 30
+```
+
+Add `gulbot-stt` to stop/start/restart commands for upgrades/restores. Audio is
+downloaded only in the speech worker's private temporary directory and deleted
+**before** results are stored or sent, including conversion/recognition errors.
+A separate small guardian starts before download and removes that task's
+directory within about **0.5 seconds** after the child dies or reaches its
+deadline. It only deletes `cp22-audio-*` direct children of `STT_AUDIO_DIR`.
+`/run` keeps temporary voice off durable disks; systemd removes the runtime
+directory when the service stops. Never back up this directory. No audio or
+voice file IDs are written to the announcement tables.
+
+Deterministic tests use fake speech; real recognition is a separate command:
+
+```
+.venv/bin/python scripts/benchmark_stt.py --manifest docs/cp22-samples.json \
+  --engine faster-whisper --model /opt/gulbot/models/whisper-small-uz-v1-ct2 \
+  --output /tmp/cp22-whisper-benchmark.json
+```
+
+The ten prompts currently have `audio_path: null`, `reference_text: null`.
+Supply the owner's recordings **outside Git** and fill those fields. The script
+reports missing recordings and exits 2 without loading a model; with recordings
+it measures load/transcription latency, peak process RAM, exact flower/count/
+price/colour accuracy, and WER when a verbatim reference is supplied. Run serially
+for each local engine/model. Never turn text-only prompt results into STT claims.
+
+Gemini fallback is optional and off. It requires all three explicit settings:
+`STT_GEMINI_ENABLED=true`, `GEMINI_API_KEY`, `STT_GEMINI_MODEL=<reviewed model>`.
+Only a failed local recognition invokes it. No model ID is silently selected
+because free-tier models, availability, limits and terms can change. Check the
+[official audio docs](https://ai.google.dev/gemini-api/docs/audio) and pricing
+before opting in. Enabling it sends voice to Google; it is not the local engine.
+Keys remain SecretStr and are sent in a header, never URLs or task arguments.
+
+The `u2b3k/uz-hunspell` dictionaries are unmodified GPL-3.0 data with licence,
+source `.dic/.aff`, readme and pinned revision/hash manifest under
+`announcements/assets/dictionary/`. Commercial use is allowed under that
+licence; retain its notices/licence and corresponding source when distributing
+the dictionary or derived data. The corrector deliberately handles roots with
+unique one-edit suggestions; it does not claim full Hunspell affix processing.
+Domain and number spans are protected; all changes and uncertainty appear in
+review. Noto Sans fonts and their OFL licence/provenance are included separately.
+
+Publication commits a claim before the Bot API call, persists its returned
+messages before indexing, then uses CP8 `ingest_post`/`finalize_product`.
+Successful callbacks can retry indexing without reposting. A timeout/crash can
+leave `ambiguous`/`publishing`: inspect the channel before a new announcement;
+there is deliberately no blind retry. Every edit invalidates confirmation and
+preview; “Joylash” accepts only the current confirmed preview. Preview Telegram
+file IDs are used for the final post, so the first-photo overlay is identical.

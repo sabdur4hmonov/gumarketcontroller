@@ -14,6 +14,7 @@ from aiogram.types import (
     ReplyKeyboardMarkup,
 )
 
+from gulbot.bot.announcement_menu import announcement_visible
 from gulbot.bot.callbacks import (
     AddOccasionCB,
     BackCB,
@@ -76,6 +77,7 @@ def main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
     """
     return _kb(
         [
+            *([[t("btn.menu.announcement", lang)]] if announcement_visible.get() else []),
             [t("btn.menu.browse", lang)],
             [t("btn.menu.occasions", lang)],
             # Ha/Yo'q pages and taklifnomas: each page carries this shop's

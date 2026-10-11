@@ -1,0 +1,596 @@
+{
+  "scope": "CP22.2 isolated serial mutations; original source restored in finally",
+  "baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 80
+  },
+  "mutants": [
+    {
+      "name": "explicit-owner-staff-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "or_(literal(actor) == any_(Shop.owner_telegram_ids), listed)",
+          "new": "literal(True)",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_explicit_staff_access_and_menu",
+      "exit_code": 1,
+      "failures": 3,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 1
+    },
+    {
+      "name": "active-shop-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "Shop.status == ShopStatus.ACTIVE,",
+          "new": "literal(True),",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_staff_revocation_and_pause_refused",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "recheck-author-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "if not await may_publish(session, shop_id=shop_id, actor=actor):",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_staff_revocation_and_pause_refused",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "draft-shop-scope",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "AnnouncementDraft.shop_id == shop_id,",
+          "new": "literal(True),",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_draft_scope_includes_shop_and_author",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "draft-author-scope",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "AnnouncementDraft.author_id == actor,",
+          "new": "literal(True),",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_draft_scope_includes_shop_and_author",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "draft-revision-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "draft.revision != revision",
+          "new": "False",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_draft_scope_includes_shop_and_author",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "alias-shop-scope",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "HashtagAlias.shop_id == draft.shop_id",
+          "new": "literal(True)",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_shop_aliases_do_not_cross_tenants",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "favourite-shop-author-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "if draft.shop_id != shop_id or draft.author_id != actor:",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_preference_tenancy",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "receipt-shop-scope",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "if post.shop_id != draft.shop_id:",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_receipts_cannot_index_another_shop",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "confirmation-review-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "if draft.status != \"review\":",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_confirmation_requires_review[collecting]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "confirmation-completeness-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "Fields.from_data(draft.fields).validate()",
+          "new": "pass",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_incomplete_parse_cannot_be_confirmed",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "preview-confirmation-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/bot/routers/announcements.py",
+          "old": "if draft.status not in {\"confirmed\", \"preview\"}:",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_unconfirmed_preview_and_missing_exact_preview_refused",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "publish-confirmation-guard",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "draft.status != \"preview\" or ",
+          "new": "",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_unconfirmed_preview_and_missing_exact_preview_refused",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "exact-preview-media-preserved",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "list(draft.preview_media), draft.preview_caption",
+          "new": "list(draft.photos), draft.preview_caption",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_exact_preview_publish_index_and_duplicate_updates[1]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "same-indexing-path",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "await ingest_post(session, post)",
+          "new": "pass",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_exact_preview_publish_index_and_duplicate_updates[1]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "caption-owner-html-escape",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/templates.py",
+          "old": "part = escape(char, quote=False)",
+          "new": "part = char",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_every_caption_catalog_and_escaped_worst_case",
+      "exit_code": 1,
+      "failures": 60,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "caption-1024-budget",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/templates.py",
+          "old": "if used + cost > budget:",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_every_caption_catalog_and_escaped_worst_case",
+      "exit_code": 1,
+      "failures": 60,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "caption-price-compatibility",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/templates.py",
+          "old": "price = f\"Narxi: {fields.price:,} so'm\"",
+          "new": "price = f\"Narxi: {fields.price * 2:,} so'm\"",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_every_caption_catalog_and_escaped_worst_case",
+      "exit_code": 1,
+      "failures": 60,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "audio-immediate-deletion",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/stt.py",
+          "old": "source.unlink(missing_ok=True)\n        wav.unlink(missing_ok=True)",
+          "new": "pass",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_stt.py::test_fake_engine_and_immediate_deletion",
+      "exit_code": 1,
+      "failures": 2,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "whisper-uz-language",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/stt.py",
+          "old": "language=\"uz\",",
+          "new": "language=\"en\",",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_stt.py::test_whisper_adapter_uz_int8_cpu_no_download",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "whisper-local-model-only",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/stt.py",
+          "old": "local_files_only=True,",
+          "new": "local_files_only=False,",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_stt.py::test_whisper_adapter_uz_int8_cpu_no_download",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "dedicated-stt-routing",
+      "patches": [
+        {
+          "path": "src/gulbot/worker/app.py",
+          "old": "\"gulbot.transcribe_voice\": {\"queue\": \"stt\"}",
+          "new": "\"gulbot.transcribe_voice\": {\"queue\": \"celery\"}",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_stt.py::test_stt_queue_time_limits_and_off_by_default",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "hard-kill-audio-scrub",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/audio_guard.py",
+          "old": "    scrub(directory, root)",
+          "new": "    pass",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_stt.py::test_hard_killed_parent_audio_guard_scrubs",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "root-fk-AnnouncementDraft",
+      "patches": [
+        {
+          "path": "migrations/versions/9c22e4d87b10_announcements.py",
+          "old": "        sa.ForeignKeyConstraint([\"shop_id\"], [\"shops.id\"], ondelete=\"CASCADE\"),\n",
+          "new": "",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_new_tables_require_real_shop[AnnouncementDraft]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "root-fk-AnnouncementPreference",
+      "patches": [
+        {
+          "path": "migrations/versions/9c22e4d87b10_announcements.py",
+          "old": "        sa.ForeignKeyConstraint([\"shop_id\"], [\"shops.id\"], ondelete=\"CASCADE\"),\n",
+          "new": "",
+          "occurrence": 1
+        }
+      ],
+      "test": "tests/test_announcements.py::test_new_tables_require_real_shop[AnnouncementPreference]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "published-idempotency",
+      "patches": [
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "    if draft.status == \"published\":\n        await index_receipts(session, draft)\n        return post_link(draft.receipts[0])\n",
+          "new": "",
+          "occurrence": 0
+        },
+        {
+          "path": "src/gulbot/services/announcements.py",
+          "old": "draft.status != \"preview\" or ",
+          "new": "draft.status not in {\"preview\", \"published\"} or ",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcements.py::test_exact_preview_publish_index_and_duplicate_updates[1]",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "spelling-reference-protection",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/correction.py",
+          "old": "protected = [*protected, *(match.span() for match in REFERENCE.finditer(text))]",
+          "new": "protected = protected",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_correction_keeps_urls_emails_and_handles",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "spelling-domain-protection",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/correction.py",
+          "old": "if any(start < right and end > left for left, right in protected):",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_correction_protects_domain_numbers_and_preserves_description",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "negated-field-protection",
+      "patches": [
+        {
+          "path": "src/gulbot/announcements/extraction.py",
+          "old": "if NEGATED_AFTER.match(text[match.end :]) or NEGATED_BEFORE.search(\n            text[max(0, match.start - 20) : match.start]\n        ):",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_content.py::test_negated_colour_is_not_a_confirmable_colour",
+      "exit_code": 1,
+      "failures": 3,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "configured-secret-guard",
+      "patches": [
+        {
+          "path": "scripts/scan_secrets.py",
+          "old": "if any(value in data for value in secrets):",
+          "new": "if False:",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_announcement_secrets.py::test_configured_secret_cannot_be_exempted_by_fake_markers",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    },
+    {
+      "name": "reminder-import-boundary",
+      "patches": [
+        {
+          "path": "src/gulbot/bot/announcement_menu.py",
+          "old": "announcement_visible: ContextVar[bool]",
+          "new": "from gulbot.services.announcements import may_publish\n\nannouncement_visible: ContextVar[bool]",
+          "occurrence": 0
+        }
+      ],
+      "test": "tests/test_sending_scope.py::test_the_send_path_does_not_reach_the_indexer",
+      "exit_code": 1,
+      "failures": 1,
+      "errors": 0,
+      "assertion_only": true,
+      "passed": 0
+    }
+  ],
+  "restored_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 80
+  },
+  "elapsed_seconds": 292.16,
+  "caught": 31,
+  "additional_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 5
+  },
+  "final_restored_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 85
+  },
+  "secret_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 1
+  },
+  "secret_restored_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 1
+  },
+  "menu_import_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 1
+  },
+  "menu_import_restored_baseline": {
+    "exit_code": 0,
+    "failures": 0,
+    "errors": 0,
+    "assertion_only": false,
+    "passed": 1
+  }
+}

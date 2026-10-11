@@ -20,3 +20,6 @@ celerybeat-schedule*
 
 # The staging rehearsal's env file, CA and transcript (deploy/rehearsal/rehearse.sh).
 deploy/rehearsal/out/
+
+# Temporary CP22 development staging; not shipped.
+.cp22-stage/

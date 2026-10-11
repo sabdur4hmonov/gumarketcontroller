@@ -7,6 +7,7 @@ tests/test_infrastructure.py can assert them in one place.
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import Mapping
 from functools import lru_cache
 from zoneinfo import ZoneInfo
@@ -76,6 +77,14 @@ class Settings(BaseSettings):
     #: gulbot.brand.brand_name(); tests/test_brand.py fails the build if it is
     #: typed anywhere else.
     brand_name: str = "Gulbot"
+
+    stt_engine: str = "faster-whisper"
+    stt_model_path: str = ""
+    stt_cpu_threads: int = 2
+    stt_audio_dir: str = tempfile.gettempdir() + "/gulbot-stt"
+    stt_gemini_enabled: bool = False
+    gemini_api_key: SecretStr = SecretStr("")
+    stt_gemini_model: str = ""
 
     @field_validator("brand_name")
     @classmethod

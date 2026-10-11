@@ -61,10 +61,11 @@ app = Celery(
     "gulbot",
     broker=settings.redis_url(settings.redis_db_broker),
     backend=settings.redis_url(settings.redis_db_results),
-    include=["gulbot.worker.tasks"],
+    include=["gulbot.worker.tasks", "gulbot.worker.stt_tasks"],
 )
 
 app.conf.update(
+    task_routes={"gulbot.transcribe_voice": {"queue": "stt"}},
     timezone=settings.timezone,
     enable_utc=True,
     task_acks_late=True,

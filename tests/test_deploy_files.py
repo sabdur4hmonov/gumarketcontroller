@@ -68,7 +68,7 @@ def test_the_units_are_the_ones_tracked() -> None:
     """Vacuity guard: the parametrized checks below must see every unit."""
     tracked = {name for name in _git_modes("deploy") if name.endswith(".service")}
     assert {str(unit.relative_to(REPO_ROOT)).replace("\\", "/") for unit in UNIT_FILES} == tracked
-    assert len(UNIT_FILES) == 5
+    assert len(UNIT_FILES) == 6
 
 
 @pytest.mark.parametrize("unit", UNIT_FILES, ids=lambda unit: unit.name)

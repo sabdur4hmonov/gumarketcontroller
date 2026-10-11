@@ -1,0 +1,31 @@
+{
+  "scope": "real dev Bot API/channel and production services; CLI supplied choices",
+  "mode": "text-fallback; no voice recording supplied",
+  "shop_id": 1,
+  "bot_username": "Flowersmarketcontroller_bot",
+  "channel_id": -1003987514504,
+  "draft_id": 1,
+  "post_link": "https://t.me/c/3987514504/13",
+  "receipts": [
+    {
+      "shop_id": 1,
+      "chat_id": -1003987514504,
+      "message_id": 13,
+      "file_id": "AgACAgIAAxkDAAIBkmrLrPSOmgpw6S7gEXfEyuxy9zFHAALBJGsbKhphSrbhz4inTC14AQADAgADeQADPQQ",
+      "media_group_id": null,
+      "caption": "Atirgul buketi — 51 dona\nNarxi: 450 000 so'm\n✦ Nafis tanlov\nQizil atirgul, ellik bitta dona, narxi to'rt yuz ellik ming so'm\nTarkibi: qizil · 51 dona\nGo'zallikni hadya qiling\nTaqdim etadi: Gulbot Dev Shop\n#atirgul #buket"
+    }
+  ],
+  "catalog": {
+    "id": 23,
+    "name": "Atirgul buketi — 51 dona",
+    "price_uzs": 450000,
+    "finalized_at": "2026-10-11T15:36:19.145507+00:00"
+  },
+  "own_channel_post_observed": false,
+  "observed_update_ids": [],
+  "observation_seconds": 8.5,
+  "pending_before": 0,
+  "pending_after": 0,
+  "observation_limit": "No pending updates acknowledged; a 100-update backlog makes absence inconclusive. This observation is not a Telegram delivery guarantee."
+}

@@ -1,0 +1,36 @@
+{
+  "repo": "https://github.com/u2b3k/uz-hunspell",
+  "revision": "a27cccf4f7dd06734b0bc66d56ce759f9fc28b61",
+  "files": [
+    {
+      "name": "LICENSE",
+      "bytes": 35148,
+      "sha256": "8b1ba204bb69a0ade2bfcf65ef294a920f6bb361b317dba43c7ef29d96332b9b"
+    },
+    {
+      "name": "README.md",
+      "bytes": 311,
+      "sha256": "c0b75a4a4b96dec1111c144599ad30d0a4bc0209e75310a6599489e6ac88966e"
+    },
+    {
+      "name": "uz_UZ.dic",
+      "bytes": 1740877,
+      "sha256": "6ff0ae0c80286b93e826e4c7586378bca53316e84daba9caffa39507d6d1bc0b"
+    },
+    {
+      "name": "uz_UZ.aff",
+      "bytes": 546258,
+      "sha256": "511e80a3876772f8ed1764810b14ffed51bba552e8d541064279801520a04872"
+    },
+    {
+      "name": "uz_UZ_Cyrl.dic",
+      "bytes": 2498597,
+      "sha256": "516f086f9d2deb28890e13c733192cabeb39b694c18c1b484383d4a1dfbd11d0"
+    },
+    {
+      "name": "uz_UZ_Cyrl.aff",
+      "bytes": 1088335,
+      "sha256": "2c96735b96c84a284d9ed9f5b1985b75fc2e9a1d6742104349e017e02c75f597"
+    }
+  ]
+}

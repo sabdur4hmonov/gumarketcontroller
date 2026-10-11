@@ -1,0 +1,146 @@
+{
+  "status": "text prompts only; recordings and human verbatim references pending",
+  "recording_policy": "Later owner-supplied recordings, outside Git; do not reuse private editor videos automatically.",
+  "samples": [
+    {
+      "id": "uz-01",
+      "audio_path": null,
+      "prompt": "Qizil atirgul, ellik bitta dona, narxi to'rt yuz ellik ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 51,
+        "price_uzs": 450000,
+        "flowers": [
+          "atirgul"
+        ],
+        "colour": "qizil"
+      }
+    },
+    {
+      "id": "uz-02",
+      "audio_path": null,
+      "prompt": "Oq atirgullar, yigirma beshta, narxi ikki yuz ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 25,
+        "price_uzs": 200000,
+        "flowers": [
+          "atirgul"
+        ],
+        "colour": "oq"
+      }
+    },
+    {
+      "id": "uz-03",
+      "audio_path": null,
+      "prompt": "Pushti lola, o'n besh dona, narxi yuz ellik ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 15,
+        "price_uzs": 150000,
+        "flowers": [
+          "tyulpan"
+        ],
+        "colour": "pushti"
+      }
+    },
+    {
+      "id": "uz-04",
+      "audio_path": null,
+      "prompt": "Sariq xrizantema, yettita, narxi ikki yuz ellik ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 7,
+        "price_uzs": 250000,
+        "flowers": [
+          "xrizantema"
+        ],
+        "colour": "sariq"
+      }
+    },
+    {
+      "id": "uz-05",
+      "audio_path": null,
+      "prompt": "Qizil atirgul, yuz bir dona, narxi bir yarim million so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 101,
+        "price_uzs": 1500000,
+        "flowers": [
+          "atirgul"
+        ],
+        "colour": "qizil"
+      }
+    },
+    {
+      "id": "uz-06",
+      "audio_path": null,
+      "prompt": "Oq pion, to'qqizta, narxi yarim million so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 9,
+        "price_uzs": 500000,
+        "flowers": [
+          "pion"
+        ],
+        "colour": "oq"
+      }
+    },
+    {
+      "id": "uz-07",
+      "audio_path": null,
+      "prompt": "Qizil gerbera, o'n bitta dona, narxi 450 ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 11,
+        "price_uzs": 450000,
+        "flowers": [
+          "gerbera"
+        ],
+        "colour": "qizil"
+      }
+    },
+    {
+      "id": "uz-08",
+      "audio_path": null,
+      "prompt": "Oq nilufar, beshta, narxi 1,5 million so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 5,
+        "price_uzs": 1500000,
+        "flowers": [
+          "nilufar"
+        ],
+        "colour": "oq"
+      }
+    },
+    {
+      "id": "uz-09",
+      "audio_path": null,
+      "prompt": "Och pushti eustoma, o'n yetti dona, narxi uch yuz sakson ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 17,
+        "price_uzs": 380000,
+        "flowers": [
+          "eustoma"
+        ],
+        "colour": "ochpushti"
+      }
+    },
+    {
+      "id": "uz-10",
+      "audio_path": null,
+      "prompt": "To'q qizil atirgullar, o'ttiz bitta dona, narxi olti yuz yigirma ming so'm",
+      "reference_text": null,
+      "expected_fields": {
+        "count": 31,
+        "price_uzs": 620000,
+        "flowers": [
+          "atirgul"
+        ],
+        "colour": "toqqizil"
+      }
+    }
+  ]
+}

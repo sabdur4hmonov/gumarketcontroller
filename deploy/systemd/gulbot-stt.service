@@ -1,0 +1,22 @@
+[Unit]
+Description=Gulbot: local speech recognition (one job)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=gulbot
+Group=gulbot
+WorkingDirectory=/opt/gulbot
+EnvironmentFile=/etc/gulbot/gulbot.env
+ExecStart=/opt/gulbot/.venv/bin/celery -A gulbot.worker.app worker -Q stt --pool=prefork --concurrency=1 --loglevel=info --hostname=stt@%%h
+Restart=always
+RestartSec=5
+TimeoutStopSec=450
+KillMode=mixed
+RuntimeDirectory=gulbot-stt
+RuntimeDirectoryMode=0700
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
