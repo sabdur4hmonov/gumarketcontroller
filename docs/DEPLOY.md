@@ -163,6 +163,28 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `4b6e1d9c2a07`, the CP18 revisions, `0956590ccce1`, `3c8e5a1f7d20` | their columns and tables are dropped (CP19: every shop's staff list; CP20: the shop panel's logins and audit log) |
 | `8f2d6c41b9a3` | holiday reminder rows and holiday consent are deleted, holiday orders lose their source |
 
+## 7b. The pilot shop (a fresh database has none)
+
+```
+sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
+  .venv/bin/python -m gulbot.cli.seed --name "<the shop name>" \
+    --owner-id <owner telegram id> --store-bot-token'
+```
+
+It prints `shop id=1 ... created` and `its own bot: id=<bot id> stored,
+encrypted`. `--store-bot-token` makes the `BOT_TOKEN` of the env file the
+shop's OWN bot, encrypted with `SHOP_TOKEN_ENCRYPTION_KEY` exactly as the
+platform bot's onboarding stores one; the token is read from the environment,
+never typed on the command line. Safe to rerun ("already stored"); it never
+overwrites a shop's bot. Add `--channel-id` / `--group-chat-id` now if you
+know them (step 11 shows how to find them).
+
+**Why this step exists (CP21).** The staging rehearsal found that without it
+the pilot has no bot on a fresh server: `BOT_TOKEN` alone serves only a shop
+that existed before per-shop tokens, which a fresh database does not have. The
+bot then refuses to start ("no shop has a usable bot") and systemd restarts it
+every ten seconds. Shops after the pilot onboard through the platform bot.
+
 ## 8. The processes
 
 ```
@@ -170,8 +192,11 @@ cp /opt/gulbot/deploy/systemd/gulbot-*.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now gulbot-web gulbot-worker gulbot-beat gulbot-bot
 systemctl status 'gulbot-*'
+systemctl show -p NRestarts gulbot-bot gulbot-worker gulbot-beat gulbot-web   # a minute later: all 0
 ```
 
+"active" at one instant can hide a crash loop (`Restart=always` brings a
+failing unit back every five seconds): the restart counts must stay 0.
 Check each one's log (`journalctl -u gulbot-bot -n 50`):
 
 - **bot**: `serving N shop(s); platform bot on; environment=production`, and
@@ -213,13 +238,15 @@ block that lets only your own IP addresses reach `/admin` at all. Never put
 ## 11. The pilot shop's wiring
 
 - **Its catalogue channel (CP-MT2, H3).** A shop with no `shops.channel_id`
-  indexes nothing; the pilot shop predates onboarding and may not have one.
+  indexes nothing; a pilot seeded without `--channel-id` has none.
   Post anything with a photo in the channel; the bot logs
   `shop N has no channel_id ... set shops.channel_id = <id>`. Then:
   `UPDATE shops SET channel_id = <id> WHERE id = <pilot id> AND channel_id IS NULL;`
   Verify a new hashtagged post is `indexed`, not `ignored`.
-- **Its own token.** The pilot may keep using `BOT_TOKEN`; the bot logs a
-  WARNING each time. Storing its own token retires the fallback.
+- **Its own token.** Stored in step 7b. (Only a database that predates
+  per-shop tokens has a shop allowed to borrow `BOT_TOKEN` without storing
+  it; the bot logs a WARNING for each such use, and step 7b's command retires
+  it there too.)
 - **Its language** (`shops.lang`, default `uz`): `UPDATE shops SET lang = 'ru'
   WHERE id = ...` for a Russian-speaking shop.
 

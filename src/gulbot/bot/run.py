@@ -250,8 +250,9 @@ def require_something_to_serve(*, shops: int, platform: bool) -> None:
     if shops == 0 and not platform:
         raise SystemExit(
             "REFUSING TO START: no shop has a usable bot, and PLATFORM_BOT_TOKEN is not set "
-            "-- there is nothing to serve. Run: python -m gulbot.cli.seed, store a shop's "
-            "token, or set PLATFORM_BOT_TOKEN."
+            "-- there is nothing to serve. Give a shop BOT_TOKEN as its own bot (python -m "
+            "gulbot.cli.seed --name <shop> --store-bot-token), or set PLATFORM_BOT_TOKEN "
+            "and onboard one."
         )
 
 
