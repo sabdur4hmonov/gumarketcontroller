@@ -1,0 +1,129 @@
+{
+  "date": "2026-10-11 Asia/Tashkent",
+  "python": "3.11.9",
+  "initial_red": {
+    "tests": 153,
+    "assertion_failures": 153,
+    "errors": 0
+  },
+  "baseline": {
+    "tests": 167,
+    "failures": 0,
+    "errors": 0
+  },
+  "syntax_python_311": [
+    "cp22_prep\\__init__.py",
+    "cp22_prep\\lexicon.py",
+    "cp22_prep\\numbers.py",
+    "tests\\test_core.py",
+    "verify.py"
+  ],
+  "mutations": [
+    {
+      "guard": "descending_scales",
+      "test": "NumberTests.test_invalid_007",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "integer_fraction_guard",
+      "test": "NumberTests.test_invalid_017",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "thousand_multiplier",
+      "test": "NumberTests.test_valid_028",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "phone_mask",
+      "test": "NumberTests.test_unlabelled_national_phone_is_masked",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "cyrillic_number_support",
+      "test": "NumberTests.test_cyrillic_number_scan",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "fuzzy_requires_review",
+      "test": "LexiconTests.test_alias_001",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "numeric_tokens_protected",
+      "test": "LexiconTests.test_count_word_cannot_become_colour_by_fuzzy_matching",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    },
+    {
+      "guard": "conflicting_alias_guard",
+      "test": "LexiconTests.test_conflicting_alias_is_ambiguous",
+      "assertion_failures": 1,
+      "errors": 0,
+      "caught": true
+    }
+  ],
+  "restored": {
+    "tests": 167,
+    "failures": 0,
+    "errors": 0
+  },
+  "text_prompt_checks": [
+    {
+      "id": "uz-01",
+      "passed": true
+    },
+    {
+      "id": "uz-02",
+      "passed": true
+    },
+    {
+      "id": "uz-03",
+      "passed": true
+    },
+    {
+      "id": "uz-04",
+      "passed": true
+    },
+    {
+      "id": "uz-05",
+      "passed": true
+    },
+    {
+      "id": "uz-06",
+      "passed": true
+    },
+    {
+      "id": "uz-07",
+      "passed": true
+    },
+    {
+      "id": "uz-08",
+      "passed": true
+    },
+    {
+      "id": "uz-09",
+      "passed": true
+    },
+    {
+      "id": "uz-10",
+      "passed": true
+    }
+  ],
+  "stt_benchmark": "not run; no models loaded or downloaded",
+  "passed": true,
+  "scope": "Actual repository parser and lexicon; in-memory mutants, source restored. initial_red is historical preparation evidence."
+}

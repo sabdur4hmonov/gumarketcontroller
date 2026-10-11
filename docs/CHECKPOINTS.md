@@ -1535,3 +1535,29 @@ identical across 09:00 / 10:00 / 13:00 / 20:00, pinned by
   photo arriving after finalize still be picked up.
 - Albums need a running Celery worker. Without one the row is created and stays
   provisional; nothing is lost, but nothing is searchable either.
+
+
+## CP22 — announcement authoring (in progress)
+
+### CP22.1 — preparation port
+
+Started only after origin/main and local HEAD were verified at `85bfebe`,
+containing the completed CP20 and CP21 commits, with a clean working tree.
+The standalone numeral parser and isolated flower/colour matcher are ported
+to `gulbot.announcements`; the preparation design is `docs/CP22_DESIGN.md`.
+The source uses Decimal for scale bounds as well as arithmetic: no binary
+float comparison in the migrated parser. Exact numerals are protected before
+domain matching; fuzzy matches and conflicting aliases remain owner-review
+candidates. No bot behaviour is changed by this phase.
+
+Preparation evidence: 167 unit tests, 8/8 assertion-only mutant catches,
+10/10 text-only sample prompts. Integration gate evidence is recorded after
+the repository gate below; preparation evidence is not a substitute for it.
+
+Repository gate: `make.ps1 check` passed: lint/format, strict mypy (145 source
+files), shadow sweep zero in shop and platform, **2253 tests passed** in
+2936.77 seconds. Sleep was inhibited for the long gate. Free RAM before it
+was 0.89 GiB; no speech model was downloaded or loaded. Ported code separately
+retained **8/8 assertion-only mutation catches, zero errors**, and 10/10
+text prompt checks (`cp22-parser-proof.json`). A configured-secret scan passed
+on every phase file before commit/push.
