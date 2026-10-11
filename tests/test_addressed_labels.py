@@ -84,6 +84,7 @@ def make_group(label: str, recipient_type: str, *, extra: tuple | None = None): 
     rows = [
         SimpleNamespace(
             occasion_id=1,
+            holiday=None,
             occurrence_year=2026,
             offset_days=-1,
             due_at_utc=datetime(2026, 9, 4, 4, tzinfo=UTC),
@@ -98,6 +99,7 @@ def make_group(label: str, recipient_type: str, *, extra: tuple | None = None): 
         rows.append(
             SimpleNamespace(
                 occasion_id=2,
+                holiday=None,
                 occurrence_year=2026,
                 offset_days=-3,
                 due_at_utc=datetime(2026, 9, 4, 4, tzinfo=UTC),
