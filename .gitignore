@@ -17,3 +17,6 @@ htmlcov/
 
 # Celery beat writes its schedule next to wherever it was started.
 celerybeat-schedule*
+
+# The staging rehearsal's env file, CA and transcript (deploy/rehearsal/rehearse.sh).
+deploy/rehearsal/out/

@@ -2,9 +2,13 @@
 
 One ordered path. Do the steps in order; each says why it is there, so none is
 skipped as ritual. Started by the pre-deployment audit (pass 5) and rewritten
-for CP18 as a single runbook. **The code side has been proven on the dev
-machine; no step below has yet been run on a real server** -- the first deploy
-is also this document's first run, so note anything that differs.
+for CP18 as a single runbook. **No step below has yet been run on a real
+server.** CP21 rehearsed steps 1-10 and 13 on a stand-in Ubuntu 24.04 server
+in local containers (`deploy/rehearsal/rehearse.sh`; transcript in
+`docs/rehearsal/cp21-transcript.txt`) and fixed what it found; what a
+container cannot show -- the firewall, real DNS and certificates, Telegram
+from a VPS -- the first deploy still is the first run of, so note anything
+that differs.
 
 The files referred to are in the repo:
 
@@ -14,6 +18,9 @@ The files referred to are in the repo:
 | `deploy/docker-compose.prod.yml` | used from the repo with `docker-compose.yml` |
 | `deploy/systemd/*.service` | `/etc/systemd/system/` |
 | `deploy/Caddyfile` | `/etc/caddy/Caddyfile`, hostname edited |
+| `deploy/backup/gulbot-backup.{service,timer}` | `/etc/systemd/system/` (step 13) |
+| `deploy/backup/*.sh` | run from the repo (step 13) |
+| `deploy/rehearsal/` | not installed: the local staging rehearsal of this runbook (CP21) |
 
 What runs where: **Postgres and Redis in Docker** (bound to 127.0.0.1);
 **four Python processes under systemd** -- the bots, the Celery worker, Celery

@@ -1,0 +1,53 @@
+# The staging rehearsal (CP21): docs/DEPLOY.md's server, in containers.
+#
+# Driven by deploy/rehearsal/rehearse.sh; do not `up` it by hand.
+#
+#   server     Ubuntu 24.04, systemd as PID 1, built by following DEPLOY's
+#              steps; runs the four units and Caddy exactly as a VPS would.
+#   postgres   share the SERVER's network namespace, so they listen on the
+#   redis      server's own 127.0.0.1:5433 and :6380 -- the addresses
+#              /etc/gulbot/gulbot.env names -- and on nothing else. That is
+#              the production shape: reachable from the app, from no one else.
+#
+# Only Caddy's 443 is published, and only on this machine's 127.0.0.1:8443.
+name: gulbot-rehearsal
+
+services:
+  server:
+    # Built by rehearse.sh from a `git archive` of the tracked tree, never
+    # from the working directory: the server gets what a clone gets.
+    image: gulbot-rehearsal-server
+    pull_policy: never
+    container_name: gulbot-rehearsal-server
+    hostname: gulbot-vps
+    privileged: true
+    cgroup: host
+    tmpfs: [/run, /run/lock, /tmp]
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+      # The backup (step 13) runs `docker exec` against the Postgres
+      # container, as root on the VPS does.
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8443:443"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: gulbot-rehearsal-postgres
+    network_mode: "service:server"
+    depends_on: [server]
+    command: ["postgres", "-c", "listen_addresses=127.0.0.1"]
+    environment:
+      # The port for the server AND for every `docker exec ... psql` /
+      # pg_dump / pg_restore the backup runs inside this container.
+      PGPORT: "5433"
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+
+  redis:
+    image: redis:7-alpine
+    container_name: gulbot-rehearsal-redis
+    network_mode: "service:server"
+    depends_on: [server]
+    command: ["redis-server", "--port", "6380", "--bind", "127.0.0.1", "--appendonly", "yes"]

@@ -1,0 +1,171 @@
+
+== 0. the env file, filled as DEPLOY step 4 says (values never printed)
+gulbot.env: filled BOT_TOKEN, ENVIRONMENT, PLATFORM_ADMIN_TELEGRAM_IDS, PLATFORM_BOT_TOKEN, POSTGRES_PASSWORD, PUBLIC_BASE_URL, SHOP_TOKEN_ENCRYPTION_KEY (values not shown)
+
+== 5'. the production compose override, checked as written (ports on 127.0.0.1 only)
+{'postgres': ['127.0.0.1:5433'], 'redis': ['127.0.0.1:6380']}
+
+== 1-3. build the server by DEPLOY's steps from the tracked tree, start it, and Postgres + Redis on its loopback
+image built from 20ef35b + working-tree edits
+ Network gulbot-rehearsal_default Created 
+ Container gulbot-rehearsal-server Created 
+ Container gulbot-rehearsal-redis Created 
+ Container gulbot-rehearsal-postgres Created 
+ Container gulbot-rehearsal-server Started 
+ Container gulbot-rehearsal-redis Started 
+ Container gulbot-rehearsal-postgres Started 
+systemd: running
+Python 3.11.17
+free on the server: 5844 MB available
+
+== 4. /etc/gulbot/gulbot.env: root:gulbot 0640
+root:gulbot 640 /etc/gulbot/gulbot.env
+a .env in /opt/gulbot: none, as step 3 requires
+
+== 5. Postgres and Redis: listening on the server's 127.0.0.1 only
+127.0.0.1:5433 - accepting connections
+listening: 127.0.0.1:6380
+listening: 127.0.0.1:5433
+
+== 6. the production guard, checked by eye
+environment=production database=gulbot_prod host=127.0.0.1
+-- and with the env file NOT loaded (a process that forgot it):
+gulbot.config.ProductionConfigError: REFUSING TO START: ENVIRONMENT=production, but this is not a production configuration.
+  - BOT_TOKEN is not set as a real, non-empty environment variable (a value from .env or the built-in default is refused in production)
+  - POSTGRES_HOST is not set as a real, non-empty environment variable (a value from .env or the built-in default is refused in production)
+  - POSTGRES_DB is not set as a real, non-empty environment variable (a value from .env or the built-in default is refused in production)
+  - POSTGRES_PASSWORD is not set as a real, non-empty environment variable (a value from .env or the built-in default is refused in production)
+  - POSTGRES_PASSWORD is the dev default password
+
+== 7. migrations: current must equal heads
+INFO  [alembic.runtime.migration] Running upgrade 3c8e5a1f7d20 -> 8f2d6c41b9a3, holiday campaigns: the holidays a shop runs, lunar dates, holiday reminders (CP20)
+current: 8f2d6c41b9a3 (head)
+heads:   8f2d6c41b9a3 (head)
+
+== 7b. the pilot shop, with BOT_TOKEN as its own bot
+shop id=1 'Rehearsal Shop' created
+its own bot: id=8807290040 stored, encrypted
+-- and again (idempotent):
+shop id=1 'Rehearsal Shop' already existed
+its own bot: id=8807290040 already stored
+
+== 8. the units: verified, enabled, started
+systemd-analyze verify gulbot-bot.service gulbot-worker.service gulbot-beat.service gulbot-web.service : exit 0
+Created symlink /etc/systemd/system/multi-user.target.wants/gulbot-bot.service → /etc/systemd/system/gulbot-bot.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/gulbot-worker.service → /etc/systemd/system/gulbot-worker.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/gulbot-beat.service → /etc/systemd/system/gulbot-beat.service.
+Created symlink /etc/systemd/system/multi-user.target.wants/gulbot-web.service → /etc/systemd/system/gulbot-web.service.
+gulbot-beat.service   loaded active running Gulbot: Celery beat (exactly one)
+gulbot-bot.service    loaded active running Gulbot: every shop's bot and the platform bot
+gulbot-web.service    loaded active running Gulbot: page server and admin panel
+gulbot-worker.service loaded active running Gulbot: Celery worker (prefork)
+gulbot-bot: restarted 0 time(s)
+gulbot-worker: restarted 0 time(s)
+gulbot-beat: restarted 0 time(s)
+gulbot-web: restarted 0 time(s)
+-- bot:
+2026-10-11 10:51:58,434 INFO  gulbot shop 1: polling bot 8807290040
+2026-10-11 10:51:58,434 INFO  gulbot serving 1 shop(s); platform bot off; environment=production
+2026-10-11 10:51:58,435 INFO  aiogram.dispatcher Start polling
+2026-10-11 10:51:58,909 INFO  aiogram.dispatcher Run polling for bot @Flowersmarketcontroller_bot id=8807290040 - 'Flowers market'
+-- worker:
+- *** --- * --- .> concurrency: 2 (prefork)
+[2026-10-11 10:52:01,116: INFO/MainProcess] celery@gulbot-vps ready.
+-- beat:
+[2026-10-11 10:51:58,719: INFO/MainProcess] beat: Starting...
+-- web:
+2026-10-11 10:51:51,660 INFO  gulbot.web pages: serving on 127.0.0.1:8088 for https://localhost:8443 (environment=production)
+beat processes: 1  (must be exactly 1)
+worker pool processes: 3  (1 parent + 2 prefork children)
+
+== 9. HTTPS: Caddy with the repo's Caddyfile, hostname put in, internal TLS
+Valid configuration
+active
+Caddy's internal root CA copied out, to verify TLS for real
+
+== a due reminder: planted a minute ago, for a chat no bot can reach
+planted scheduled_notifications.id=1; waiting for beat's tick and the worker
+state=failed attempts=1 ledger=None error=None
+[2026-10-11 10:52:59,785: INFO/ForkPoolWorker-2] Task gulbot.send_due_reminders[1d74b662-a543-433a-9035-48bed4ee1d1b] succeeded in 0.9940812139539048s: {'groups': 0, 'sent': 0}
+[2026-10-11 10:53:58,755: INFO/MainProcess] Task gulbot.send_due_reminders[f05fd27b-e6d4-4b3c-b64b-19b71ad3b736] received
+[2026-10-11 10:54:00,703: INFO/ForkPoolWorker-2] Task gulbot.send_due_reminders[f05fd27b-e6d4-4b3c-b64b-19b71ad3b736] succeeded in 1.9408033509971574s: {'groups': 1, 'sent': 0}
+
+== 10. from outside the server, over HTTPS
+PASS  GET /healthz -> 200  -- 200
+PASS    Content-Security-Policy present
+PASS    X-Robots-Tag noindex
+PASS    Strict-Transport-Security present  -- max-age=31536000
+PASS  GET /admin without a session -> 401  -- 401
+PASS  GET /shop without a session -> 401  -- 401
+PASS  GET /demo/yesno -> 200  -- 200
+PASS  a real share page renders over HTTPS  -- 200
+PASS  GET /healthz/jobs -> 200 once the worker has run  -- ok
+0 failed
+
+== the heartbeats beat and the worker wrote
+check_health: finished 10:56:58 ok=True
+send_due_reminders: finished 10:56:59 ok=True
+send_order_pings: finished 10:56:58 ok=True
+beat processes now: 1
+gulbot-bot: restarted 0 time(s) since start
+gulbot-worker: restarted 0 time(s) since start
+gulbot-beat: restarted 0 time(s) since start
+gulbot-web: restarted 0 time(s) since start
+
+== 13. backups: the units verified, the timer armed, one backup run, the restore drill
+systemd-analyze verify gulbot-backup.service gulbot-backup.timer : exit 0
+Created symlink /etc/systemd/system/timers.target.wants/gulbot-backup.timer → /etc/systemd/system/gulbot-backup.timer.
+NEXT                        LEFT LAST PASSED UNIT                ACTIVATES
+Sun 2026-10-11 22:11:25 UTC  11h -         - gulbot-backup.timer gulbot-backup.service
+backup unit: success
+backup: /var/backups/gulbot/gulbot-20261011T105710Z.dump (124K, 32 tables counted in its snapshot)
+total 128
+-rw------- 1 root root    541 Oct 11 10:57 gulbot-20261011T105710Z.counts
+-rw------- 1 root root 126136 Oct 11 10:57 gulbot-20261011T105710Z.dump
+restored gulbot-20261011T105710Z.dump into gulbot_restore_drill_20261011105713 in 2s
+table                                  dumped   restored
+admin_audit_log                             0          0
+admin_login_links                           0          0
+admin_sessions                              0          0
+alembic_version                             1          1
+consent_events                              0          0
+customers                                   1          1
+hashtag_aliases                             0          0
+holiday_dates                               0          0
+job_runs                                    3          3
+message_log                                 0          0
+occasions                                   1          1
+order_reminders                             0          0
+orders                                      0          0
+premium_unlocks                             0          0
+product_hashtags                            0          0
+products                                    0          0
+recipients                                  1          1
+scheduled_notifications                     1          1
+share_page_options                          0          0
+share_page_photos                           0          0
+share_page_referrals                        0          0
+share_page_rsvps                            0          0
+share_page_wishes                           0          0
+share_pages                                 1          1
+shop_audit_log                              0          0
+shop_health_snapshots                       0          0
+shop_holidays                               0          0
+shop_login_links                            0          0
+shop_sessions                               0          0
+shop_staff                                  0          0
+shops                                       1          1
+subscription_payments                       0          0
+alembic revision: restored 8f2d6c41b9a3, live 8f2d6c41b9a3
+RESTORE DRILL PASS: 32 tables, every row count matches the backup's snapshot
+restore drill exit: 0
+drill databases left behind: 0
+rehearsal exit: 0
+
+== teardown
+ Container gulbot-rehearsal-server Removed 
+ Network gulbot-rehearsal_default Removing 
+ Network gulbot-rehearsal_default Removed 
+image removed
+env file and CA removed
+left running: 0 rehearsal container(s)

@@ -1,0 +1,53 @@
+# A stand-in for the VPS in docs/DEPLOY.md, built by following its steps.
+#
+# Ubuntu 24.04 with systemd as PID 1, so the units in deploy/systemd run as
+# systemd runs them -- User=, EnvironmentFile=, StateDirectory=, Restart= --
+# not as a hand-written imitation. Used only by deploy/rehearsal/rehearse.sh.
+FROM ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# DEPLOY step 1, minus ufw and unattended-upgrades: a container has no
+# firewall or upgrade cycle of its own. systemd is what a VPS boots with.
+RUN apt-get update \
+ && apt-get -y install systemd systemd-sysv git ca-certificates curl gnupg sudo \
+        procps iproute2 software-properties-common debian-keyring \
+        debian-archive-keyring apt-transport-https postgresql-client \
+ && rm -rf /var/lib/apt/lists/*
+
+# DEPLOY step 2: Python 3.11 exactly, from deadsnakes; Caddy from its own repo;
+# Docker from Docker's repo -- the CLI only: the daemon is this machine's,
+# reached through the mounted socket, and runs the Postgres and Redis
+# containers beside this one (step 13's backup talks to it as on a VPS).
+RUN add-apt-repository -y ppa:deadsnakes/ppa \
+ && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+        | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg \
+ && curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+        -o /etc/apt/sources.list.d/caddy-stable.list \
+ && install -m 0755 -d /etc/apt/keyrings \
+ && curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc \
+ && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu noble stable" \
+        > /etc/apt/sources.list.d/docker.list \
+ && apt-get update \
+ && apt-get -y install python3.11 python3.11-venv caddy docker-ce-cli \
+ && rm -rf /var/lib/apt/lists/*
+
+# DEPLOY step 1's service user, and step 3's code. The build context is a
+# `git archive` of the tracked tree (rehearse.sh), so /opt/gulbot holds what a
+# clone holds -- file modes included, and no .env or .venv, as step 3 requires
+# ("there must be no .env file in /opt/gulbot"). A Windows working tree copied
+# as-is marks every file executable; the first rehearsal saw systemd warn so.
+RUN adduser --system --group --home /opt/gulbot gulbot
+COPY --chown=gulbot:gulbot . /opt/gulbot
+RUN sudo -u gulbot python3.11 -m venv /opt/gulbot/.venv \
+ && sudo -u gulbot /opt/gulbot/.venv/bin/pip install --no-cache-dir -q -e /opt/gulbot \
+ && sudo -u gulbot /opt/gulbot/.venv/bin/python -c "import PIL, jinja2, aiogram; print('ok')"
+
+# DEPLOY step 8: the units, copied as they are in the repo.
+RUN cp /opt/gulbot/deploy/systemd/gulbot-*.service /etc/systemd/system/ \
+ && mkdir -p /etc/gulbot \
+ # Journald must not fill the disk (step 1).
+ && sed -i 's/^#\?SystemMaxUse=.*/SystemMaxUse=500M/' /etc/systemd/journald.conf
+
+STOPSIGNAL SIGRTMIN+3
+CMD ["/sbin/init"]
