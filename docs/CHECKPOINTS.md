@@ -1249,6 +1249,10 @@ holiday's bouquet button is `source = holiday`.
   holidays for everyone was invisible because the same materialize run's
   prune deleted the rows again; the test now pins what the run inserted,
   not only what remains.
+- **The full gate found seven fakes shaped like the pre-CP20 row.** The
+  addressed-label tests built reminder rows without the new `holiday`
+  column, which render now reads first. Fixed in the fakes (real rows always
+  carry it), in its own commit; the gate then passed, 2064 tests.
 
 **Mutation totals, all caught on assertions:**
 
@@ -1256,6 +1260,81 @@ holiday's bouquet button is `source = holiday`.
 |---|---|
 | 1 shop panel | 20/20 (+1 judged equivalent: the orders query's shop WHERE, behind its JOIN to the shop's own customers) |
 | 2 holiday campaigns | 18/18 |
+
+## What CP21 guarantees
+
+The runbook has been run -- not on a VPS, which does not exist yet, but on a
+stand-in built by following it: Ubuntu 24.04 with systemd as PID 1, Python
+3.11 from deadsnakes, Caddy and Docker from their own repositories, the code
+from a `git archive` of the tracked tree, `/etc/gulbot/gulbot.env` root:gulbot
+0640, Postgres and Redis on the server's own 127.0.0.1 and nowhere else
+(`deploy/rehearsal/`). `rehearse.sh` drives it and tears it all down; the
+full transcript, token redacted, is `docs/rehearsal/cp21-transcript.txt`.
+
+**The rehearsal, 2026-10-11 (second run; exit 0):**
+
+| DEPLOY step | Result |
+|---|---|
+| 5 | the prod override publishes Postgres and Redis on 127.0.0.1 only |
+| 6 | `environment=production database=gulbot_prod`; without the env file every process REFUSES TO START, naming all five problems |
+| 7 | `current` = `heads` = `8f2d6c41b9a3` on an empty database |
+| 7b (new) | pilot seeded, its bot stored encrypted; a rerun changes nothing |
+| 8 | `systemd-analyze verify` clean on all four units; worker `concurrency: 2 (prefork)`; beat processes: exactly 1, also at the end; 0 restarts on every unit, twice checked |
+| 9 | the repo's Caddyfile validates; internal TLS, verified against Caddy's own root CA |
+| 10 | `/healthz` 200 with CSP, noindex and HSTS; `/admin` 401; `/shop` 401; `/demo/yesno` 200; a real share page 200 over HTTPS; `/healthz/jobs` `ok` after the first health check |
+| reminders | a row due a minute ago, for a chat no bot can reach: beat ticked, the prefork worker took it (`groups: 1, sent: 0`) through the pilot's own bot, and the row went `failed`, attempts 1, kept for retry -- processed, and nobody messaged |
+| 13 | backup units verify clean; timer armed for 03:10 Tashkent; one backup; restore drill PASS, 32/32 tables, revision equal; no drill database left |
+| teardown | containers, volumes, image, env file and CA removed; 0 left running |
+
+**The restore drill, also against the dev database:** 26/26 tables (photos
+included), revision `d5e841dbb2be` both sides, PASS. A tampered count and a
+table missing from the counts each made it FAIL with exit 1.
+
+### Found by the rehearsal, each fixed
+
+- **The pilot shop had no bot on a fresh server** (first run). `BOT_TOKEN`
+  serves only the shop the per-shop-tokens migration flagged, and on an empty
+  database it flags none; the seeded pilot was "not the legacy shop allowed
+  to use BOT_TOKEN". The bot refused to start and systemd restarted it every
+  ten seconds, while `list-units` said `active running`; every reminder
+  failed "no usable bot". DEPLOY step 11 ("the pilot may keep using
+  BOT_TOKEN") was true only of the dev database. Fixed: `seed
+  --store-bot-token` and DEPLOY step 7b (CP21.1, 9/9 mutants).
+- **An instant "active" hid that crash loop.** The rehearsal and DEPLOY step
+  8 now read `NRestarts`, which must stay 0.
+- **The backup hung after a complete dump.** Closing the duplicated fd is
+  not EOF while the coproc's own copy of the pipe is open; psql is now told
+  to quit, and the rehearsal bounds the run at five minutes.
+- **Every unit file was executable** (systemd warned). Not a repo defect --
+  git has them 0644 -- but a Windows working tree copied as-is; the image is
+  now built from `git archive`, and a test pins the scripts' 0755 in git.
+
+### Decisions made during CP21, each with its reason
+
+- **The pilot's token is stored from the environment, never an argument.**
+  The same rule as onboarding's: a token on a command line ends up in shell
+  history and in `ps`.
+- **The backup unit `Wants=` Docker rather than `Requires=` it.** If Docker
+  is down the script fails loudly on its own; `Requires=` only made the unit
+  unloadable wherever `docker.service` is not a unit.
+- **The rehearsal mounts this machine's Docker socket into the stand-in.**
+  The backup must `docker exec` into the Postgres container as root does on
+  the VPS; a second Docker daemon inside the container would rehearse nothing
+  more. Its one other difference from production -- the container is called
+  `gulbot-rehearsal-postgres`, because the dev machine already runs a
+  `gulbot-postgres` -- is a systemd drop-in, visible in the script.
+- **Copying dumps off the server stays the owner's.** It needs credentials
+  for a machine that does not exist yet; DEPLOY step 13 says so plainly.
+- **Not rehearsed, because a container cannot show them:** ufw, real DNS and
+  a public certificate, unattended upgrades, Telegram from the VPS's network.
+
+**Mutation totals, all caught on assertions:**
+
+| Change | Mutants |
+|---|---|
+| 1 `seed --store-bot-token` | 9/9 |
+| 3 deploy-file guards | 10/10 (9 text mutants, plus the script's exec bit cleared in git) |
+| 2 restore drill | 2/2, run by hand: a wrong count, a missing table -> FAIL, exit 1 |
 
 ## Briefs already agreed for future checkpoints
 
