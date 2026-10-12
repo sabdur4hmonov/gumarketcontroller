@@ -1,0 +1,72 @@
+{
+  "scope": "real dev Bot API and channel; production services; no speech model -- the 'heard' text stands in for the recogniser's output",
+  "bot_username": "Flowersmarketcontroller_bot",
+  "fix": {
+    "heard": "Qizil atirgil, o'n bitta dona, narxi ikki yuz ming so'm",
+    "uncertain_before": [
+      "flowers"
+    ],
+    "heard_as": [
+      [
+        "colour",
+        "Qizil",
+        "qizil",
+        "high"
+      ],
+      [
+        "flower",
+        "atirgil",
+        "atirgul",
+        "low"
+      ]
+    ],
+    "corrected_text": "Qizil atirgul, o'n bitta dona, narxi ikki yuz ming so'm",
+    "learned": [
+      {
+        "heard": "atirgil",
+        "corrected": "atirgul",
+        "kind": "flower"
+      }
+    ],
+    "fields_after": {
+      "flowers": [
+        "atirgul"
+      ],
+      "count": 11,
+      "price": 200000,
+      "colour": "qizil"
+    }
+  },
+  "auto_corrected": {
+    "heard": "Oq atirgil yigirma bitta dona, narxi uch yuz ming so'm",
+    "learned_applied": [
+      "atirgil → atirgul"
+    ],
+    "flowers": [
+      "atirgul"
+    ],
+    "uncertain": [],
+    "correction_uses": 1,
+    "published": "https://t.me/c/3987514504/16",
+    "template": "atirgul.classic",
+    "logo": "sample logo stamped on the post photo",
+    "catalog_before_edit": {
+      "id": 26,
+      "name": "Atirgul guldastasi — 21 dona",
+      "price_uzs": 300000
+    }
+  },
+  "edit": {
+    "new_price_typed": "350 ming",
+    "catalog_after_edit": {
+      "name": "Atirgul guldastasi — 21 dona",
+      "price_uzs": 350000,
+      "active": true
+    },
+    "own_edited_channel_post_observed": false,
+    "observation_seconds": 10.5,
+    "pending_before": 0,
+    "note": "No update was acknowledged. The catalogue was updated by calling the indexer's apply_edit directly, which does not depend on this delivery."
+  },
+  "sample_logo_removed": true
+}

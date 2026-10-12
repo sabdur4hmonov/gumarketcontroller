@@ -69,6 +69,20 @@ def sample_photo(theme_id: str) -> bytes:
     return out.getvalue()
 
 
+def sample_logo() -> Image.Image:
+    """A plainly labelled SAMPLE logo -- not any shop's."""
+    from PIL import ImageFont
+
+    logo = Image.new("RGBA", (520, 200), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(logo)
+    draw.rounded_rectangle((4, 4, 516, 196), radius=40, outline=(122, 20, 36, 255), width=10)
+    font = ImageFont.truetype(
+        str(ROOT / "src/gulbot/announcements/assets/fonts/NotoSans-SemiBold.ttf"), 70
+    )
+    draw.text((50, 55), "NAMUNA", font=font, fill=(122, 20, 36, 255))
+    return logo
+
+
 def phone(jpeg: bytes, name: str) -> str:
     with Image.open(io.BytesIO(jpeg)) as image:
         small = image.convert("RGB")
@@ -193,6 +207,45 @@ def main() -> None:
         )
         (OUT / f"{theme_id}.html").write_text(page(theme.names[0], body), encoding="utf-8")
         print(f"{theme_id}: done")
+    # The shop's own logo (CP23 addendum): a SAMPLE, on a post and a story.
+    logo = sample_logo()
+    photo = sample_photo("atirgul")
+    shots = [
+        phone(
+            render_post(
+                photo,
+                template=f"atirgul.{layout}",
+                price=450_000,
+                colour="qizil",
+                shop_name=SHOP,
+                logo=logo,
+            ).jpeg,
+            f"logo-post-{layout}.jpg",
+        )
+        for layout in ("classic", "new_arrival", "premium")
+    ] + [
+        phone(
+            render_story(
+                photo,
+                theme="atirgul",
+                layout=layout,
+                price=450_000,
+                colour="qizil",
+                shop_name=SHOP,
+                logo=logo,
+            ).jpeg,
+            f"logo-story-{layout}.jpg",
+        )
+        for layout in ("frame", "magazine")
+    ]
+    index.append(
+        "<h2>With the shop's own logo (a SAMPLE logo; each shop sends its own with /logo)</h2>"
+        "<div class='stories'>"
+        + "".join(
+            f"<figure><img src='{src}' alt='logo sample' loading='lazy'></figure>" for src in shots
+        )
+        + "</div>"
+    )
     (OUT / "index.html").write_text(page("CP23 gallery", "".join(index)), encoding="utf-8")
 
     def summary(values: list[float]) -> dict[str, float]:

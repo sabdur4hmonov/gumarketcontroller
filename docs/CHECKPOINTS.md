@@ -1830,3 +1830,79 @@ what only the owner can do. Tested against a fake Graph server only.
 - A newly onboarded shop gets no hashtag aliases until `seed_aliases` is rerun
   (pre-existing; DEPLOY now says so). Seeding at onboarding is the fix.
 - Instagram publishing has never met the real Meta API (fake server only).
+
+## CP23 addendum — fixing what was heard, editing what was posted, the shop's logo
+
+### What the addendum guarantees
+
+**Audit first.** CP22 already had: per-field edit buttons (all five fields,
+description included), the raw text beside the parsed fields, warnings, a
+text replacement that re-ran extraction, and a new voice that replaced the
+result. It lacked: marks on the UNSURE fields, a preview of the post on the
+review screen, explicit "Matnni tuzatish" / "Qaytadan gapirish" / "Bekor
+qilish", any learning, and any way to touch a post after publication.
+
+- **The confirmation screen** shows what was heard, what was understood (⚠
+  on a guessed flower or colour, an unlabelled or ambiguous price, a missing
+  count), what was learned or applied, and the post EXACTLY as the channel
+  would get it -- after every fix. Voice and text share it.
+- **Four ways to fix**, each returning to that screen with the corrected
+  values: "✏️ Matnni tuzatish" (the corrected text through the SAME
+  extraction), the field buttons, "🎤 Qaytadan gapirish" (a new voice replaces
+  the result), "❌ Bekor qilish" on every step before publication (the draft
+  is deleted; a post that went out is never touched by it). Nothing publishes
+  without confirmation.
+- **Learning, per shop** (`announcement_corrections`): a short mishearing
+  the owner fixes -- at most 3 words / 40 characters a side -- is applied
+  before the general lexicon next time, for THAT shop only. A change of mind
+  (words the bot understood) and a rewritten description are never learned;
+  a button teaches only when it replaces a wrong GUESS. 200 a shop, least
+  recently used dropped; "🧠 O'rganilganlar" lists them, each deletable.
+- **"📋 Mening e'lonlarim"** (owners and staff): a published post's price,
+  count or description (editMessageCaption), its flower template
+  (editMessageMedia), its story image again, or deletion. The catalogue
+  follows through the SAME `apply_edit` an edited channel post uses (now
+  also following a replaced photo's file id); a deleted post goes through
+  the new `deactivate_post`.
+- **The shop's logo** (the owner's request): sent with /logo by an owner,
+  stamped on every photo of every announcement and every story, never over
+  text or a panel, switchable per announcement.
+- **Type** (the owner's request): the same Noto Sans, set better -- size caps
+  per role (price, then name, then shop), lines set as one centred block,
+  tracked badges.
+
+### Decisions, each with its reason
+
+- **Learning only mishearings.** A correction that would rewrite understood
+  words would turn every future rose into a tulip.
+- **The bot calls `apply_edit` itself after its own edits.** Live, Telegram
+  delivered the bot NO `edited_channel_post` for its own caption edit within
+  10.5 s (recorded below), the same as CP22 saw for own posts.
+- **Owners, not staff, set the logo.** Staff publish; the brand is the
+  owner's.
+- **No new font.** Asked whether a handwriting font should be downloaded, the
+  owner answered that clean, better-set computer type was meant.
+
+### Found while building
+
+- **CP22's vendored dictionary was stored in git with LF**, unlike its pinned
+  upstream CRLF bytes: the CP23 gate's fresh worktree failed CP22's own hash
+  test. Re-stored; a new test asks git itself (commit 6c68257).
+- **The CP23 Phase 1 gate**: 4,386 passed, that one failure.
+- Three addendum mutants and one logo mutant first survived; each exposed a
+  test that looked through the wrong window (a capped read, an error instead
+  of an assertion, a second guard, text-only overlap) and was fixed.
+
+### Evidence
+
+- Mutations, all on assertions: fixing/learning 13/13, published posts 8/8,
+  logo and type 11/11 -- 32/32. CP23 in all: 49 + 32 = 81/81.
+- Live, through the dev bot and channel (`docs/cp23-addendum-live-proof.json`):
+  "Qizil atirgil, o'n bitta dona..." -- "atirgil" marked unsure -- fixed with
+  "Matnni tuzatish", learned atirgil -> atirgul; the next announcement "Oq
+  atirgil yigirma bitta dona..." was corrected automatically (no field
+  unsure) and published at https://t.me/guldokonkanal/16 with a SAMPLE logo,
+  removed afterwards; its price edited 300 000 -> 350 000 from "Mening
+  e'lonlarim" and the catalogue's Product 26 shows 350 000. No speech model
+  runs on this machine: the "heard" text stands in for the recogniser's
+  output, said so in the proof.
