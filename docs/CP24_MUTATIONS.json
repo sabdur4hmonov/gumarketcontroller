@@ -1,0 +1,206 @@
+{
+  "caught": 28,
+  "total": 28,
+  "results": [
+    {
+      "guard": "lost design",
+      "file": "src/gulbot/web/designs_cp24.py",
+      "test": "tests/test_web_cp24.py::test_twenty_new_keys_never_replace_original_designs",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "old key overwritten",
+      "file": "src/gulbot/web/designs_cp24.py",
+      "test": "tests/test_web_cp24.py::test_twenty_new_keys_never_replace_original_designs",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "empty picker name",
+      "file": "src/gulbot/web/designs_cp24.py",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "empty picker icon",
+      "file": "src/gulbot/web/designs_cp24.py",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "meta palette mismatch",
+      "file": "src/gulbot/web/designs_cp24.py",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "unlicensed display face",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "incomplete Uzbek fallback",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "foreign CSS import",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "theme byte budget exceeded",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "missing font declaration",
+      "file": "src/gulbot/web/static/css/fonts_cp24.css",
+      "test": "tests/test_web_cp24.py::test_cp24_font_declarations_have_licensed_complete_families",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "gift selection changed",
+      "file": "src/gulbot/services/premium.py",
+      "test": "tests/test_web_cp24.py::test_cp24_gift_selection_is_twelve_premium_and_eight_free",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "new envelope removed",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_artwork_fonts_and_bytes_are_self_contained[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "creator seal replaced",
+      "file": "src/gulbot/web/templates/_base.html",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz_cyrl-yesno-zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "unsafe inline CSP",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_web_pages.py::test_the_csp_allows_nothing_inline_and_nothing_foreign",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "autoescape disabled",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-invite-sitrus]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "lead photo duplicated",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_photo_first_consumes_one_gallery_photo_and_obeys_gallery_switch[invite-lavha]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "disabled gallery leaks lead",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_photo_first_consumes_one_gallery_photo_and_obeys_gallery_switch[invite-lavha]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "shop label cannot shrink",
+      "file": "src/gulbot/web/static/css/base.css",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-invite-milliy]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "long title/wish overflows",
+      "file": "src/gulbot/web/static/css/base.css",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-invite-milliy]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "Cyrillic colours corrupted",
+      "file": "src/gulbot/web/sections.py",
+      "test": "tests/test_web_cp24.py::test_palette_labels_cover_all_four_languages",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "audio context before tap",
+      "file": "src/gulbot/web/static/js/music.js",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-yesno-zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "guest counter removed",
+      "file": "src/gulbot/web/templates/invite.html",
+      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-invite-sitrus]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "escaping button removed",
+      "file": "src/gulbot/web/templates/yesno.html",
+      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-yesno-sitrus]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "footer ink matches background",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_shop_brand_and_primary_buttons_have_readable_contrast[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "gold button ink matches fill",
+      "file": "src/gulbot/web/static/css/theme-zarhal.css",
+      "test": "tests/test_web_cp24.py::test_shop_brand_and_primary_buttons_have_readable_contrast[zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "ornament left blank",
+      "file": "src/gulbot/web/templates/_ornaments_cp24.html",
+      "test": "tests/test_web_cp24.py::test_twenty_new_ornaments_are_drawn_and_distinct",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "HTML language lost",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-invite-sitrus]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "maximum seal text overflows",
+      "file": "src/gulbot/web/static/css/base.css",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-yesno-zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    }
+  ],
+  "last_rechecked_guards": [
+    "maximum seal text overflows"
+  ],
+  "report_scope": "Accumulated per-guard proof"
+}
