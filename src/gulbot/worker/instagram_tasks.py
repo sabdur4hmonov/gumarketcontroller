@@ -20,6 +20,7 @@ from gulbot.db.session import task_session_factory
 from gulbot.sending.transport import ShopBotUnavailable
 from gulbot.services import instagram
 from gulbot.services.instagram_graph import Graph
+from gulbot.services.shop_health import heartbeat
 from gulbot.worker.app import (
     INSTAGRAM_PUBLISH_HARD_LIMIT,
     INSTAGRAM_PUBLISH_SOFT_LIMIT,
@@ -91,5 +92,8 @@ async def _refresh() -> dict[str, int]:
     soft_time_limit=INSTAGRAM_REFRESH_SOFT_LIMIT,
     time_limit=INSTAGRAM_REFRESH_HARD_LIMIT,
 )
+# Every beat-scheduled task leaves a heartbeat (CP18): a daily job that died
+# is visible in job_runs. Not a liveness job -- /healthz/jobs ignores it.
+@heartbeat("refresh_instagram_tokens")
 def refresh_instagram_tokens() -> dict[str, int]:
     return asyncio.run(_refresh())
