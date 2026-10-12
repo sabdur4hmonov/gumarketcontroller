@@ -30,7 +30,7 @@ from gulbot.announcements.extraction import Fields
 from gulbot.announcements.flower_templates import ALL_TEMPLATES
 from gulbot.announcements.layouts import LAYOUT_IDS, LAYOUTS
 from gulbot.announcements.themes import THEMES
-from gulbot.bot.callbacks import PostCB
+from gulbot.bot.callbacks import LogoCB, PostCB
 from gulbot.bot.states import PostEdit
 from gulbot.i18n import t
 from gulbot.models.announcement import AnnouncementDraft
@@ -38,6 +38,7 @@ from gulbot.models.product import Product
 from gulbot.models.shop import Shop
 from gulbot.services import announcements as service
 from gulbot.services import published_posts as posts
+from gulbot.services import shop_logo
 from gulbot.services.indexer import FinalizeResult
 
 FIELD_PROMPTS = {
@@ -102,6 +103,11 @@ async def show_post(message: Message, session: AsyncSession, draft: Announcement
                 [post_button(draft, "📸 Istoriya", "story")],
                 [post_button(draft, "🗑 O'chirish", "del")],
                 [post_button(0, "↩ Ro'yxat", "list")],
+                [
+                    InlineKeyboardButton(
+                        text="🏷 Do'kon logosi", callback_data=LogoCB(action="show").pack()
+                    )
+                ],
             ]
         ),
     )
@@ -172,6 +178,7 @@ async def action(
             from gulbot.bot.routers.announcements import first_photo
 
             photo = await first_photo(bot, draft)
+            logo = await shop_logo.logo_image(session, shop_id) if draft.logo_on else None
             rendered = await asyncio.to_thread(
                 render_post,
                 photo,
@@ -180,6 +187,7 @@ async def action(
                 colour=fields.colour,
                 shop_name=shop_name,
                 lang=draft.caption_lang,
+                logo=logo,
             )
             result = await posts.switch_template(
                 session,

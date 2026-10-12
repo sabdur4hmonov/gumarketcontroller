@@ -114,3 +114,29 @@ def test_cp23_corrections_revision_roundtrip(settings):
     finally:
         engine.dispose()
         drop_database(settings, database)
+
+
+def test_cp23_shop_logo_revision_roundtrip(settings):
+    database = "gulbot_cp23_logo_roundtrip"
+    drop_database(settings, database)
+    create_database(settings, database)
+    engine = create_engine(settings.database_url(database=database, driver="psycopg"))
+
+    def state() -> tuple[bool, bool]:
+        with engine.connect() as connection:
+            inspector = inspect(connection)
+            columns = {c["name"] for c in inspector.get_columns("announcement_drafts")}
+            return "shop_logos" in inspector.get_table_names(), "logo_on" in columns
+
+    try:
+        with alembic_config_for(database) as config:
+            command.upgrade(config, "head")
+            assert state() == (True, True)
+            revision = ScriptDirectory.from_config(config).get_revision("f23d7c2e5a41")
+            command.downgrade(config, revision.down_revision)
+            assert state() == (False, False)
+            command.upgrade(config, "head")
+            assert state() == (True, True)
+    finally:
+        engine.dispose()
+        drop_database(settings, database)

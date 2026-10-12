@@ -280,6 +280,17 @@ def photo(width: int, height: int) -> bytes:
 SHAPES = {"portrait": photo(900, 1200), "landscape": photo(1600, 900), "tiny": photo(300, 300)}
 
 
+def apart(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
+    """Two boxes that do not overlap."""
+    return a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+
+
+#: A wide shop logo (the hardest shape for a square slot), as the shop
+#: service stores it: RGBA, opaque mark on a transparent ground.
+LOGO = Image.new("RGBA", (480, 140), (0, 0, 0, 0))
+LOGO.paste(Image.new("RGBA", (460, 120), (122, 20, 36, 255)), (10, 10))
+
+
 def inside(inner: tuple[int, int, int, int], outer: tuple[int, int, int, int]) -> bool:
     return (
         outer[0] <= inner[0]
@@ -300,9 +311,17 @@ def test_no_overlay_text_overflows(template: str, shape: str) -> None:
         colour="pushti",
         shop_name=LONG_SHOP,
         lang=lang,
+        logo=LOGO,
     )
     canvas = post_canvas(SHAPES[shape])
     assert (rendered.width, rendered.height) == canvas.size
+    # The shop's logo: on the photo, and never over any text.
+    assert rendered.logo is not None
+    assert inside(rendered.logo, (0, 0, rendered.width, rendered.height)), rendered.logo
+    for box in rendered.boxes:
+        assert apart(rendered.logo, box.container), (box.role, rendered.logo, box.container)
+    for panel in rendered.panels:  # nor on a label, a band, a bubble or a disc
+        assert apart(rendered.logo, panel), (rendered.logo, panel)
     roles = {box.role for box in rendered.boxes}
     assert "price" in roles and "shop" in roles
     for box in rendered.boxes:
@@ -401,3 +420,28 @@ def test_a_rasterised_motif_is_cached() -> None:
     first = raster("lola", 96, "#336699")
     assert raster("lola", 96, "#336699") is first
     assert raster("lola", 96, "#996633") is not first
+
+
+@pytest.mark.parametrize("template", ALL_TEMPLATES)
+def test_the_type_has_a_hierarchy(template: str) -> None:
+    """The owner's request: text that reads as properly typeset. The price leads,
+    the shop line is quieter, no role swells past its cap, and the short badges
+    (YANGI, TAKLIF, SOVG'A) are letter-spaced."""
+    from gulbot.announcements.designs import ROLE_CAP, TRACK
+
+    rendered = render_post(
+        SHAPES["portrait"],
+        template=template,
+        price=450_000,
+        colour="",
+        shop_name="Gulshan",
+        longest=720,
+    )
+    sizes = {box.role: box.size for box in rendered.boxes}
+    short = min(rendered.width, rendered.height)
+    assert sizes["price"] > sizes["shop"], sizes
+    assert sizes["price"] >= sizes.get("name", 0), sizes
+    assert sizes["shop"] <= int(short * ROLE_CAP["shop"]), sizes
+    for box in rendered.boxes:
+        if box.role == "badge":
+            assert TRACK in box.text, box.text

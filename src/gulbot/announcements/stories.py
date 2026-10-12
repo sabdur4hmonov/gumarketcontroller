@@ -183,6 +183,7 @@ def _tag(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
 
 
 def _burst(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
+    st.canvas.boost = {"price": 1.2}
     st.cover(0, 0, 1080, 1920)
     st.canvas.draw.ellipse(
         st.box(170, 840, 910, 1580), fill=p.bg, outline=p.accent, width=st.px(10)
@@ -192,6 +193,7 @@ def _burst(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
 
 
 def _magazine(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
+    st.canvas.boost = {"name": 2.2, "price": 1.2}
     st.panel(p.bg, 0, 0, 1080, 640)
     st.cover(0, 640, 1080, 1920)
     st.motif(t.motif, 930, 450, 220, p.accent)
@@ -207,14 +209,14 @@ def _magazine(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
 
 
 def _duo(st: Story, t: FlowerTheme, p: Palette, x: Texts) -> None:
-    st.panel(p.bg, 0, 0, 400, 1920)
-    st.cover(400, 0, 1080, 1920)
-    st.motif(t.motif, 200, 1740, 260, p.accent)
-    st.motif("sprig", 200, 150, 200, p.accent)
-    ink = text_on(p, p.bg)
-    st.canvas.text("name", x.name, st.box(40, 300, 360, 420), ink)
-    st.canvas.text("price", x.price, st.box(40, 700, 360, 860), ink, truncate=False, floor=10)
-    st.canvas.text("shop", x.shop, st.box(40, 1380, 360, 1480), ink, bold=False)
+    st.canvas.boost = {"name": 1.3}
+    st.panel(p.bg, 0, 0, 470, 1920)
+    st.cover(470, 0, 1080, 1920)
+    st.canvas.draw.line(st.box(470, 0, 470, 1920), fill=p.accent, width=st.px(8))
+    st.motif(t.motif, 235, 1740, 260, p.accent)
+    st.motif("sprig", 235, 150, 200, p.accent)
+    st.motif(t.motif, 235, 470, 200, p.accent)
+    st.stack(text_on(p, p.bg), 40, 640, 430, 1140, _rows(x), align="left")
 
 
 STORY_LAYOUTS: dict[str, tuple[StoryLayout, StoryDraw]] = {
@@ -252,6 +254,7 @@ def render_story(
     shop_name: str,
     lang: str = "uz",
     scale: float = 1.0,
+    logo: Image.Image | None = None,
 ) -> Rendered:
     """One story image. JPEG at high quality: it is sent as a document."""
     started = time.perf_counter()
@@ -268,6 +271,26 @@ def render_story(
     )
     _, draw = STORY_LAYOUTS[layout]
     draw(story, flower, palette, texts)
+    if logo is not None:
+        story.canvas.stamp(logo, story.box(*STORY_LOGO_SLOT[layout]), palette.soft)
     jpeg = encode(story.canvas.image, quality=92 if scale == 1.0 else 85)
     w, h = story.canvas.size
-    return Rendered(jpeg, w, h, story.canvas.boxes, time.perf_counter() - started)
+    return Rendered(
+        jpeg, w, h, story.canvas.boxes, time.perf_counter() - started, story.canvas.logo_box
+    )
+
+
+#: Where each story layout puts the shop's logo: inside the visible zone,
+#: clear of every text block (design units).
+STORY_LOGO_SLOT: dict[str, tuple[int, int, int, int]] = {
+    "frame": (840, 270, 990, 420),
+    "split": (890, 270, 1050, 430),
+    "polaroid": (780, 340, 910, 470),
+    "arch": (30, 270, 170, 410),
+    "circle": (470, 262, 610, 402),
+    "minimal": (880, 270, 1040, 430),
+    "tag": (40, 270, 200, 430),
+    "burst": (40, 270, 200, 430),
+    "magazine": (890, 680, 1040, 830),
+    "duo": (130, 1250, 340, 1460),
+}

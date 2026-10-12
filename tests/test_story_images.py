@@ -68,6 +68,17 @@ def jpeg(width: int, height: int) -> bytes:
 SHAPES = {"portrait": jpeg(900, 1200), "landscape": jpeg(1600, 900)}
 
 
+def apart(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> bool:
+    """Two boxes that do not overlap."""
+    return a[2] <= b[0] or b[2] <= a[0] or a[3] <= b[1] or b[3] <= a[1]
+
+
+#: A wide shop logo (the hardest shape for a square slot), as the shop
+#: service stores it: RGBA, opaque mark on a transparent ground.
+LOGO = Image.new("RGBA", (480, 140), (0, 0, 0, 0))
+LOGO.paste(Image.new("RGBA", (460, 120), (122, 20, 36, 255)), (10, 10))
+
+
 # --- the images, all 150 ------------------------------------------------------------
 
 
@@ -90,8 +101,15 @@ def test_every_story_keeps_its_text_in_the_safe_zone(story: str, shape: str) -> 
         colour="pushti",
         shop_name=LONG_SHOP,
         lang=lang,
+        logo=LOGO,
     )
     assert (rendered.width, rendered.height) == (1080, 1920)
+    # The shop's logo: where Instagram shows it, and never over any text.
+    assert rendered.logo is not None
+    lx0, ly0, lx1, ly1 = rendered.logo
+    assert lx0 >= 0 and lx1 <= 1080 and ly0 >= SAFE_TOP and ly1 <= SAFE_BOTTOM, rendered.logo
+    for box in rendered.boxes:
+        assert apart(rendered.logo, box.container), (box.role, rendered.logo, box.container)
     roles = [box.role for box in rendered.boxes]
     assert {"name", "price", "shop"} <= set(roles)
     for box in rendered.boxes:

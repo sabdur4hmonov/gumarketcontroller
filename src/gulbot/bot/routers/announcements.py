@@ -18,10 +18,11 @@ from aiogram.types import (
     InputMediaPhoto,
     Message,
 )
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gulbot.announcements.designs import PREVIEW_LONGEST, render_post
+from gulbot.announcements.designs import PREVIEW_LONGEST, render_post, stamp_logo
 from gulbot.announcements.extraction import Fields
 from gulbot.announcements.flower_templates import caption as flower_caption
 from gulbot.announcements.flower_templates import split_template
@@ -44,7 +45,7 @@ from gulbot.bot.states import Announcement
 from gulbot.i18n import t
 from gulbot.models.announcement import AnnouncementDraft
 from gulbot.models.shop import Shop
-from gulbot.services import announcement_learning, instagram
+from gulbot.services import announcement_learning, instagram, shop_logo
 from gulbot.services import announcements as service
 
 
@@ -164,6 +165,7 @@ def style_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
         inline_keyboard=[
             *rows,
             [button(draft, "⭐ Do'kon uchun saqlash", "favourite")],
+            [button(draft, f"🏷 Logo: {'✅ bor' if draft.logo_on else '❌ yo‘q'}", "logo")],
             [button(draft, "👁 Aniq ko'rinish", "preview")],
             [button(draft, "✏ Ma'lumotlarni qayta tekshirish", "review")],
             cancel_row(draft),
@@ -214,7 +216,12 @@ async def first_photo(bot: Bot, draft: AnnouncementDraft) -> bytes:
 
 
 def _previews(
-    photo: bytes, theme_id: str, fields: Fields, shop_name: str, lang: str
+    photo: bytes,
+    theme_id: str,
+    fields: Fields,
+    shop_name: str,
+    lang: str,
+    logo: Image.Image | None = None,
 ) -> list[bytes]:
     return [
         render_post(
@@ -225,6 +232,7 @@ def _previews(
             shop_name=shop_name,
             lang=lang,
             longest=PREVIEW_LONGEST,
+            logo=logo,
         ).jpeg
         for layout in LAYOUT_IDS
     ]
@@ -237,9 +245,10 @@ async def send_template_previews(
     shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id)) or ""
     fields = Fields.from_data(draft.fields)
     photo = await first_photo(bot, draft)
+    logo = await shop_logo.logo_image(session, draft.shop_id) if draft.logo_on else None
     # Pillow is CPU work: off the event loop, so other shops' updates flow.
     images = await asyncio.to_thread(
-        _previews, photo, theme_id, fields, shop_name, draft.caption_lang
+        _previews, photo, theme_id, fields, shop_name, draft.caption_lang, logo
     )
     await bot.send_media_group(
         message.chat.id,
@@ -450,18 +459,25 @@ STORY_HELP = (
 
 async def _story_inputs(
     bot: Bot, session: AsyncSession, draft: AnnouncementDraft
-) -> tuple[bytes, str, Fields, str]:
+) -> tuple[bytes, str, Fields, str, Image.Image | None]:
     shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id)) or ""
+    logo = await shop_logo.logo_image(session, draft.shop_id) if draft.logo_on else None
     return (
         await first_photo(bot, draft),
         shop_name,
         Fields.from_data(draft.fields),
-        (service.story_theme(draft)),
+        service.story_theme(draft),
+        logo,
     )
 
 
 def _story_previews(
-    photo: bytes, theme: str, fields: Fields, shop_name: str, lang: str
+    photo: bytes,
+    theme: str,
+    fields: Fields,
+    shop_name: str,
+    lang: str,
+    logo: Image.Image | None,
 ) -> list[bytes]:
     image = story_photo(photo)  # decoded once for all ten
     return [
@@ -474,6 +490,7 @@ def _story_previews(
             shop_name=shop_name,
             lang=lang,
             scale=STORY_PREVIEW_SCALE,
+            logo=logo,
         ).jpeg
         for layout in STORY_LAYOUT_IDS
     ]
@@ -482,9 +499,9 @@ def _story_previews(
 async def send_story_previews(
     bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft
 ) -> None:
-    photo, shop_name, fields, theme = await _story_inputs(bot, session, draft)
+    photo, shop_name, fields, theme, logo = await _story_inputs(bot, session, draft)
     images = await asyncio.to_thread(
-        _story_previews, photo, theme, fields, shop_name, draft.caption_lang
+        _story_previews, photo, theme, fields, shop_name, draft.caption_lang, logo
     )
     await bot.send_media_group(
         message.chat.id,
@@ -528,7 +545,7 @@ async def send_story(
 async def _rendered_story(
     bot: Bot, session: AsyncSession, draft: AnnouncementDraft, layout: str
 ) -> tuple[bytes, str]:
-    photo, shop_name, fields, theme = await _story_inputs(bot, session, draft)
+    photo, shop_name, fields, theme, logo = await _story_inputs(bot, session, draft)
     story = await asyncio.to_thread(
         render_story,
         photo,
@@ -538,6 +555,7 @@ async def _rendered_story(
         colour=fields.colour,
         shop_name=shop_name,
         lang=draft.caption_lang,
+        logo=logo,
     )
     return story.jpeg, f"istoriya-{theme}-{layout}.jpg"
 
@@ -572,6 +590,8 @@ async def exact_preview(
     shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id))
     f = Fields.from_data(draft.fields)
     media: list[str | BufferedInputFile] = list(draft.photos)
+    # The shop's logo goes on EVERY photo of the post (the owner's request).
+    logo = await shop_logo.logo_image(session, draft.shop_id) if draft.logo_on else None
     if draft.template is not None:
         # CP23: one flower template sets both the caption and the overlay.
         body = flower_caption(
@@ -586,6 +606,7 @@ async def exact_preview(
             colour=f.colour,
             shop_name=shop_name or "",
             lang=draft.caption_lang,
+            logo=logo,
         )
         media[0] = BufferedInputFile(themed.jpeg, filename="bouquet.jpg")
     else:
@@ -599,7 +620,17 @@ async def exact_preview(
             price=f.price or 0,
             shop_name=shop_name or "",
         )
+        if logo is not None:
+            rendered = await asyncio.to_thread(stamp_logo, rendered, logo)
         media[0] = BufferedInputFile(rendered, filename="bouquet.jpg")
+    if logo is not None:
+        # Every photo not already rendered above carries the logo alone.
+        for index, item in enumerate(media):
+            if isinstance(item, str):
+                buffer = io.BytesIO()
+                await bot.download(item, destination=buffer)
+                stamped = await asyncio.to_thread(stamp_logo, buffer.getvalue(), logo)
+                media[index] = BufferedInputFile(stamped, filename=f"bouquet-{index}.jpg")
     if len(media) == 1:
         messages = [
             await bot.send_photo(message.chat.id, media[0], caption=body, parse_mode="HTML")
@@ -824,6 +855,18 @@ async def action(
             service.choose_template(draft, cb.value)
             await message.answer(
                 f"Tanlandi: {template_label(cb.value)}", reply_markup=style_keyboard(draft)
+            )
+        elif cb.action == "logo":
+            # The shop's logo on this post's photos, or not.
+            if draft.status not in {"confirmed", "preview"}:
+                raise service.AnnouncementRefused("Avval tasdiqlang")
+            draft.logo_on = not draft.logo_on
+            service.invalidate(draft, status="confirmed")
+            has_logo = await shop_logo.logo_image(session, draft.shop_id) is not None
+            note = "" if has_logo else "\nDo'konning logosi hali yo'q: egasi /logo bilan yuboradi."
+            await message.answer(
+                ("Logo yoqildi." if draft.logo_on else "Logo o'chirildi.") + note,
+                reply_markup=style_keyboard(draft),
             )
         elif cb.action == "families":
             service.editable(draft)

@@ -12,6 +12,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Integer,
+    LargeBinary,
     Text,
     UniqueConstraint,
     func,
@@ -60,6 +61,8 @@ class AnnouncementDraft(IdMixin, TimestampMixin, Base):
         Boolean, nullable=False, server_default=text("false")
     )
     caption_lang: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'uz'"))
+    #: The shop's logo on this announcement's photos (when the shop has one).
+    logo_on: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
     __table_args__ = (
         # CP23: what instagram_story_uploads' composite foreign key points at.
         UniqueConstraint("id", "shop_id"),
@@ -176,4 +179,29 @@ class AnnouncementCorrection(IdMixin, Base):
         CheckConstraint("length(corrected) BETWEEN 1 AND 40", name="corrected_short"),
         CheckConstraint("taught_by > 0", name="taught_by_a_person"),
         CheckConstraint("uses >= 0", name="uses_not_negative"),
+    )
+
+
+class ShopLogo(Base):
+    """A shop's own logo (CP23 addendum, the owner's request): stamped on every
+    photo of its announcements and on its story images. Sent to the shop's
+    bot by an owner; stored normalised (RGBA PNG, at most 512 px a side)."""
+
+    __tablename__ = "shop_logos"
+    shop_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("shops.id", ondelete="CASCADE"), primary_key=True
+    )
+    image: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    uploaded_by: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    __table_args__ = (
+        CheckConstraint("octet_length(image) BETWEEN 1 AND 2000000", name="image_size"),
+        CheckConstraint(
+            "width BETWEEN 16 AND 512 AND height BETWEEN 16 AND 512", name="dimensions"
+        ),
+        CheckConstraint("uploaded_by > 0", name="uploaded_by_a_person"),
     )

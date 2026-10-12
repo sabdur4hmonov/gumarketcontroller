@@ -158,7 +158,7 @@ sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
   .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
 ```
 
-`current` and `heads` must print the same revision (`d23b4e8f1a26` at CP23).
+`current` and `heads` must print the same revision (`f23d7c2e5a41` at CP23).
 **A report of "applied" is not evidence** -- on this project it has been wrong
 twice; read it here. Every migration is additive. Five DOWNGRADES change data,
 because the old CHECKs cannot hold it -- back up before ever going below them:
@@ -171,6 +171,8 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `4b6e1d9c2a07`, the CP18 revisions, `0956590ccce1`, `3c8e5a1f7d20` | their columns and tables are dropped (CP19: every shop's staff list; CP20: the shop panel's logins and audit log) |
 | `8f2d6c41b9a3` | holiday reminder rows and holiday consent are deleted, holiday orders lose their source |
 | `9c22e4d87b10`, `c23a1f5e7b90`, `d23b4e8f1a26` | announcement drafts and favourite styles are dropped (CP22; CP23: flower-template choices, per-flower favourites, Instagram connections and story uploads) |
+| `e23c5a9d0b37` | every shop's learned speech corrections are dropped; posts deleted from "Mening e'lonlarim" become 'published' rows again (their channel posts stay deleted) |
+| `f23d7c2e5a41` | every shop's logo is dropped |
 
 ## 7b. The pilot shop (a fresh database has none)
 
@@ -272,6 +274,10 @@ block that lets only your own IP addresses reach `/admin` at all. Never put
   it there too.)
 - **Its language** (`shops.lang`, default `uz`): `UPDATE shops SET lang = 'ru'
   WHERE id = ...` for a Russian-speaking shop.
+- **Its logo (CP23).** The owner sends `/logo` to the shop's bot, then the logo
+  -- a PNG sent as a FILE keeps its transparency. From then on it is on every
+  photo of every announcement and on every story image; it can be switched
+  off per announcement ("🏷 Logo") and removed with `/logo` -> "🗑".
 
 ## 12. The dead-man's switch (do it now, it takes five minutes)
 

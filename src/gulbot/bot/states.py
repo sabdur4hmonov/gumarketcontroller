@@ -218,6 +218,12 @@ class Announcement(StatesGroup):
     retext = State()
 
 
+class ShopLogoUpload(StatesGroup):
+    """CP23 addendum: an owner is about to send the shop's logo."""
+
+    waiting = State()
+
+
 class PostEdit(StatesGroup):
     """CP23 addendum: one field of a PUBLISHED announcement, typed anew."""
 

@@ -31,6 +31,10 @@ FONTS = Path(__file__).with_name("assets") / "fonts"
 BOLD = FONTS / "NotoSans-SemiBold.ttf"
 REGULAR = FONTS / "NotoSans-Regular.ttf"
 ELLIPSIS = "…"
+#: Between the letters of a badge: a hair space, a light, even tracking.
+TRACK = " "
+#: Each role's largest size, as a share of the canvas's shorter side.
+ROLE_CAP = {"price": 0.085, "name": 0.05, "shop": 0.038, "badge": 0.045}
 MAX_PHOTO_BYTES = 10_000_000
 MAX_PHOTO_PIXELS = 25_000_000
 #: The template picker's previews: ten at once, so smaller than a post.
@@ -56,6 +60,9 @@ class Rendered:
     height: int
     boxes: list[TextBox] = field(default_factory=list)
     seconds: float = 0.0
+    #: Where the shop's logo went (its plate), when it has one.
+    logo: Box | None = None
+    panels: list[Box] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -103,22 +110,117 @@ class Canvas:
         self.image = image
         self.draw = ImageDraw.Draw(image)
         self.boxes: list[TextBox] = []
+        #: A layout may let one role be larger than ROLE_CAP (price-first's
+        #: price, the magazine's headline): role -> multiplier.
+        self.boost: dict[str, float] = {}
+        self.logo_box: Box | None = None
+        #: Every panel drawn (not the logo's own plate), so a test can keep
+        #: the logo off them.
+        self.panels: list[Box] = []
 
     @property
     def size(self) -> tuple[int, int]:
         return self.image.size
 
     def panel(self, box: Box, colour: str, radius: int = 0) -> None:
+        w, h = self.size
+        if not (box[0] <= 0 and box[1] <= 0 and box[2] >= w and box[3] >= h):
+            self.panels.append(box)  # a background fill is not a panel
         if radius:
             self.draw.rounded_rectangle(box, radius=radius, fill=colour)
         else:
             self.draw.rectangle(box, fill=colour)
+
+    def stamp(self, logo: Image.Image, slot: Box, plate: str) -> None:
+        """The shop's logo, kept in proportion, centred in `slot` on a light
+        rounded plate so it reads on any photo. Records the plate's box."""
+        x0, y0, x1, y1 = slot
+        pad = max(4, (x1 - x0) // 12)
+        art = logo.copy()
+        art.thumbnail((x1 - x0 - 2 * pad, y1 - y0 - 2 * pad), Image.Resampling.LANCZOS)
+        w, h = art.size
+        px0 = x0 + (x1 - x0 - w) // 2 - pad
+        py0 = y0 + (y1 - y0 - h) // 2 - pad
+        plate_box = (px0, py0, px0 + w + 2 * pad, py0 + h + 2 * pad)
+        self.draw.rounded_rectangle(plate_box, radius=pad * 2, fill=plate)
+        self.image.paste(art, (px0 + pad, py0 + pad), art)
+        self.logo_box = plate_box
 
     def motif(self, name: str, centre: tuple[int, int], size: int, colour: str) -> None:
         if size < 8:
             return
         art = raster(name, size, colour)
         self.image.paste(art, (centre[0] - size // 2, centre[1] - size // 2), art)
+
+    def _measure(self, value: str, points: int, bold: bool) -> tuple[int, int, int, int]:
+        box = self.draw.textbbox((0, 0), value, font=font(bold, points))
+        return int(box[0]), int(box[1]), int(box[2]), int(box[3])
+
+    def cap(self, role: str) -> int:
+        """The largest a role's text may be on this canvas, whatever its panel:
+        a clear hierarchy (price, then name, then shop) instead of every line
+        swelling to fill its row."""
+        share = ROLE_CAP.get(role, 0.06) * self.boost.get(role, 1.0)
+        return max(10, int(min(self.size) * share))
+
+    def fit(
+        self,
+        role: str,
+        text: str,
+        width: int,
+        height: int,
+        *,
+        bold: bool,
+        floor: int,
+        truncate: bool,
+    ) -> tuple[str, int, tuple[int, int, int, int], bool]:
+        """(text, size, ink box at the origin, truncated) for a width x height slot."""
+        text = " ".join(text.split())
+        if role == "badge":
+            # Short upper-case labels read as typeset with a little tracking.
+            text = TRACK.join(text)
+        size = max(floor, min(int(height * 0.92), self.cap(role)))
+        while True:
+            left, top, right, bottom = self._measure(text, size, bold)
+            if (right - left <= width and bottom - top <= height) or size <= floor:
+                break
+            size -= 1
+        truncated = False
+        left, top, right, bottom = self._measure(text, size, bold)
+        if right - left > width and truncate:
+            while text:
+                box = self._measure(text + ELLIPSIS, size, bold)
+                if box[2] - box[0] <= width:
+                    break
+                text = text[:-1].rstrip()
+            text = text + ELLIPSIS if text else ""
+            truncated = True
+        return text, size, self._measure(text, size, bold), truncated
+
+    def _place(
+        self,
+        role: str,
+        fitted: tuple[str, int, tuple[int, int, int, int], bool],
+        container: Box,
+        colour: str,
+        *,
+        bold: bool,
+        align: str,
+    ) -> TextBox:
+        text, size, (left, top, right, bottom), truncated = fitted
+        x0, y0, x1, y1 = container
+        ink_w, ink_h = right - left, bottom - top
+        if align == "center":
+            x = x0 + (x1 - x0 - ink_w) // 2
+        elif align == "right":
+            x = x1 - ink_w
+        else:
+            x = x0
+        y = y0 + (y1 - y0 - ink_h) // 2
+        self.draw.text((x - left, y - top), text, font=font(bold, size), fill=colour)
+        box = TextBox(role, text, (x, y, x + ink_w, y + ink_h), container, size, truncated)
+        self.boxes.append(box)
+        return box
 
     def text(
         self,
@@ -133,43 +235,8 @@ class Canvas:
         truncate: bool = True,
     ) -> TextBox:
         x0, y0, x1, y1 = container
-        width, height = x1 - x0, y1 - y0
-        size = max(floor, int(height * 0.92))
-        text = " ".join(text.split())
-        truncated = False
-
-        def measure(value: str, points: int) -> tuple[int, int, int, int]:
-            box = self.draw.textbbox((0, 0), value, font=font(bold, points))
-            return int(box[0]), int(box[1]), int(box[2]), int(box[3])
-
-        while True:
-            left, top, right, bottom = measure(text, size)
-            if (right - left <= width and bottom - top <= height) or size <= floor:
-                break
-            size -= 1
-        left, top, right, bottom = measure(text, size)
-        if right - left > width and truncate:
-            while (
-                text
-                and measure(text + ELLIPSIS, size)[2] - measure(text + ELLIPSIS, size)[0] > width
-            ):
-                text = text[:-1].rstrip()
-            text = text + ELLIPSIS if text else ""
-            truncated = True
-            left, top, right, bottom = measure(text, size)
-        ink_w, ink_h = right - left, bottom - top
-        if align == "center":
-            x = x0 + (width - ink_w) // 2
-        elif align == "right":
-            x = x1 - ink_w
-        else:
-            x = x0
-        y = y0 + (height - ink_h) // 2
-        self.draw.text((x - left, y - top), text, font=font(bold, size), fill=colour)
-        drawn = (x, y, x + ink_w, y + ink_h)
-        box = TextBox(role, text, drawn, container, size, truncated)
-        self.boxes.append(box)
-        return box
+        fitted = self.fit(role, text, x1 - x0, y1 - y0, bold=bold, floor=floor, truncate=truncate)
+        return self._place(role, fitted, container, colour, bold=bold, align=align)
 
     def stack(
         self,
@@ -180,28 +247,37 @@ class Canvas:
         align: str = "left",
         gap: float = 0.08,
     ) -> None:
-        """Rows of (role, text, share of the height, bold), top to bottom."""
+        """Rows of (role, text, share of the height, bold), set as ONE block.
+
+        Each row is fitted into its share first; then the lines are stacked
+        with even spacing and the block is centred in the container -- a
+        typeset look, not lines floating in separate slices.
+        """
         x0, y0, x1, y1 = container
-        shares = [row[2] for row in rows if row[1]]
-        total = sum(shares) or 1
+        live = [row for row in rows if row[1]]
+        total = sum(row[2] for row in live) or 1
         space = int((y1 - y0) * gap)
-        usable = (y1 - y0) - space * max(0, len(shares) - 1)
-        y = y0
-        for role, text, share, bold in rows:
-            if not text:
-                continue
-            h = int(usable * share / total)
-            self.text(
+        usable = (y1 - y0) - space * max(0, len(live) - 1)
+        fitted = []
+        for role, text, share, bold in live:
+            slot = int(usable * share / total)
+            result = self.fit(
                 role,
                 text,
-                (x0, y, x1, y + h),
-                colour,
+                x1 - x0,
+                slot,
                 bold=bold,
-                align=align,
-                truncate=role != "price",
                 floor=10 if role == "price" else 12,
+                truncate=role != "price",
             )
-            y += h + space
+            ink = result[2][3] - result[2][1]
+            fitted.append((role, bold, result, ink))
+        lead = max(4, int(sum(f[3] for f in fitted) / max(1, len(fitted)) * 0.55))
+        block = sum(f[3] for f in fitted) + lead * max(0, len(fitted) - 1)
+        y = y0 + max(0, (y1 - y0 - block) // 2)
+        for role, bold, result, ink in fitted:
+            self._place(role, result, (x0, y, x1, y + ink), colour, bold=bold, align=align)
+            y += ink + lead
 
 
 # --- photos -------------------------------------------------------------------
@@ -474,6 +550,7 @@ def _new_arrival(c: Canvas, t: FlowerTheme, p: Palette, x: Texts) -> None:
 
 def _price_first(c: Canvas, t: FlowerTheme, p: Palette, x: Texts) -> None:
     w, h = c.size
+    c.boost = {"price": 1.8}
     pad = max(12, w // 28)
     band = max(int(h * 0.32), 170)
     _band(c, h - band, p)
@@ -546,8 +623,10 @@ def render_post(
     shop_name: str,
     lang: str = "uz",
     longest: int = 1280,
+    logo: Image.Image | None = None,
 ) -> Rendered:
-    """The first photo of an announcement with its template's overlay."""
+    """The first photo of an announcement with its template's overlay, and the
+    shop's logo in the layout's free corner when it has one."""
     started = time.perf_counter()
     theme, layout = split_template(template)
     palette = theme.palette_for(colour)
@@ -558,6 +637,49 @@ def render_post(
         palette,
         texts_for(theme, layout, price=price, shop_name=shop_name, lang=lang),
     )
+    if logo is not None:
+        canvas.stamp(logo, logo_slot(canvas.size, POST_LOGO_CORNER[layout.id]), palette.soft)
     jpeg = encode(canvas.image)
     w, h = canvas.size
-    return Rendered(jpeg, w, h, canvas.boxes, time.perf_counter() - started)
+    return Rendered(
+        jpeg, w, h, canvas.boxes, time.perf_counter() - started, canvas.logo_box, canvas.panels
+    )
+
+
+#: The corner each post layout leaves free of text and badges for the logo.
+POST_LOGO_CORNER = {
+    "classic": "tl",
+    "minimal": "tl",
+    "festive": "tl",
+    "premium": "tc",
+    "playful": "tc",
+    "sale": "tl",
+    "gift": "tr",
+    "new_arrival": "tr",
+    "price_first": "tl",
+    "story_card": "tl",
+}
+LOGO_SHARE = 0.17
+
+
+def logo_slot(size: tuple[int, int], corner: str) -> Box:
+    w, h = size
+    side = int(min(w, h) * LOGO_SHARE)
+    margin = max(16, min(w, h) // 22)
+    if corner == "tr":
+        x0 = w - margin - side
+    elif corner == "tc":
+        x0 = (w - side) // 2
+    else:
+        x0 = margin
+    # Below the festive sparkles and the premium frame's lines.
+    y0 = margin + (margin if corner in {"tl", "tc"} else 0)
+    return (x0, y0, x0 + side, y0 + side)
+
+
+def stamp_logo(photo: bytes, logo: Image.Image, *, longest: int = 1280) -> bytes:
+    """A photo with ONLY the shop's logo (album photos after the first, and
+    posts in the CP22 styles): top right, on a white plate."""
+    canvas = Canvas(post_canvas(photo, longest=longest))
+    canvas.stamp(logo, logo_slot(canvas.size, "tr"), "#ffffff")
+    return encode(canvas.image)

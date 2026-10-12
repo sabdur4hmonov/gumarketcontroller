@@ -6,6 +6,7 @@ from gulbot.models.announcement import (
     AnnouncementDraft,
     AnnouncementPreference,
     AnnouncementThemeFavourite,
+    ShopLogo,
 )
 from gulbot.models.billing import SubscriptionPayment
 from gulbot.models.consent import ConsentEvent, ConsentSource, ConsentType
@@ -51,6 +52,7 @@ __all__ = [
     "InstagramOAuthState",
     "InstagramStoryUpload",
     "ShopHoliday",
+    "ShopLogo",
     "ShopAuditEntry",
     "ShopLoginLink",
     "ShopSession",

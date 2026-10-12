@@ -641,6 +641,7 @@ class AnnouncementCB(CallbackData, prefix="ann"):
             ("cancel", ""),
             ("learned", ""),
             ("unlearn", "12"),
+            ("logo", ""),
         ]
         return [
             cls(action=action, draft=1, revision=1, value=value).pack() for action, value in pairs
@@ -670,9 +671,20 @@ class PostCB(CallbackData, prefix="post"):
         return [cls(action=action, draft=1, value=value).pack() for action, value in pairs]
 
 
+class LogoCB(CallbackData, prefix="logo"):
+    """CP23 addendum: the shop's own logo -- shown, replaced, removed (owners)."""
+
+    action: str
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        return [cls(action=action).pack() for action in ("show", "new", "remove")]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     AnnouncementCB,
     PostCB,
+    LogoCB,
     OccasionTypeCB,
     MonthCB,
     DayCB,

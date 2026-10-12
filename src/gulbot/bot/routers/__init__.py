@@ -30,6 +30,7 @@ from gulbot.bot.routers.share_page_photo import build_share_page_photo_router
 from gulbot.bot.routers.share_page_plan import build_share_page_plan_router
 from gulbot.bot.routers.share_page_wishes import build_share_page_wishes_router
 from gulbot.bot.routers.share_pages import build_share_pages_router
+from gulbot.bot.routers.shop_logo import build_shop_logo_router
 from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
 
 
@@ -56,6 +57,7 @@ def build_routers() -> tuple[Router, ...]:
         # touches neither router.
         build_announcement_router(),
         build_my_posts_router(),
+        build_shop_logo_router(),
         build_admin_orders_router(),
         build_settings_router(),
         build_occasions_router(),
