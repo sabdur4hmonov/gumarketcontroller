@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import io
 from html import escape
 
@@ -19,11 +20,16 @@ from aiogram.types import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.announcements.designs import PREVIEW_LONGEST, render_post
 from gulbot.announcements.extraction import Fields
+from gulbot.announcements.flower_templates import caption as flower_caption
+from gulbot.announcements.flower_templates import split_template
 from gulbot.announcements.images import IMAGE_LABELS, IMAGE_STYLES, overlay
+from gulbot.announcements.layouts import LAYOUT_IDS, LAYOUTS
 from gulbot.announcements.lexicon import COLOURS, FLOWERS
 from gulbot.announcements.numbers import parse_number
 from gulbot.announcements.templates import CAPTION_LABELS, CAPTION_STYLES, caption, escaped_fit
+from gulbot.announcements.themes import THEMES
 from gulbot.bot.callbacks import AnnouncementCB
 from gulbot.bot.states import Announcement
 from gulbot.i18n import t
@@ -74,17 +80,126 @@ async def show_review(message: Message, draft: AnnouncementDraft) -> None:
     await message.answer(escaped_fit("\n".join(lines), 3900), reply_markup=review_keyboard(draft))
 
 
+LANG_LABELS = {"uz": "Lotin", "uz_cyrl": "Кирилл", "ru": "Русский"}
+
+
+def template_label(template: str) -> str:
+    theme, layout = split_template(template)
+    return f"{theme.emoji[0]} {theme.names[0]} · {layout.label[0]}"
+
+
 def style_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
+    if draft.template is not None:
+        # CP23: a flower template -- one choice covers caption and image.
+        rows = [
+            [button(draft, f"🌸 {template_label(draft.template)}", "templates")],
+            [
+                button(draft, f"🔤 {LANG_LABELS[draft.caption_lang]}", "lang"),
+                button(draft, "📚 Boshqa shablonlar", "families"),
+            ],
+        ]
+    else:
+        rows = [
             [
                 button(draft, f"📝 {CAPTION_LABELS.get(draft.caption_style, 'Matn')}", "captions"),
                 button(draft, f"🖼 {IMAGE_LABELS.get(draft.image_style, 'Rasm')}", "images"),
             ],
+            [button(draft, "🌸 Gul shablonlari", "templates")],
+        ]
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            *rows,
             [button(draft, "⭐ Do'kon uchun saqlash", "favourite")],
             [button(draft, "👁 Aniq ko'rinish", "preview")],
             [button(draft, "✏ Ma'lumotlarni qayta tekshirish", "review")],
         ]
+    )
+
+
+def families_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
+    """Every family: the fifteen flowers, then CP22's own styles."""
+    current = service.draft_theme(draft)
+    names = [
+        button(
+            draft,
+            f"{'✓ ' if theme.id == current else ''}{theme.emoji[0]} {theme.names[0]}",
+            "templates",
+            theme.id,
+        )
+        for theme in THEMES.values()
+    ]
+    rows = [names[i : i + 2] for i in range(0, len(names), 2)]
+    rows.append([button(draft, "📝 Oddiy uslublar (matn + rasm)", "legacy")])
+    rows.append([button(draft, "↩ Orqaga", "styles")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def layouts_keyboard(draft: AnnouncementDraft, theme_id: str) -> InlineKeyboardMarkup:
+    theme = THEMES[theme_id]
+    rows = [
+        [
+            button(
+                draft,
+                f"{index}. {'✓ ' if draft.template == f'{theme.id}.{layout}' else ''}"
+                f"{LAYOUTS[layout].label[0]}",
+                "tpl",
+                f"{theme.id}.{layout}",
+            )
+        ]
+        for index, layout in enumerate(LAYOUT_IDS, 1)
+    ]
+    rows.append([button(draft, "📚 Boshqa shablonlar", "families")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+async def first_photo(bot: Bot, draft: AnnouncementDraft) -> bytes:
+    buffer = io.BytesIO()
+    await bot.download(draft.photos[0], destination=buffer)
+    return buffer.getvalue()
+
+
+def _previews(
+    photo: bytes, theme_id: str, fields: Fields, shop_name: str, lang: str
+) -> list[bytes]:
+    return [
+        render_post(
+            photo,
+            template=f"{theme_id}.{layout}",
+            price=fields.price or 0,
+            colour=fields.colour,
+            shop_name=shop_name,
+            lang=lang,
+            longest=PREVIEW_LONGEST,
+        ).jpeg
+        for layout in LAYOUT_IDS
+    ]
+
+
+async def send_template_previews(
+    bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft, theme_id: str
+) -> None:
+    """The theme's ten layouts on the owner's OWN photo, as one album."""
+    shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id)) or ""
+    fields = Fields.from_data(draft.fields)
+    photo = await first_photo(bot, draft)
+    # Pillow is CPU work: off the event loop, so other shops' updates flow.
+    images = await asyncio.to_thread(
+        _previews, photo, theme_id, fields, shop_name, draft.caption_lang
+    )
+    await bot.send_media_group(
+        message.chat.id,
+        media=[
+            InputMediaPhoto(
+                media=BufferedInputFile(image, filename=f"{theme_id}-{index}.jpg"),
+                caption=f"{index}. {LAYOUTS[layout].label[0]}",
+            )
+            for index, (layout, image) in enumerate(zip(LAYOUT_IDS, images, strict=True), 1)
+        ],
+    )
+    theme = THEMES[theme_id]
+    await message.answer(
+        f"{theme.emoji[0]} {theme.names[0]}: shablonni tanlang",
+        reply_markup=layouts_keyboard(draft, theme_id),
     )
 
 
@@ -237,9 +352,26 @@ async def exact_preview(
         raise service.AnnouncementRefused("Avval tasdiqlang")
     shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id))
     f = Fields.from_data(draft.fields)
-    body = caption(f, style=draft.caption_style, shop_name=shop_name or "")
     media: list[str | BufferedInputFile] = list(draft.photos)
-    if draft.image_style != "none":
+    if draft.template is not None:
+        # CP23: one flower template sets both the caption and the overlay.
+        body = flower_caption(
+            f, template=draft.template, shop_name=shop_name or "", lang=draft.caption_lang
+        )
+        photo = await first_photo(bot, draft)
+        themed = await asyncio.to_thread(
+            render_post,
+            photo,
+            template=draft.template,
+            price=f.price or 0,
+            colour=f.colour,
+            shop_name=shop_name or "",
+            lang=draft.caption_lang,
+        )
+        media[0] = BufferedInputFile(themed.jpeg, filename="bouquet.jpg")
+    else:
+        body = caption(f, style=draft.caption_style, shop_name=shop_name or "")
+    if draft.template is None and draft.image_style != "none":
         buffer = io.BytesIO()
         await bot.download(draft.photos[0], destination=buffer)
         rendered = overlay(
@@ -312,6 +444,7 @@ async def action(
             await state.clear()
         elif cb.action == "confirm":
             service.confirm(draft)
+            await service.apply_default_template(session, draft)
             await state.set_state(Announcement.styling)
             await message.answer(
                 "Matn va rasm uslubini tanlang.", reply_markup=style_keyboard(draft)
@@ -384,9 +517,42 @@ async def action(
             await service.save_favourite(
                 session, shop_id=shop_id, actor=callback.from_user.id, draft=draft
             )
+            if draft.template:
+                flower = THEMES[draft.template.partition(".")[0]].names[0]
+                saved = f"{flower} uchun sevimli shablon saqlandi."
+            else:
+                saved = "Do'konning sevimli uslubi saqlandi."
+            await message.answer(saved, reply_markup=style_keyboard(draft))
+        elif cb.action == "templates":
+            # The flower's own ten first; any other family by its id.
+            service.editable(draft)
+            if draft.status not in {"confirmed", "preview"}:
+                raise service.AnnouncementRefused("Avval tasdiqlang")
+            theme_id = cb.value or service.draft_theme(draft)
+            if theme_id not in THEMES:
+                raise service.AnnouncementRefused("Bunday shablon yo'q")
+            await send_template_previews(bot, message, session, draft, theme_id)
+        elif cb.action == "tpl":
+            service.choose_template(draft, cb.value)
             await message.answer(
-                "Do'konning sevimli uslubi saqlandi.", reply_markup=style_keyboard(draft)
+                f"Tanlandi: {template_label(cb.value)}", reply_markup=style_keyboard(draft)
             )
+        elif cb.action == "families":
+            service.editable(draft)
+            if draft.status not in {"confirmed", "preview"}:
+                raise service.AnnouncementRefused("Avval tasdiqlang")
+            await message.answer("Barcha shablonlar:", reply_markup=families_keyboard(draft))
+        elif cb.action == "lang":
+            service.next_caption_lang(draft)
+            await message.answer(
+                f"Matn tili: {LANG_LABELS[draft.caption_lang]}", reply_markup=style_keyboard(draft)
+            )
+        elif cb.action == "legacy":
+            service.editable(draft)
+            if draft.status not in {"confirmed", "preview"}:
+                raise service.AnnouncementRefused("Avval tasdiqlang")
+            service.choose_style(draft, kind="caption", value=draft.caption_style)
+            await message.answer("Oddiy uslublar:", reply_markup=style_keyboard(draft))
         elif cb.action == "styles":
             service.editable(draft)
             if draft.status not in {"confirmed", "preview"}:

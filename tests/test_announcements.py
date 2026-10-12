@@ -1,5 +1,6 @@
 """Real dispatcher + Postgres: access, draft scope, confirmation, publication."""
 
+import io
 from datetime import UTC, datetime
 from html import unescape
 
@@ -9,6 +10,7 @@ from aiogram import Bot
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.methods import AnswerCallbackQuery, SendMediaGroup, SendMessage, SendPhoto
 from aiogram.types import Chat, Message, Update, User
+from PIL import Image
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from tests.bot_harness import (
@@ -504,8 +506,17 @@ async def test_complete_text_flow_through_dispatcher(world):
     )
 
 
-async def test_manual_edits_invalidate_confirmed_preview(world):
+async def test_manual_edits_invalidate_confirmed_preview(world, monkeypatch):
     factory, (a, _), bot, _, dp = world
+    # CP23: a shop with no saved CP22 style now previews a flower template,
+    # which draws on the first photo, so the fake bot must hand one over.
+    jpeg = io.BytesIO()
+    Image.new("RGB", (900, 1200), "#c36481").save(jpeg, format="JPEG")
+
+    async def download(file_id, *, destination, timeout=30):  # noqa: ASYNC109 aiogram contract
+        destination.write(jpeg.getvalue())
+
+    monkeypatch.setattr(bot, "download", download)
     async with factory() as session:
         draft = await prepared(session, a)
         await session.commit()

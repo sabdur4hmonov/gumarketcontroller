@@ -1,7 +1,11 @@
 """All models must be imported here so Alembic autogenerate sees them."""
 
 from gulbot.models.admin import AdminAuditEntry, AdminLoginLink, AdminSession
-from gulbot.models.announcement import AnnouncementDraft, AnnouncementPreference
+from gulbot.models.announcement import (
+    AnnouncementDraft,
+    AnnouncementPreference,
+    AnnouncementThemeFavourite,
+)
 from gulbot.models.billing import SubscriptionPayment
 from gulbot.models.consent import ConsentEvent, ConsentSource, ConsentType
 from gulbot.models.customer import Customer, CustomerStatus
@@ -38,6 +42,7 @@ from gulbot.models.staff import ShopStaff
 __all__ = [
     "AnnouncementDraft",
     "AnnouncementPreference",
+    "AnnouncementThemeFavourite",
     "HolidayDate",
     "ShopHoliday",
     "ShopAuditEntry",

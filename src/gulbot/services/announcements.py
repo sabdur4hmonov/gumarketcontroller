@@ -12,10 +12,16 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.announcements.extraction import Fields, extract
+from gulbot.announcements.flower_templates import ALL_TEMPLATES
 from gulbot.announcements.images import IMAGE_STYLES
 from gulbot.announcements.templates import CAPTION_STYLES
+from gulbot.announcements.themes import LANGS, theme_for
 from gulbot.bot.channel import as_channel_post
-from gulbot.models.announcement import AnnouncementDraft, AnnouncementPreference
+from gulbot.models.announcement import (
+    AnnouncementDraft,
+    AnnouncementPreference,
+    AnnouncementThemeFavourite,
+)
 from gulbot.models.product import HashtagAlias
 from gulbot.models.shop import Shop, ShopStatus
 from gulbot.models.staff import ShopStaff
@@ -78,7 +84,14 @@ async def new_draft(session: AsyncSession, *, shop_id: int, actor: int) -> Annou
         select(AnnouncementPreference).where(AnnouncementPreference.shop_id == shop_id)
     )
     draft = AnnouncementDraft(
-        shop_id=shop_id, author_id=actor, photos=[], fields={}, preview_media=[], receipts=[]
+        shop_id=shop_id,
+        author_id=actor,
+        photos=[],
+        fields={},
+        preview_media=[],
+        receipts=[],
+        # CP23: a Russian-speaking shop's templates start in Russian.
+        caption_lang="ru" if shop.lang == "ru" else "uz",
     )
     if pref:
         draft.caption_style, draft.image_style = pref.caption_style, pref.image_style
@@ -130,6 +143,63 @@ def choose_style(draft: AnnouncementDraft, *, kind: str, value: str) -> None:
         draft.image_style = value
     else:
         raise AnnouncementRefused("Bunday uslub yo'q")
+    # A CP22 style is a choice of the CP22 family: the draft leaves the
+    # flower templates until the owner picks one again.
+    draft.template, draft.template_picked = None, True
+    invalidate(draft, status="confirmed")
+
+
+# --- CP23: flower templates ------------------------------------------------------
+
+
+def draft_theme(draft: AnnouncementDraft) -> str:
+    """The flower theme the draft's confirmed fields point to."""
+    fields = Fields.from_data(draft.fields)
+    return theme_for(fields.flowers, fields.raw)
+
+
+async def apply_default_template(session: AsyncSession, draft: AnnouncementDraft) -> None:
+    """After confirmation: the template the owner would expect, unless they chose.
+
+    The shop's favourite layout FOR THIS FLOWER first; then a CP22 favourite
+    saved before CP23 (its styles were copied onto the draft at creation, so
+    the CP22 family is kept); else the flower's classic layout.
+    """
+    if draft.template_picked:
+        return
+    theme = draft_theme(draft)
+    layout = await session.scalar(
+        select(AnnouncementThemeFavourite.layout).where(
+            AnnouncementThemeFavourite.shop_id == draft.shop_id,
+            AnnouncementThemeFavourite.theme == theme,
+        )
+    )
+    if layout is not None:
+        draft.template = f"{theme}.{layout}"
+        return
+    legacy = await session.scalar(
+        select(AnnouncementPreference.shop_id).where(
+            AnnouncementPreference.shop_id == draft.shop_id
+        )
+    )
+    draft.template = None if legacy is not None else f"{theme}.classic"
+
+
+def choose_template(draft: AnnouncementDraft, template: str) -> None:
+    if draft.status not in {"confirmed", "preview"}:
+        raise AnnouncementRefused("Avval ma'lumotlarni tasdiqlang")
+    if template not in ALL_TEMPLATES:
+        raise AnnouncementRefused("Bunday shablon yo'q")
+    draft.template, draft.template_picked = template, True
+    invalidate(draft, status="confirmed")
+
+
+def next_caption_lang(draft: AnnouncementDraft) -> None:
+    """Lotin -> Кирилл -> Русский -> Lotin. Flower templates only."""
+    if draft.status not in {"confirmed", "preview"}:
+        raise AnnouncementRefused("Avval ma'lumotlarni tasdiqlang")
+    order = list(LANGS)
+    draft.caption_lang = order[(order.index(draft.caption_lang) + 1) % len(order)]
     invalidate(draft, status="confirmed")
 
 
@@ -139,6 +209,22 @@ async def save_favourite(
     await require_author(session, shop_id=shop_id, actor=actor)
     if draft.shop_id != shop_id or draft.author_id != actor:
         raise AnnouncementRefused("Boshqa do'kon e'loni")
+    if draft.template is not None:
+        # CP23: remembered per flower -- roses may be premium, tulips festive.
+        theme, _, layout = draft.template.partition(".")
+        favourite = insert(AnnouncementThemeFavourite).values(
+            shop_id=shop_id, theme=theme, layout=layout
+        )
+        await session.execute(
+            favourite.on_conflict_do_update(
+                index_elements=[
+                    AnnouncementThemeFavourite.shop_id,
+                    AnnouncementThemeFavourite.theme,
+                ],
+                set_={"layout": layout, "updated_at": datetime.now(UTC)},
+            )
+        )
+        return
     statement = insert(AnnouncementPreference).values(
         shop_id=shop_id, caption_style=draft.caption_style, image_style=draft.image_style
     )

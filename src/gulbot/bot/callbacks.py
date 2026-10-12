@@ -625,6 +625,13 @@ class AnnouncementCB(CallbackData, prefix="ann"):
             ("styles", ""),
             ("flower", "atirgul"),
             ("colour", "qizil"),
+            # CP23 flower templates. The longest template id keeps the packed
+            # data far inside Telegram's 64 bytes.
+            ("templates", "kust_atirgul"),
+            ("tpl", "kust_atirgul.price_first"),
+            ("families", ""),
+            ("lang", ""),
+            ("legacy", ""),
         ]
         return [
             cls(action=action, draft=1, revision=1, value=value).pack() for action, value in pairs

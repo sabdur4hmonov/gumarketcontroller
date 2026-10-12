@@ -158,7 +158,7 @@ sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
   .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
 ```
 
-`current` and `heads` must print the same revision (`8f2d6c41b9a3` at CP20).
+`current` and `heads` must print the same revision (`c23a1f5e7b90` at CP23).
 **A report of "applied" is not evidence** -- on this project it has been wrong
 twice; read it here. Every migration is additive. Five DOWNGRADES change data,
 because the old CHECKs cannot hold it -- back up before ever going below them:
@@ -170,6 +170,7 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `b996b9032869` | purged photo rows are deleted |
 | `4b6e1d9c2a07`, the CP18 revisions, `0956590ccce1`, `3c8e5a1f7d20` | their columns and tables are dropped (CP19: every shop's staff list; CP20: the shop panel's logins and audit log) |
 | `8f2d6c41b9a3` | holiday reminder rows and holiday consent are deleted, holiday orders lose their source |
+| `9c22e4d87b10`, `c23a1f5e7b90` | announcement drafts and favourite styles are dropped (CP22; CP23: flower-template choices and per-flower favourites) |
 
 ## 7b. The pilot shop (a fresh database has none)
 
@@ -192,6 +193,19 @@ the pilot has no bot on a fresh server: `BOT_TOKEN` alone serves only a shop
 that existed before per-shop tokens, which a fresh database does not have. The
 bot then refuses to start ("no shop has a usable bot") and systemd restarts it
 every ten seconds. Shops after the pilot onboard through the platform bot.
+
+Then the hashtag aliases (роза/rose -> atirgul, lola -> tyulpan, ...), which
+let a customer's search find a shop's posts in any script and which every
+flower template's hashtags resolve through (CP23):
+
+```
+sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
+  .venv/bin/python -m gulbot.cli.seed_aliases'
+```
+
+It prints one line per shop and is safe to rerun: it never overwrites an
+alias someone edited by hand. **Rerun it after onboarding a new shop and
+after every upgrade** (step 14) -- nothing seeds a shop's aliases on its own.
 
 ## 8. The processes
 
@@ -323,6 +337,7 @@ backup never restored is a hope.
 cd /opt/gulbot && sudo -u gulbot git pull
 sudo -u gulbot .venv/bin/pip install -e .
 # step 7: migrations, then current == heads
+# step 7b's last command: the alias fixture may have grown (CP23 did)
 systemctl restart gulbot-worker gulbot-beat gulbot-bot gulbot-web
 ```
 
