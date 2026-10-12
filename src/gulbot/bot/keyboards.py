@@ -77,7 +77,11 @@ def main_menu_keyboard(lang: str) -> ReplyKeyboardMarkup:
     """
     return _kb(
         [
-            *([[t("btn.menu.announcement", lang)]] if announcement_visible.get() else []),
+            *(
+                [[t("btn.menu.announcement", lang), t("btn.menu.my_posts", lang)]]
+                if announcement_visible.get()
+                else []
+            ),
             [t("btn.menu.browse", lang)],
             [t("btn.menu.occasions", lang)],
             # Ha/Yo'q pages and taklifnomas: each page carries this shop's

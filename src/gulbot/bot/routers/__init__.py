@@ -16,6 +16,7 @@ from gulbot.bot.routers.announcements import build_announcement_router
 from gulbot.bot.routers.browse import build_browse_router
 from gulbot.bot.routers.fallback import build_fallback_router
 from gulbot.bot.routers.menu import build_menu_router
+from gulbot.bot.routers.my_posts import build_my_posts_router
 from gulbot.bot.routers.nav import build_nav_router
 from gulbot.bot.routers.occasions import build_occasions_router
 from gulbot.bot.routers.onboarding import build_onboarding_router
@@ -54,6 +55,7 @@ def build_routers() -> tuple[Router, ...]:
         # inline button on the prompt, which arrives by callback prefix and
         # touches neither router.
         build_announcement_router(),
+        build_my_posts_router(),
         build_admin_orders_router(),
         build_settings_router(),
         build_occasions_router(),

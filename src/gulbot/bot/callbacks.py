@@ -647,8 +647,32 @@ class AnnouncementCB(CallbackData, prefix="ann"):
         ]
 
 
+class PostCB(CallbackData, prefix="post"):
+    """CP23 addendum: "Mening e'lonlarim" -- a PUBLISHED post of this shop.
+    Every handler re-checks shop, permission and that the post is published."""
+
+    action: str
+    draft: int
+    value: str = ""
+
+    @classmethod
+    def samples(cls) -> list[str]:
+        pairs = [
+            ("open", ""),
+            ("field", "price"),
+            ("tpls", ""),
+            ("tpl", "atirgul.premium"),
+            ("del", ""),
+            ("delok", ""),
+            ("story", ""),
+            ("list", ""),
+        ]
+        return [cls(action=action, draft=1, value=value).pack() for action, value in pairs]
+
+
 ALL_FACTORIES: tuple[type[CallbackData], ...] = (
     AnnouncementCB,
+    PostCB,
     OccasionTypeCB,
     MonthCB,
     DayCB,

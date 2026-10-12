@@ -445,7 +445,12 @@ async def apply_edit(
 
     if post.caption is not None:
         product.caption_raw = post.caption
-        await session.flush()
+    # CP23: an edit may REPLACE the photo (editMessageMedia, or the owner in
+    # Telegram). The anchor's file id follows it, or the catalogue keeps
+    # showing the old picture.
+    if post.file_id and product.channel_message_id == post.message_id:
+        product.telegram_file_id = post.file_id
+    await session.flush()
 
     return await finalize_product(
         session,
@@ -455,3 +460,24 @@ async def apply_edit(
         force=True,
         now_utc=now_utc,
     )
+
+
+async def deactivate_post(session: AsyncSession, post: ChannelPost) -> FinalizeResult:
+    """A post deleted from the shop's channel (CP23): its product goes too.
+
+    Telegram sends no update when a channel post is deleted, so the bot's own
+    delete calls this directly. The same lookup and the same rule as an edit
+    that strips every hashtag (`_drop_untagged`): a finalized product is
+    DEACTIVATED, a never-finalized row is deleted. Only the shop's own channel.
+    """
+    if not await from_the_shops_channel(session, post):
+        return FinalizeResult(Finalize.MISSING)
+    query = select(Product).where(Product.shop_id == post.shop_id)
+    if post.media_group_id is not None:
+        query = query.where(Product.media_group_id == post.media_group_id)
+    else:
+        query = query.where(Product.channel_message_id == post.message_id)
+    product = await session.scalar(query.with_for_update())
+    if product is None:
+        return FinalizeResult(Finalize.MISSING)
+    return await _drop_untagged(session, product)
