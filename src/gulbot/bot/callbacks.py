@@ -632,6 +632,8 @@ class AnnouncementCB(CallbackData, prefix="ann"):
             ("families", ""),
             ("lang", ""),
             ("legacy", ""),
+            ("story", ""),
+            ("storyl", "magazine"),
         ]
         return [
             cls(action=action, draft=1, revision=1, value=value).pack() for action, value in pairs

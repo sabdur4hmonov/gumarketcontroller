@@ -185,6 +185,19 @@ async def apply_default_template(session: AsyncSession, draft: AnnouncementDraft
     draft.template = None if legacy is not None else f"{theme}.classic"
 
 
+def require_published(draft: AnnouncementDraft) -> None:
+    """Stories are made from what was actually posted, never from a draft."""
+    if draft.status != "published" or not draft.receipts:
+        raise AnnouncementRefused("Avval e'lonni kanalga joylang")
+
+
+def story_theme(draft: AnnouncementDraft) -> str:
+    """The story's flower theme: the post's template's, else the flowers'."""
+    if draft.template is not None:
+        return draft.template.partition(".")[0]
+    return draft_theme(draft)
+
+
 def choose_template(draft: AnnouncementDraft, template: str) -> None:
     if draft.status not in {"confirmed", "preview"}:
         raise AnnouncementRefused("Avval ma'lumotlarni tasdiqlang")

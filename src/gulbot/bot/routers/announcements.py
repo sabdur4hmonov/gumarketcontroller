@@ -28,6 +28,13 @@ from gulbot.announcements.images import IMAGE_LABELS, IMAGE_STYLES, overlay
 from gulbot.announcements.layouts import LAYOUT_IDS, LAYOUTS
 from gulbot.announcements.lexicon import COLOURS, FLOWERS
 from gulbot.announcements.numbers import parse_number
+from gulbot.announcements.stories import (
+    STORY_LAYOUT_IDS,
+    STORY_LAYOUTS,
+    STORY_PREVIEW_SCALE,
+    render_story,
+    story_photo,
+)
 from gulbot.announcements.templates import CAPTION_LABELS, CAPTION_STYLES, caption, escaped_fit
 from gulbot.announcements.themes import THEMES
 from gulbot.bot.callbacks import AnnouncementCB
@@ -345,6 +352,93 @@ async def edit_text(
         await message.answer(escape(str(exc)))
 
 
+STORY_HELP = (
+    "📸 Istoriyaga joylash:\n"
+    "1. Yuqoridagi FAYLni oching va telefoningizga saqlang — u siqilmagan, "
+    "sifati to'liq.\n"
+    "2. Instagram → «+» → «Istoriya» → saqlangan rasmni tanlang → «Ulashish».\n"
+    "Matn yuqori va pastki chetlardan uzoqda: Instagram tugmalari uni yopmaydi."
+)
+
+
+async def _story_inputs(
+    bot: Bot, session: AsyncSession, draft: AnnouncementDraft
+) -> tuple[bytes, str, Fields, str]:
+    shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id)) or ""
+    return (
+        await first_photo(bot, draft),
+        shop_name,
+        Fields.from_data(draft.fields),
+        (service.story_theme(draft)),
+    )
+
+
+def _story_previews(
+    photo: bytes, theme: str, fields: Fields, shop_name: str, lang: str
+) -> list[bytes]:
+    image = story_photo(photo)  # decoded once for all ten
+    return [
+        render_story(
+            image,
+            theme=theme,
+            layout=layout,
+            price=fields.price or 0,
+            colour=fields.colour,
+            shop_name=shop_name,
+            lang=lang,
+            scale=STORY_PREVIEW_SCALE,
+        ).jpeg
+        for layout in STORY_LAYOUT_IDS
+    ]
+
+
+async def send_story_previews(
+    bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft
+) -> None:
+    photo, shop_name, fields, theme = await _story_inputs(bot, session, draft)
+    images = await asyncio.to_thread(
+        _story_previews, photo, theme, fields, shop_name, draft.caption_lang
+    )
+    await bot.send_media_group(
+        message.chat.id,
+        media=[
+            InputMediaPhoto(
+                media=BufferedInputFile(image, filename=f"istoriya-{index}.jpg"),
+                caption=f"{index}. {STORY_LAYOUTS[layout][0].label[0]}",
+            )
+            for index, (layout, image) in enumerate(zip(STORY_LAYOUT_IDS, images, strict=True), 1)
+        ],
+    )
+    rows = [
+        [button(draft, f"{index}. {STORY_LAYOUTS[layout][0].label[0]}", "storyl", layout)]
+        for index, layout in enumerate(STORY_LAYOUT_IDS, 1)
+    ]
+    await message.answer(
+        "Istoriya ko'rinishini tanlang:", reply_markup=InlineKeyboardMarkup(inline_keyboard=rows)
+    )
+
+
+async def send_story(
+    bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft, layout: str
+) -> None:
+    """The 1080x1920 story: as a DOCUMENT (no recompression) and as a photo."""
+    photo, shop_name, fields, theme = await _story_inputs(bot, session, draft)
+    story = await asyncio.to_thread(
+        render_story,
+        photo,
+        theme=theme,
+        layout=layout,
+        price=fields.price or 0,
+        colour=fields.colour,
+        shop_name=shop_name,
+        lang=draft.caption_lang,
+    )
+    name = f"istoriya-{theme}-{layout}.jpg"
+    await bot.send_document(message.chat.id, BufferedInputFile(story.jpeg, filename=name))
+    await bot.send_photo(message.chat.id, BufferedInputFile(story.jpeg, filename=name))
+    await message.answer(STORY_HELP)
+
+
 async def exact_preview(
     bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft
 ) -> None:
@@ -440,8 +534,22 @@ async def action(
                 draft_id=cb.draft,
                 revision=cb.revision,
             )
-            await message.answer(f"Joylandi: {link}")
+            await message.answer(
+                f"Joylandi: {link}",
+                reply_markup=InlineKeyboardMarkup(
+                    inline_keyboard=[[button(draft, "📸 Instagram istoriya", "story")]]
+                ),
+            )
             await state.clear()
+        elif cb.action == "story":
+            # CP23 phase 2: the ten story layouts, previewed on the post's photo.
+            service.require_published(draft)
+            await send_story_previews(bot, message, session, draft)
+        elif cb.action == "storyl":
+            service.require_published(draft)
+            if cb.value not in STORY_LAYOUTS:
+                raise service.AnnouncementRefused("Bunday istoriya yo'q")
+            await send_story(bot, message, session, draft, cb.value)
         elif cb.action == "confirm":
             service.confirm(draft)
             await service.apply_default_template(session, draft)
