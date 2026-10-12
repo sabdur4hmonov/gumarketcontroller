@@ -55,7 +55,7 @@ FLOWERS = {
     "xrizantema": ("хризантема", "хризантемы", "chrysanthemum", "krizantema", "хризантема"),
     "chinnigul": ("гвоздика", "гвоздики", "carnation", "чиннигул"),
     "pion": ("пион", "пионы", "peony", "peonies"),
-    "nilufar": ("лилия", "лилии", "lily", "нилуфар"),
+    "nilufar": ("лилия", "лилии", "lily", "нилуфар", "liliya"),
     "gerbera": ("гербера", "герберы"),
     "buket": ("букет", "bouquet", "guldasta", "гулдаста"),
     "eustoma": ("эустома", "эустомы", "lisianthus"),
@@ -67,6 +67,17 @@ FLOWERS = {
     "ranunkulyus": ("ранункулюс", "ranunculus"),
     "lavanda": ("лаванда", "lavender"),
     "nargis": ("наргис", "нарцисс", "narcissus"),
+    # CP23: the flower themes' own keys. "kust atirgul" is two words, so the
+    # phrase matcher takes it before the single word "atirgul".
+    "kustatirgul": (
+        "kust atirgul",
+        "кустовая роза",
+        "кустовые розы",
+        "куст атиргул",
+        "spray rose",
+        "spray roses",
+    ),
+    "mimoza": ("мимоза", "мимозы", "mimosa"),
 }
 COLOURS = {
     "qizil": ("қизил", "красный", "красная", "красные", "red"),

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>lola (original line art, gulbot CP23)</title>
+  <path d="M 70 62 C 66 88 76 112 100 116 C 124 112 134 88 130 62 C 120 74 112 80 100 70 C 88 80 80 74 70 62 Z" stroke-width="3" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 100 70 C 92 56 94 40 100 30 C 106 40 108 56 100 70" stroke-width="2.6" fill="none"/>
+  <path d="M 70 62 C 80 66 88 76 92 94" stroke-width="2" fill="none"/>
+  <path d="M 130 62 C 120 66 112 76 108 94" stroke-width="2" fill="none"/>
+  <path d="M 100 116 C 100.2 121.7 101.2 137 101 150 C 100.8 163 99.3 186.7 99 194" stroke-width="3.2" fill="none"/>
+  <path d="M 99 186 C 72 170 62 140 70 108 C 82 132 92 156 99 172" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 101 178 C 126 160 136 136 130 112 C 118 132 108 150 101 164" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+</svg>

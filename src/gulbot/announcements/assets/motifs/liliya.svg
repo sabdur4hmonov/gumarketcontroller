@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>liliya (original line art, gulbot CP23)</title>
+  <path d="M 96 84 C 111 66 103.5 33 96 24 C 88.5 33 81 66 96 84 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="96" y1="84" x2="96" y2="46" stroke-width="1.4"/>
+  <path d="M 96 84 C 119.1 88 143.9 65 148 54 C 136.4 52 104.1 62 96 84 Z" stroke-width="2.6" fill="none"/>
+  <line x1="96" y1="84" x2="128.9" y2="65" stroke-width="1.4"/>
+  <path d="M 96 84 C 104.1 106 136.4 116 148 114 C 143.9 103 119.1 80 96 84 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="96" y1="84" x2="128.9" y2="103" stroke-width="1.4"/>
+  <path d="M 96 84 C 81 102 88.5 135 96 144 C 103.5 135 111 102 96 84 Z" stroke-width="2.6" fill="none"/>
+  <line x1="96" y1="84" x2="96" y2="122" stroke-width="1.4"/>
+  <path d="M 96 84 C 72.9 80 48.1 103 44 114 C 55.6 116 87.9 106 96 84 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="96" y1="84" x2="63.1" y2="103" stroke-width="1.4"/>
+  <path d="M 96 84 C 87.9 62 55.6 52 44 54 C 48.1 65 72.9 88 96 84 Z" stroke-width="2.6" fill="none"/>
+  <line x1="96" y1="84" x2="63.1" y2="65" stroke-width="1.4"/>
+  <path d="M 96 84 Q 96 66 90.8 54.5" stroke-width="1.6" fill="none"/>
+  <ellipse cx="90.8" cy="54.5" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 96 84 Q 105 68.4 106.3 55.8" stroke-width="1.6" fill="none"/>
+  <ellipse cx="106.3" cy="55.8" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 96 84 Q 111.6 75 119 64.7" stroke-width="1.6" fill="none"/>
+  <ellipse cx="119" cy="64.7" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 96 84 Q 114 84 125.5 78.8" stroke-width="1.6" fill="none"/>
+  <ellipse cx="125.5" cy="78.8" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 96 84 Q 111.6 93 124.2 94.3" stroke-width="1.6" fill="none"/>
+  <ellipse cx="124.2" cy="94.3" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 96 84 Q 105 99.6 115.3 107" stroke-width="1.6" fill="none"/>
+  <ellipse cx="115.3" cy="107" rx="3.4" ry="2" stroke-width="1.6" fill="none"/>
+  <path d="M 110 116 C 111.7 121.7 117.3 137 120 150 C 122.7 163 125 186.7 126 194" stroke-width="3.2" fill="none"/>
+  <path d="M 120 150 C 106.4 142.2 85.7 151.5 80.6 156.9 C 87.3 160.3 109.9 161.9 120 150 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="120" y1="150" x2="87.7" y2="155.7" stroke-width="1.6"/>
+</svg>

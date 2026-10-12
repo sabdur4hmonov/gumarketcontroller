@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>eustoma (original line art, gulbot CP23)</title>
+  <path d="M 62 70 C 58 100 76 118 96 120 C 118 120 134 102 132 72 C 122 80 114 74 108 62 C 100 74 90 76 80 64 C 76 72 70 74 62 70 Z" stroke-width="3" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 80 64 C 86 50 102 44 108 62" stroke-width="2.4" fill="none"/>
+  <path d="M 92 56 C 98 70 110 76 120 68" stroke-width="2" fill="none"/>
+  <path d="M 150 72 C 160.6 63.5 160.3 44.5 155.9 38.5 C 149.7 42.6 142.9 60.4 150 72 Z" stroke-width="2.4" fill="none"/>
+  <path d="M 150 72 C 154 64 154 52 150 42" stroke-width="1.6" fill="none"/>
+  <path d="M 97 120 C 97.5 126 99.8 143.7 100 156 C 100.2 168.3 98.3 187.7 98 194" stroke-width="3.2" fill="none"/>
+  <path d="M 100 150 C 105 145 121.7 132.7 130 120 C 138.3 107.3 146.7 81.7 150 74" stroke-width="3.2" fill="none"/>
+  <path d="M 99 170 C 95.2 155.9 78.5 156.8 72.7 160.4 C 74.8 166.9 87 178.4 99 170 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="99" y1="170" x2="77.4" y2="162.1" stroke-width="1.6"/>
+  <path d="M 118 130 C 106.5 129.7 101.8 143 102.6 148.4 C 108 148.2 120.3 141.3 118 130 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="118" y1="130" x2="105.3" y2="145.1" stroke-width="1.6"/>
+</svg>

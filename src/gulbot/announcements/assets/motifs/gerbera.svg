@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>gerbera (original line art, gulbot CP23)</title>
+  <path d="M 116 80 C 126 85.8 158 87.2 156 80 C 158 72.8 126 74.2 116 80 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 115.2 84.9 C 122.9 93.6 153 104.7 153.3 97.3 C 157.4 91.1 126.5 82.5 115.2 84.9 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 112.9 89.4 C 117.6 100 142.7 119.9 145.3 112.9 C 151.1 108.3 124.5 90.5 112.9 89.4 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 109.4 92.9 C 110.5 104.5 128.3 131.1 132.9 125.3 C 139.9 122.7 120 97.6 109.4 92.9 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 104.9 95.2 C 102.5 106.5 111.1 137.4 117.3 133.3 C 124.7 133 113.6 102.9 104.9 95.2 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 100 96 C 94.2 106 92.8 138 100 136 C 107.2 138 105.8 106 100 96 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 95.1 95.2 C 86.4 102.9 75.3 133 82.7 133.3 C 88.9 137.4 97.5 106.5 95.1 95.2 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 90.6 92.9 C 80 97.6 60.1 122.7 67.1 125.3 C 71.7 131.1 89.5 104.5 90.6 92.9 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 87.1 89.4 C 75.5 90.5 48.9 108.3 54.7 112.9 C 57.3 119.9 82.4 100 87.1 89.4 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 84.8 84.9 C 73.5 82.5 42.6 91.1 46.7 97.3 C 47 104.7 77.1 93.6 84.8 84.9 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 84 80 C 74 74.2 42 72.8 44 80 C 42 87.2 74 85.8 84 80 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 84.8 75.1 C 77.1 66.4 47 55.3 46.7 62.7 C 42.6 68.9 73.5 77.5 84.8 75.1 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 87.1 70.6 C 82.4 60 57.3 40.1 54.7 47.1 C 48.9 51.7 75.5 69.5 87.1 70.6 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 90.6 67.1 C 89.5 55.5 71.7 28.9 67.1 34.7 C 60.1 37.3 80 62.4 90.6 67.1 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 95.1 64.8 C 97.5 53.5 88.9 22.6 82.7 26.7 C 75.3 27 86.4 57.1 95.1 64.8 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 100 64 C 105.8 54 107.1 22 100 24 C 92.8 22 94.2 54 100 64 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 104.9 64.8 C 113.6 57.1 124.7 27 117.3 26.7 C 111.1 22.6 102.5 53.5 104.9 64.8 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 109.4 67.1 C 120 62.4 139.9 37.3 132.9 34.7 C 128.3 28.9 110.5 55.5 109.4 67.1 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 112.9 70.6 C 124.5 69.5 151.1 51.7 145.3 47.1 C 142.7 40.1 117.6 60 112.9 70.6 Z" stroke-width="2.2" fill="none"/>
+  <path d="M 115.2 75.1 C 126.5 77.5 157.4 68.9 153.3 62.7 C 153 55.3 122.9 66.4 115.2 75.1 Z" stroke-width="2.2" fill="none"/>
+  <circle cx="100" cy="80" r="16" stroke-width="2.6" fill="none"/>
+  <circle cx="100" cy="80" r="9" stroke-width="2.2" fill="currentColor"/>
+  <circle cx="112.5" cy="80" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="110.8" cy="86.2" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="106.2" cy="90.8" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="100" cy="92.5" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="93.8" cy="90.8" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="89.2" cy="86.2" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="87.5" cy="80" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="89.2" cy="73.8" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="93.8" cy="69.2" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="100" cy="67.5" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="106.2" cy="69.2" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <circle cx="110.8" cy="73.8" r="1.2" stroke-width="1.2" fill="currentColor"/>
+  <path d="M 100 122 C 99.8 128.3 98.8 148 99 160 C 99.2 172 100.7 188.3 101 194" stroke-width="3.2" fill="none"/>
+  <path d="M 100 176 C 98 161.1 79.2 155.4 72.1 156.5 C 73.5 163.5 85.3 179.2 100 176 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="100" y1="176" x2="77.2" y2="160" stroke-width="1.6"/>
+</svg>

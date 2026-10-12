@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Final
 
-FIXTURE_VERSION: Final = 1
+FIXTURE_VERSION: Final = 2
 
 #: alias -> canonical. Latin Uzbek, Cyrillic (Russian and Uzbek), and English.
 #: Kept flat and boring on purpose: this file is meant to be edited by hand.
@@ -78,4 +78,24 @@ ALIASES: Final[dict[str, str]] = {
     "туй": "toy",
     "8 март": "8mart",
     "8 mart": "8mart",
+    # --- CP23 flower themes: every theme's tag resolves --------------------
+    "lola": "tyulpan",
+    "liliya": "nilufar",
+    "кустовая роза": "kustatirgul",
+    "кустовые розы": "kustatirgul",
+    "kust atirgul": "kustatirgul",
+    "spray rose": "kustatirgul",
+    "мимоза": "mimoza",
+    "mimosa": "mimoza",
+    "эустома": "eustoma",
+    "lisianthus": "eustoma",
+    "гортензия": "gortenziya",
+    "hydrangea": "gortenziya",
+    "орхидея": "orxideya",
+    "orchid": "orxideya",
+    "альстромерия": "alstromeriya",
+    "alstroemeria": "alstromeriya",
+    "коробка": "korobka",
+    "quti": "korobka",
+    "flowerbox": "korobka",
 }

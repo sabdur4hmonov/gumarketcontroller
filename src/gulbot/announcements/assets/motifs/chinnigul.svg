@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>chinnigul (original line art, gulbot CP23)</title>
+  <path d="M 92 104 L 56 72 L 47.4 79.5 L 58.4 80 L 50 69 L 63.2 73.1 L 54.7 58.7 L 69.1 67.2 L 66.7 56.5 L 76 62.4 L 74.2 48.7 L 83.6 58.9 L 83.4 42.2 L 91.7 56.7 L 94.9 46.2 L 100 56 L 105.3 43.2 L 108.3 56.7 L 116.6 42.2 L 116.4 58.9 L 124.5 51.4 L 124 62.4 L 135 54 L 130.9 67.2 L 145.3 58.7 L 136.8 73.1 L 147.5 70.7 L 141.6 80 L 155.3 78.2 L 145.1 87.6 L 108 104 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 73.8 85.6 L 71.1 79.3 L 77.8 81 L 76.3 74.3 L 82.6 77.2 L 82.5 70.3 L 88 74.3 L 89.2 67.6 L 93.9 72.6 L 96.4 66.2 L 100 72 L 103.6 66.2 L 106.1 72.6 L 110.8 67.6 L 112 74.3 L 117.5 70.3 L 117.4 77.2 L 123.7 74.3 L 122.2 81 L 128.9 79.3 L 126.2 85.6" stroke-width="1.8" fill="none"/>
+  <path d="M 83.6 92.5 L 80.9 86.3 L 87.3 88.5 L 86.4 81.8 L 92 85.7 L 93 79 L 97.3 84.2 L 100 78 L 102.7 84.2 L 107 79 L 108 85.7 L 113.6 81.8 L 112.7 88.5 L 119.1 86.3 L 116.4 92.5" stroke-width="1.8" fill="none"/>
+  <path d="M 92 104 L 94 126 L 106 126 L 108 104" stroke-width="2.4" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="97" y1="108" x2="97" y2="124" stroke-width="1.3"/>
+  <line x1="103" y1="108" x2="103" y2="124" stroke-width="1.3"/>
+  <path d="M 100 126 C 99.8 131.7 98.8 148.7 99 160 C 99.2 171.3 100.7 188.3 101 194" stroke-width="3.2" fill="none"/>
+  <path d="M 99 150 C 84 140 76 128 74 112" stroke-width="2.2" fill="none"/>
+  <path d="M 101 168 C 116 160 124 148 128 134" stroke-width="2.2" fill="none"/>
+</svg>

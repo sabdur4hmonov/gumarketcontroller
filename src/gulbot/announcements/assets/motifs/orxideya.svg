@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <title>orxideya (original line art, gulbot CP23)</title>
+  <path d="M 92 74 C 102 62 98 40 92 34 C 86 40 82 62 92 74 Z" stroke-width="2.4" fill="none"/>
+  <path d="M 92 74 C 76.4 72.7 60.7 88.6 59.2 96.9 C 67.6 98.4 87.9 89.1 92 74 Z" stroke-width="2.4" fill="none"/>
+  <path d="M 92 74 C 96.1 89.1 116.4 98.4 124.8 96.9 C 123.3 88.6 107.6 72.7 92 74 Z" stroke-width="2.4" fill="none"/>
+  <path d="M 92 74 C 90.6 55.5 63.2 35.8 55.6 53 C 44.5 68.1 75.3 82 92 74 Z" stroke-width="2.8" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 92 74 C 108.7 82 139.5 68.1 128.4 53 C 120.8 35.8 93.4 55.5 92 74 Z" stroke-width="2.8" fill="currentColor" fill-opacity="0.18"/>
+  <path d="M 83 80 C 78 104 106 104 101 80 C 96 88 88 88 83 80 Z" stroke-width="2.4" fill="none"/>
+  <path d="M 86 100 Q 78 108 84 112" stroke-width="1.6" fill="none"/>
+  <path d="M 98 100 Q 106 108 100 112" stroke-width="1.6" fill="none"/>
+  <path d="M 150 194 C 150 185 152 155 150 140 C 148 125 143 113 138 104 C 133 95 123 89 120 86" stroke-width="3.2" fill="none"/>
+  <ellipse cx="154" cy="126" rx="6" ry="8" stroke-width="2" fill="none"/>
+  <ellipse cx="159" cy="150" rx="6" ry="8" stroke-width="2" fill="none"/>
+  <path d="M 150 186 C 142.7 167.4 117.2 166.9 108.7 171 C 112.5 179.6 132.5 195.6 150 186 Z" stroke-width="2.6" fill="currentColor" fill-opacity="0.18"/>
+  <line x1="150" y1="186" x2="116.1" y2="173.7" stroke-width="1.6"/>
+</svg>
