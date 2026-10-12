@@ -1,0 +1,32 @@
+{
+  "what": "full-size renders by the real code: post 1280 px longest side from a 900x1200 photo, story 1080x1920; cold = first layout of a theme (its motif rasterised), warm = the rest (motif cached). JPEG encode included.",
+  "machine": "Windows AMD64, Intel64 Family 6 Model 126 Stepping 5, GenuineIntel",
+  "post": {
+    "cold": {
+      "count": 15,
+      "min_ms": 54.5,
+      "median_ms": 125.2,
+      "max_ms": 153.6
+    },
+    "warm": {
+      "count": 135,
+      "min_ms": 26.6,
+      "median_ms": 102.2,
+      "max_ms": 388.4
+    }
+  },
+  "story": {
+    "cold": {
+      "count": 15,
+      "min_ms": 135.9,
+      "median_ms": 267.7,
+      "max_ms": 366.9
+    },
+    "warm": {
+      "count": 135,
+      "min_ms": 81.1,
+      "median_ms": 231.1,
+      "max_ms": 732.8
+    }
+  }
+}

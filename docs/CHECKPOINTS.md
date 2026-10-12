@@ -1715,3 +1715,118 @@ or dropped. This is an observation, not a Telegram delivery guarantee. The
 catalog entry was finalized independently of own-post update delivery.
 Real STT accuracy/latency evaluation still awaits the owner's ten recordings;
 the one-command benchmark and sample manifest are ready.
+
+## CP23 — flower templates (150), Instagram Story images (150), Instagram publishing (off)
+
+### What CP23 guarantees
+
+**150 post templates, built as a system** (`announcements/themes.py`,
+`layouts.py`, `flower_templates.py`, `designs.py`). Template =
+`<theme>.<layout>`: ten layouts (classic, minimal, festive, premium, playful,
+short sale, gift, new arrival, price-first, story card) x fifteen flower themes
+(atirgul, kust atirgul, lola, xrizantema, gerbera, liliya, pion, gortenziya,
+eustoma, chinnigul, orxideya, alstromeriya, mimoza, aralash buket, qutidagi
+gullar). Each theme: 2-3 palettes after real varieties -- the bouquet's colour
+picks one -- emoji, an ORIGINAL line-art motif (`assets/motifs/*.svg`, drawn by
+`scripts/motifs_cp23.py`; a test regenerates them and fails on any
+difference), hashtags the alias fixture resolves, and wording for the flower's
+occasions. Uzbek Latin and Russian are written; Uzbek Cyrillic is derived
+(`script.py`), so the two Uzbek scripts never disagree.
+
+- **Every caption, whatever the template, keeps the catalogue header**: line 1
+  the controlled title (CP8's product name), line 2 the labelled price CP7
+  reads with HIGH confidence, before any owner text; hashtags last. Price-first
+  makes the price bold and prominent but never moves it above the title.
+- **Every overlay text is fitted into a declared panel** -- the font shrinks to
+  a floor, then a name gets an ellipsis; a price is never cut -- and every box
+  is recorded, so overflow is tested as geometry. Text is drawn only on solid
+  panels, in colour pairs whose contrast (WCAG >= 4.5) is tested per palette.
+- **Selection**: after confirmation the draft gets the shop's favourite layout
+  FOR THAT FLOWER; else, if the shop saved a CP22 style, the CP22 family
+  unchanged (saved defaults keep working); else the flower's classic. "🌸" shows
+  the detected flower's ten as previews on the owner's own photo; "Boshqa
+  shablonlar" lists all fifteen flowers and the CP22 styles. Mixed flowers are
+  "aralash buket"; flowers in a box are the box theme. "⭐" saves per flower.
+
+**150 Instagram Story images** (`announcements/stories.py`): ten story layouts
+x fifteen themes, 1080x1920 from the post's first photo, with the flower's
+name, the price and the shop. Every text container lies between y=250 and
+y=1580 (Instagram covers the top ~250 px and the bottom ~340 px). Offered
+after publication; sent as a DOCUMENT (no recompression) and as a photo, with
+how to share it from the phone. Author among owners/staff only, published
+posts only, own shop only.
+
+**Instagram auto-publishing, built and OFF** (`services/instagram*.py`,
+`worker/instagram_tasks.py`, `/shop/instagram`, `/ig/...`). See DEPLOY 18 for
+what only the owner can do. Tested against a fake Graph server only.
+
+### Decisions made during CP23, each with its reason
+
+- **A box is not a flower.** CP22's tests keep "quti"/"box" out of the lexicon
+  deliberately (packaging, not content), so the box theme is read from the
+  owner's own words, not added to the lexicon.
+- **New lexicon flowers** (kust atirgul, mimoza; "liliya" as an alias of
+  nilufar) and alias fixture v2, so every theme's hashtag resolves. Seeding
+  aliases was in no DEPLOY step at all; it now is (7b and 14). Nothing seeds a
+  NEWLY ONBOARDED shop's aliases on its own -- recorded as an open item below.
+- **No SVG library.** The motifs use a small, refused-outside-it SVG subset
+  rasterised by Pillow (three-times supersampled, cached per size and colour).
+- **Price-first keeps the title first.** CP8 names a product after its first
+  line; a price line there would name every product "Narxi: ...".
+- **The template choice survives a re-confirm once the owner made it**; until
+  then a re-confirm re-derives it from the (edited) flowers.
+- **The Instagram connect is a LINK, not a redirect**, and its callback lives
+  outside /shop: the panel's CSP allows forms only to itself, and its
+  SameSite=Strict cookie is not sent on a navigation that began at
+  instagram.com -- the one-time state is the authority there.
+- **The story URL token rides in the task arguments** (Redis on loopback, 15
+  minutes); only its hash is stored. Meta must fetch the image, so the URL has
+  to exist for a while; the image is wiped the moment the attempt ends.
+- **A token Meta rejects retires the connection** rather than being retried.
+
+### Found while building, each fixed and tested
+
+- **The page server's no-access-log rule had no test.** Every `/p/` and now
+  `/ig/` path is a secret; a test now runs the entrypoint and requires
+  `access_log=None` (mutation-proven).
+- **Two Phase 1 mutants first survived**: own-text escaping (no project line
+  contains `&` or `<` yet -- a test now injects one) and a hashtag test that
+  compared against the function under test (now independent).
+- **One CP22 test assumed the CP22 default style**: a new shop now previews a
+  flower template, which needs the photo; its fake bot hands one over.
+
+### Evidence
+
+- Tests added: 2,317 (1,920 template/caption/overlay/motif, 36 selection,
+  2 migration round-trips, 322 story, 37 Instagram). Captions: all 150 x 3
+  languages x 3 prices; overlays: all 150 x 3 photo shapes with a 9-digit price
+  and a long shop name; stories: all 150 x 2 photo shapes.
+- Mutations, all caught on assertions: templates/selection **21/21**, stories
+  **8/8**, Instagram **20/20** -- 49/49.
+- Render timings (`docs/cp23-render-timings.json`; this laptop, measured while
+  a full gate ran beside it, so pessimistic): post at full size median ~0.1 s
+  warm, ~0.13 s cold; story median ~0.23 s warm. Motif rasters are cached per
+  process; template previews render at 720 px and story previews at 270x480,
+  both off the event loop.
+- Gallery: `docs/cp23-gallery/index.html` -- every post template (with its exact
+  caption) and every story layout for all fifteen flowers at phone width.
+  Sample photos are schematic drawings of each flower's motif, not real
+  bouquets or stock images.
+- **Live, through the dev bot and the dev channel @guldokonkanal**
+  (`docs/cp23-live-proof.json`, images `docs/cp23-live-rose.jpg`,
+  `cp23-live-tulip.jpg`): a rose announcement ("Qizil atirgul, ellik bitta dona,
+  narxi to'rt yuz ellik ming so'm") detected as atirgul, published with
+  `atirgul.premium` -> https://t.me/guldokonkanal/14, catalogue Product 24
+  "Atirgul guldastasi — 51 dona", 450 000; a tulip announcement ("Sariq lola
+  yigirma besh dona...") detected as lola, published with `lola.festive` ->
+  https://t.me/guldokonkanal/15, Product 25 "Lola guldastasi — 25 dona", 300 000.
+  A story image (arch, magazine) for each was sent to the owner as a document
+  and a photo. Choices were supplied by the script through the same functions
+  the buttons call -- not human taps -- and the text path was used (no voice).
+  The dev database was upgraded through the additive chain to `d23b4e8f1a26`.
+
+### Open
+
+- A newly onboarded shop gets no hashtag aliases until `seed_aliases` is rerun
+  (pre-existing; DEPLOY now says so). Seeding at onboarding is the fix.
+- Instagram publishing has never met the real Meta API (fake server only).

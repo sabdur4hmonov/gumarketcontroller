@@ -1,0 +1,89 @@
+{
+  "scope": "real dev Bot API and channel; production services and router functions; choices supplied by this script, not human taps",
+  "bot_username": "Flowersmarketcontroller_bot",
+  "channel_id": -1003987514504,
+  "photos": "schematic sample drawings (gallery_cp23.sample_photo), not real bouquets",
+  "posts": [
+    {
+      "said": "Qizil atirgul, ellik bitta dona, narxi to'rt yuz ellik ming so'm",
+      "extracted": {
+        "flowers": [
+          "atirgul"
+        ],
+        "count": 51,
+        "price": 450000,
+        "colour": "qizil"
+      },
+      "theme_detected": "atirgul",
+      "default_template_after_confirm": "atirgul.classic",
+      "template_published": "atirgul.premium",
+      "post_link": "https://t.me/c/3987514504/14",
+      "receipts": [
+        {
+          "shop_id": 1,
+          "chat_id": -1003987514504,
+          "message_id": 14,
+          "file_id": "AgACAgIAAxkDAAIBlmrMpJWmKKXwJufS-Dftzh0a6KarAAJRH2sbfgNpSqrEpcyQFoKvAQADAgADeQADPQQ",
+          "media_group_id": null,
+          "caption": "Atirgul guldastasi — 51 dona\nNarxi: 450 000 so'm\n✦ Nafis tanlov\n✨ Sevgingizni so'zsiz izhor qiling\nQizil atirgul, ellik bitta dona, narxi to'rt yuz ellik ming so'm\nqizil · 51 dona\nGo'zallikni hadya qiling\n📍 Gulbot Dev Shop\n#atirgul #buket"
+        }
+      ],
+      "caption": "<b>Atirgul guldastasi — 51 dona</b>\nNarxi: 450 000 so'm\n✦ Nafis tanlov\n✨ Sevgingizni so'zsiz izhor qiling\nQizil atirgul, ellik bitta dona, narxi to'rt yuz ellik ming so'm\nqizil · 51 dona\nGo'zallikni hadya qiling\n📍 Gulbot Dev Shop\n#atirgul #buket",
+      "catalog": {
+        "id": 24,
+        "name": "Atirgul guldastasi — 51 dona",
+        "price_uzs": 450000,
+        "hashtags_from_caption": [
+          "#atirgul",
+          "#buket"
+        ]
+      },
+      "story_layout": "arch",
+      "story_sent_as": [
+        "document (no recompression)",
+        "photo"
+      ]
+    },
+    {
+      "said": "Sariq lola yigirma besh dona, narxi uch yuz ming so'm. 8-Mart uchun",
+      "extracted": {
+        "flowers": [
+          "tyulpan"
+        ],
+        "count": 25,
+        "price": 300000,
+        "colour": "sariq"
+      },
+      "theme_detected": "lola",
+      "default_template_after_confirm": "lola.classic",
+      "template_published": "lola.festive",
+      "post_link": "https://t.me/c/3987514504/15",
+      "receipts": [
+        {
+          "shop_id": 1,
+          "chat_id": -1003987514504,
+          "message_id": 15,
+          "file_id": "AgACAgIAAxkDAAIBnGrMpJkFBVcb6HmVaztYNKe8e0JYAAJUH2sbfgNpSpdPhP8vJUF9AQADAgADeQADPQQ",
+          "media_group_id": null,
+          "caption": "Lola guldastasi — 25 dona\nNarxi: 300 000 so'm\n🎉🌷 Bayram muborak!\n☀️ 8-Mart uchun eng yaxshi tanlov\nsariq · 25 dona\nSariq lola yigirma besh dona, narxi uch yuz ming so'm. 8-Mart uchun\n📍 Gulbot Dev Shop\nQuvonch ulashing\n#tyulpan #lola #buket"
+        }
+      ],
+      "caption": "Lola guldastasi — 25 dona\nNarxi: 300 000 so'm\n🎉🌷 Bayram muborak!\n☀️ 8-Mart uchun eng yaxshi tanlov\nsariq · 25 dona\nSariq lola yigirma besh dona, narxi uch yuz ming so'm. 8-Mart uchun\n📍 Gulbot Dev Shop\nQuvonch ulashing\n#tyulpan #lola #buket",
+      "catalog": {
+        "id": 25,
+        "name": "Lola guldastasi — 25 dona",
+        "price_uzs": 300000,
+        "hashtags_from_caption": [
+          "#tyulpan",
+          "#lola",
+          "#buket"
+        ]
+      },
+      "story_layout": "magazine",
+      "story_sent_as": [
+        "document (no recompression)",
+        "photo"
+      ]
+    }
+  ]
+}
