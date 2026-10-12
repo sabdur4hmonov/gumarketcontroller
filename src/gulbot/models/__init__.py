@@ -2,6 +2,7 @@
 
 from gulbot.models.admin import AdminAuditEntry, AdminLoginLink, AdminSession
 from gulbot.models.announcement import (
+    AnnouncementCorrection,
     AnnouncementDraft,
     AnnouncementPreference,
     AnnouncementThemeFavourite,
@@ -41,6 +42,7 @@ from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
 
 __all__ = [
+    "AnnouncementCorrection",
     "AnnouncementDraft",
     "AnnouncementPreference",
     "AnnouncementThemeFavourite",

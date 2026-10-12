@@ -72,7 +72,7 @@ class AnnouncementDraft(IdMixin, TimestampMixin, Base):
         CheckConstraint("jsonb_array_length(photos) <= 10", name="photos_max_ten"),
         CheckConstraint(
             "status IN ('collecting','transcribing','review','confirmed','preview',"
-            "'publishing','published','ambiguous')",
+            "'publishing','published','ambiguous','deleted')",
             name="status_known",
         ),
     )
@@ -143,4 +143,37 @@ class AnnouncementThemeFavourite(Base):
     __table_args__ = (
         CheckConstraint(_in("theme", THEME_IDS), name="theme_known"),
         CheckConstraint(_in("layout", LAYOUT_IDS), name="layout_known"),
+    )
+
+
+class AnnouncementCorrection(IdMixin, Base):
+    """A shop's learned mishearing (CP23 addendum): heard -> corrected.
+
+    Applied to that shop's next announcements BEFORE the general lexicon
+    (announcements/learning.py). Strictly per shop; short token-level fixes
+    only (3 words, 40 characters each side); at most CORRECTIONS_CAP rows per
+    shop, the least recently used dropped first."""
+
+    __tablename__ = "announcement_corrections"
+    shop_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False
+    )
+    heard: Mapped[str] = mapped_column(Text, nullable=False)
+    corrected: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[str] = mapped_column(Text, nullable=False)
+    taught_by: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uses: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    last_used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    __table_args__ = (
+        UniqueConstraint("shop_id", "heard"),
+        CheckConstraint("kind IN ('flower','colour','number')", name="kind_known"),
+        CheckConstraint("length(heard) BETWEEN 1 AND 40", name="heard_short"),
+        CheckConstraint("length(corrected) BETWEEN 1 AND 40", name="corrected_short"),
+        CheckConstraint("taught_by > 0", name="taught_by_a_person"),
+        CheckConstraint("uses >= 0", name="uses_not_negative"),
     )

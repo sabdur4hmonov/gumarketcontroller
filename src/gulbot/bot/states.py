@@ -213,6 +213,15 @@ class Announcement(StatesGroup):
     review = State()
     editing = State()
     styling = State()
+    #: CP23 addendum: "✏️ Matnni tuzatish" -- the next text is the corrected
+    #: transcript: learned from, then extracted again.
+    retext = State()
+
+
+class PostEdit(StatesGroup):
+    """CP23 addendum: one field of a PUBLISHED announcement, typed anew."""
+
+    value = State()
 
 
 class EditPage(StatesGroup):

@@ -68,3 +68,49 @@ def test_cp23_instagram_revision_roundtrip(settings):
     finally:
         engine.dispose()
         drop_database(settings, database)
+
+
+def test_cp23_corrections_revision_roundtrip(settings):
+    """The addendum's revision: corrections table, and 'deleted' in the
+    drafts' status CHECK; the downgrade turns deleted posts back into
+    published ones (the old CHECK cannot hold them) and drops corrections."""
+    from sqlalchemy import text
+
+    database = "gulbot_cp23_corr_roundtrip"
+    drop_database(settings, database)
+    create_database(settings, database)
+    engine = create_engine(settings.database_url(database=database, driver="psycopg"))
+    try:
+        with alembic_config_for(database) as config:
+            command.upgrade(config, "head")
+            with engine.begin() as connection:
+                assert "announcement_corrections" in inspect(connection).get_table_names()
+                shop = connection.execute(
+                    text(
+                        "INSERT INTO shops (name, working_hours) VALUES ('R', '{}'::jsonb) "
+                        "RETURNING id"
+                    )
+                ).scalar_one()
+                connection.execute(
+                    text(
+                        "INSERT INTO announcement_drafts (shop_id, author_id, status) "
+                        "VALUES (:s, 1, 'deleted')"
+                    ),
+                    {"s": shop},
+                )
+            revision = ScriptDirectory.from_config(config).get_revision("e23c5a9d0b37")
+            command.downgrade(config, revision.down_revision)
+            with engine.connect() as connection:
+                assert "announcement_corrections" not in inspect(connection).get_table_names()
+                statuses = (
+                    connection.execute(text("SELECT status FROM announcement_drafts"))
+                    .scalars()
+                    .all()
+                )
+                assert statuses == ["published"]
+            command.upgrade(config, "head")
+            with engine.connect() as connection:
+                assert "announcement_corrections" in inspect(connection).get_table_names()
+    finally:
+        engine.dispose()
+        drop_database(settings, database)

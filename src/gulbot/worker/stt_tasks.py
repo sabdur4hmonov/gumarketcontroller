@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.announcements.audio_guard import scrub
 from gulbot.announcements.stt import transcribe
-from gulbot.announcements.templates import escaped_fit
 from gulbot.bot.registry import registry_for
 from gulbot.config import get_settings
 from gulbot.db.session import task_session_factory
@@ -56,7 +55,7 @@ async def work(*, shop_id: int, actor: int, draft_id: int, revision: int, file_i
 
 
 async def process(session: AsyncSession, bot: Bot, draft: AnnouncementDraft, file_id: str) -> None:
-    from gulbot.bot.routers.announcements import review_keyboard
+    from gulbot.bot.routers.announcements import review_keyboard, review_text
 
     settings = get_settings()
     revision = draft.revision
@@ -95,22 +94,12 @@ async def process(session: AsyncSession, bot: Bot, draft: AnnouncementDraft, fil
         draft.status = "review"
         await service.parse_description(session, draft, result.text)
         await session.commit()
-        f = draft.fields
-        body = "\n".join(
-            [
-                "Ovozdan tushunildi — tekshiring:",
-                result.text,
-                f"Gullar: {', '.join(f.get('flowers', []))}",
-                f"Soni: {f.get('count')}",
-                f"Narxi: {f.get('price')} so'm",
-                f"Rang: {f.get('colour')}",
-                *[f"⚠ {w}" for w in f.get("warnings", [])],
-                *[f"Imlo: {c}" for c in f.get("corrections", [])[:10]],
-            ]
-        )
+        # CP23 addendum: the SAME confirmation screen as typed text -- what was
+        # heard, what was understood (⚠ where unsure), the post as it would go.
+        body = await review_text(session, draft, heading="🎤 Ovozdan tushunildi — tekshiring:")
         if draft.acknowledgement_id:
             await bot.edit_message_text(
-                escaped_fit(body, 3900),
+                body,
                 chat_id=draft.author_id,
                 message_id=draft.acknowledgement_id,
                 reply_markup=review_keyboard(draft),

@@ -10,6 +10,7 @@ from typing import Any
 from gulbot.catalog.prices import MAX_PRICE_UZS, MIN_PRICE_UZS
 
 from .correction import Corrector, default_corrector
+from .learning import apply_learned
 from .lexicon import COLOURS, FLOWERS, LexiconMatcher
 from .numbers import find_numbers
 
@@ -30,6 +31,13 @@ class Fields:
     raw: str = ""
     warnings: list[str] = field(default_factory=list)
     corrections: list[str] = field(default_factory=list)
+    #: CP23 addendum: the fields the owner should check first ("flowers",
+    #: "colour", "price", "count"), what each flower/colour was heard as
+    #: ([kind, source word, key, confidence]), and the shop's learned
+    #: corrections applied before extraction ("heard → corrected").
+    uncertain: list[str] = field(default_factory=list)
+    heard: list[list[str]] = field(default_factory=list)
+    learned: list[str] = field(default_factory=list)
 
     def data(self) -> dict[str, Any]:
         return asdict(self)
@@ -52,14 +60,24 @@ class Fields:
 
 
 def extract(
-    text: str, *, aliases: Mapping[str, str] | None = None, corrector: Corrector | None = None
+    text: str,
+    *,
+    aliases: Mapping[str, str] | None = None,
+    corrector: Corrector | None = None,
+    learned: Mapping[str, str] | None = None,
 ) -> Fields:
     if not text.strip() or len(text) > 4096:
+        raise ValueError("Tavsif 1–4096 belgi bo'lishi kerak")
+    heard_text = text
+    # CP23 addendum: the shop's learned corrections come BEFORE the general
+    # lexicon; `raw` keeps exactly what was heard.
+    text, applied = apply_learned(text, learned or {})
+    if len(text) > 4096:
         raise ValueError("Tavsif 1–4096 belgi bo'lishi kerak")
     matcher = LexiconMatcher(aliases)
     domain = matcher.find(text)
     numbers = find_numbers(text)
-    result = Fields(raw=text)
+    result = Fields(raw=heard_text, learned=applied)
     for match in domain:
         if NEGATED_AFTER.match(text[match.end :]) or NEGATED_BEFORE.search(
             text[max(0, match.start - 20) : match.start]
@@ -71,10 +89,14 @@ def extract(
         elif match.kind == "colour" and match.canonical:
             if result.colour and result.colour != match.canonical:
                 result.warnings.append("Ranglar bir nechta — tekshiring")
+                result.uncertain.append("colour")
             else:
                 result.colour = match.canonical
+        if match.kind in {"flower", "colour"} and match.canonical:
+            result.heard.append([match.kind, match.source, match.canonical, match.confidence])
         if match.confidence == "low":
             result.warnings.append(f"Gul/rang taxmini: {match.source}")
+            result.uncertain.append("flowers" if match.kind == "flower" else "colour")
     prices: list[int] = []
     counts: list[int] = []
     for number in numbers:
@@ -99,10 +121,12 @@ def extract(
             result.warnings.append("Narx yorliqsiz — tekshiring")
         else:
             result.warnings.append("Narx aniqlanmadi yoki bir nechta")
+        result.uncertain.append("price")
     if len(counts) == 1:
         result.count = counts[0]
     else:
         result.warnings.append("Gullar sonini kiriting")
+        result.uncertain.append("count")
     corrected, changes = (corrector or default_corrector()).correct(
         text, protected=[(m.start, m.end) for m in domain] + [(n.start, n.end) for n in numbers]
     )
@@ -112,6 +136,9 @@ def extract(
     result.corrections = [f"{c.source} → {c.replacement}" for c in changes]
     if not result.flowers:
         result.warnings.append("Gul turini tanlang")
+        result.uncertain.append("flowers")
     if not result.colour:
         result.warnings.append("Rangini tanlang")
+        result.uncertain.append("colour")
+    result.uncertain = list(dict.fromkeys(result.uncertain))
     return result

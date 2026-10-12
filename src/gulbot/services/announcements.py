@@ -13,8 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.announcements.extraction import Fields, extract
 from gulbot.announcements.flower_templates import ALL_TEMPLATES
+from gulbot.announcements.flower_templates import caption as flower_caption
 from gulbot.announcements.images import IMAGE_STYLES
+from gulbot.announcements.learning import Learned, diff_corrections, from_button
 from gulbot.announcements.templates import CAPTION_STYLES
+from gulbot.announcements.templates import caption as legacy_caption
 from gulbot.announcements.themes import LANGS, theme_for
 from gulbot.bot.channel import as_channel_post
 from gulbot.models.announcement import (
@@ -25,6 +28,7 @@ from gulbot.models.announcement import (
 from gulbot.models.product import HashtagAlias
 from gulbot.models.shop import Shop, ShopStatus
 from gulbot.models.staff import ShopStaff
+from gulbot.services import announcement_learning
 from gulbot.services.indexer import ChannelPost, finalize_product, ingest_post
 
 
@@ -121,10 +125,59 @@ async def parse_description(session: AsyncSession, draft: AnnouncementDraft, tex
             )
         )
     ).all()
-    draft.fields = extract(
-        text, aliases={r.alias_normalized: r.canonical_hashtag for r in rows}
-    ).data()
+    # CP23 addendum: this shop's learned corrections, before the lexicon.
+    learned = await announcement_learning.learned_for(session, draft.shop_id)
+    fields = extract(
+        text, aliases={r.alias_normalized: r.canonical_hashtag for r in rows}, learned=learned
+    )
+    await announcement_learning.mark_used(session, shop_id=draft.shop_id, applied=fields.learned)
+    draft.fields = fields.data()
     invalidate(draft)
+
+
+async def retext(
+    session: AsyncSession, draft: AnnouncementDraft, *, actor: int, text: str
+) -> list[Learned]:
+    """ "✏️ Matnni tuzatish": learn the short mishearings the owner fixed, then
+    run the SAME extraction on the corrected text. Returns what was learned."""
+    editable(draft)
+    heard = Fields.from_data(draft.fields).raw
+    learned = diff_corrections(heard, text) if heard else []
+    await announcement_learning.remember(
+        session, shop_id=draft.shop_id, taught_by=actor, items=learned
+    )
+    await parse_description(session, draft, text)
+    return learned
+
+
+async def learn_from_button(
+    session: AsyncSession, draft: AnnouncementDraft, *, actor: int, kind: str, added: str
+) -> Learned | None:
+    """A flower/colour fixed by button teaches only when it replaced a GUESS."""
+    fields = Fields.from_data(draft.fields)
+    current = fields.flowers if kind == "flower" else [fields.colour]
+    removed = [
+        entry[2]
+        for entry in fields.heard
+        if len(entry) == 4 and entry[0] == kind and entry[3] == "low" and entry[2] not in current
+    ]
+    if len(removed) != 1:
+        return None
+    learned = from_button(fields.heard, kind, removed[0], added)
+    if learned is not None:
+        await announcement_learning.remember(
+            session, shop_id=draft.shop_id, taught_by=actor, items=[learned]
+        )
+    return learned
+
+
+async def cancel(session: AsyncSession, draft: AnnouncementDraft) -> None:
+    """ "❌ Bekor qilish": the draft goes, nothing of it is kept. Never after
+    the post went out (or may have): that is "Mening e'lonlarim"'s delete."""
+    if draft.status in {"publishing", "published", "ambiguous", "deleted"}:
+        raise AnnouncementRefused("Joylangan e'lonni bu yerda bekor qilib bo'lmaydi")
+    await session.delete(draft)
+    await session.flush()
 
 
 def confirm(draft: AnnouncementDraft) -> None:
@@ -167,6 +220,12 @@ async def apply_default_template(session: AsyncSession, draft: AnnouncementDraft
     """
     if draft.template_picked:
         return
+    draft.template = await default_template(session, draft)
+
+
+async def default_template(session: AsyncSession, draft: AnnouncementDraft) -> str | None:
+    """The template a confirmation would give this draft now; changes nothing.
+    None means the CP22 family (the shop saved a CP22 style)."""
     theme = draft_theme(draft)
     layout = await session.scalar(
         select(AnnouncementThemeFavourite.layout).where(
@@ -175,14 +234,29 @@ async def apply_default_template(session: AsyncSession, draft: AnnouncementDraft
         )
     )
     if layout is not None:
-        draft.template = f"{theme}.{layout}"
-        return
+        return f"{theme}.{layout}"
     legacy = await session.scalar(
         select(AnnouncementPreference.shop_id).where(
             AnnouncementPreference.shop_id == draft.shop_id
         )
     )
-    draft.template = None if legacy is not None else f"{theme}.classic"
+    return None if legacy is not None else f"{theme}.classic"
+
+
+async def would_post(session: AsyncSession, draft: AnnouncementDraft, shop_name: str) -> str | None:
+    """CP23 addendum: the caption this draft would go out with, as it stands --
+    the review screen shows it after every fix. None while a field is missing."""
+    fields = Fields.from_data(draft.fields)
+    try:
+        fields.validate()
+    except ValueError:
+        return None
+    template = draft.template if draft.template_picked else await default_template(session, draft)
+    if template is not None:
+        return flower_caption(
+            fields, template=template, shop_name=shop_name, lang=draft.caption_lang
+        )
+    return legacy_caption(fields, style=draft.caption_style, shop_name=shop_name)
 
 
 def require_published(draft: AnnouncementDraft) -> None:

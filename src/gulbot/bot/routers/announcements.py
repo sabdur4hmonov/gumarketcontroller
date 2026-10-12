@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import io
+from collections.abc import Sequence
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -26,6 +27,7 @@ from gulbot.announcements.flower_templates import caption as flower_caption
 from gulbot.announcements.flower_templates import split_template
 from gulbot.announcements.images import IMAGE_LABELS, IMAGE_STYLES, overlay
 from gulbot.announcements.layouts import LAYOUT_IDS, LAYOUTS
+from gulbot.announcements.learning import Learned
 from gulbot.announcements.lexicon import COLOURS, FLOWERS
 from gulbot.announcements.numbers import parse_number
 from gulbot.announcements.stories import (
@@ -42,8 +44,8 @@ from gulbot.bot.states import Announcement
 from gulbot.i18n import t
 from gulbot.models.announcement import AnnouncementDraft
 from gulbot.models.shop import Shop
+from gulbot.services import announcement_learning, instagram
 from gulbot.services import announcements as service
-from gulbot.services import instagram
 
 
 def button(
@@ -57,7 +59,13 @@ def button(
     )
 
 
+def cancel_row(draft: AnnouncementDraft) -> list[InlineKeyboardButton]:
+    """ "❌ Bekor qilish" -- on every screen before publication (CP23 addendum)."""
+    return [button(draft, "❌ Bekor qilish", "cancel")]
+
+
 def review_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
+    """The confirmation screen: every field, the four ways to fix, confirm."""
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [
@@ -66,26 +74,64 @@ def review_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
             ],
             [button(draft, "🔢 Soni", "edit", "count"), button(draft, "💰 Narxi", "edit", "price")],
             [button(draft, "✍ Tavsif", "edit", "description")],
+            [
+                button(draft, "✏️ Matnni tuzatish", "retext"),
+                button(draft, "🎤 Qaytadan gapirish", "revoice"),
+            ],
             [button(draft, "✅ Tasdiqlash", "confirm")],
+            [button(draft, "🧠 O'rganilganlar", "learned"), *cancel_row(draft)],
         ]
     )
 
 
-async def show_review(message: Message, draft: AnnouncementDraft) -> None:
+async def review_text(
+    session: AsyncSession,
+    draft: AnnouncementDraft,
+    *,
+    heading: str = "E'lonni tekshiring:",
+    learned: Sequence[Learned] = (),
+) -> str:
+    """What was heard, what was understood (⚠ where unsure), what was learned,
+    and exactly what the channel would get -- after EVERY fix."""
     f = Fields.from_data(draft.fields)
-    lines = [
-        "E'lonni tekshiring:",
-        f"Gullar: {', '.join(f.flowers) or '⚠ tanlanmagan'}",
-        f"Soni: {f.count or '⚠ kiritilmagan'}",
-        f"Narxi: {f.price or '⚠ kiritilmagan'} so'm",
-        f"Rang: {f.colour or '⚠ tanlanmagan'}",
-        f"Tavsif: {f.description[:1000]}",
-    ]
+
+    def mark(name: str) -> str:
+        return "⚠ " if name in f.uncertain else ""
+
+    lines = [heading]
     if f.raw:
-        lines.append(f"Asl matn: {f.raw[:1000]}")
-    lines.extend(f"⚠ {w}" for w in f.warnings)
-    lines.extend(f"Imlo: {c}" for c in f.corrections[:10])
-    await message.answer(escaped_fit("\n".join(lines), 3900), reply_markup=review_keyboard(draft))
+        lines += ["🎤 Eshitilgan matn:", f.raw[:1500], ""]
+    lines += [
+        f"{mark('flowers')}🌹 Gullar: {', '.join(f.flowers) or 'tanlanmagan'}",
+        f"{mark('count')}🔢 Soni: {f.count or 'kiritilmagan'}",
+        f"{mark('price')}💰 Narxi: {f.price or 'kiritilmagan'} so'm",
+        f"{mark('colour')}🎨 Rang: {f.colour or 'tanlanmagan'}",
+        f"✍ Tavsif: {f.description[:800]}",
+    ]
+    if f.uncertain:
+        lines.append("⚠ — shu joylarni tekshiring: noto'g'ri eshitilgan bo'lishi mumkin.")
+    lines += [f"⚠ {w}" for w in f.warnings]
+    lines += [f"Imlo: {c}" for c in f.corrections[:10]]
+    lines += [f"🧠 Avval o'rgangan tuzatish qo'llandi: {a}" for a in f.learned[:10]]
+    lines += [f"🧠 Eslab qolindi: «{x.heard}» → «{x.corrected}»" for x in learned]
+    text = escaped_fit("\n".join(lines), 2600)
+    shop_name = await session.scalar(select(Shop.name).where(Shop.id == draft.shop_id)) or ""
+    preview = await service.would_post(session, draft, shop_name)
+    if preview is None:
+        return text + "\n\n📝 Post ko'rinishi barcha maydonlar to'ldirilgach chiqadi."
+    return f"{text}\n\n📝 Kanalga shunday chiqadi:\n<blockquote>{preview}</blockquote>"
+
+
+async def show_review(
+    message: Message,
+    draft: AnnouncementDraft,
+    session: AsyncSession,
+    *,
+    learned: Sequence[Learned] = (),
+) -> None:
+    await message.answer(
+        await review_text(session, draft, learned=learned), reply_markup=review_keyboard(draft)
+    )
 
 
 LANG_LABELS = {"uz": "Lotin", "uz_cyrl": "Кирилл", "ru": "Русский"}
@@ -120,6 +166,7 @@ def style_keyboard(draft: AnnouncementDraft) -> InlineKeyboardMarkup:
             [button(draft, "⭐ Do'kon uchun saqlash", "favourite")],
             [button(draft, "👁 Aniq ko'rinish", "preview")],
             [button(draft, "✏ Ma'lumotlarni qayta tekshirish", "review")],
+            cancel_row(draft),
         ]
     )
 
@@ -234,7 +281,8 @@ async def enter(message: Message, state: FSMContext, session: AsyncSession, shop
     await state.update_data(announcement_id=draft.id)
     await message.answer(
         "1–10 ta surat yuboring (albom ham mumkin). "
-        "So'ng guldastani ovoz yoki matn bilan tavsiflang."
+        "So'ng guldastani ovoz yoki matn bilan tavsiflang.",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[cancel_row(draft)]),
     )
 
 
@@ -266,7 +314,10 @@ async def receive_photo(
         if photo.file_id not in draft.photos:
             draft.photos = [*draft.photos, photo.file_id]
             service.invalidate(draft, status="review" if draft.fields else "collecting")
-        await message.answer(f"Suratlar: {len(draft.photos)}/10. Endi ovoz yoki matn yuboring.")
+        await message.answer(
+            f"Suratlar: {len(draft.photos)}/10. Endi ovoz yoki matn yuboring.",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[cancel_row(draft)]),
+        )
     except service.AnnouncementRefused as exc:
         await message.answer(escape(str(exc)))
 
@@ -282,7 +333,7 @@ async def receive_text(
             draft.status = "review"  # Text fallback supersedes this queued result.
         await service.parse_description(session, draft, message.text or "")
         await state.set_state(Announcement.review)
-        await show_review(message, draft)
+        await show_review(message, draft, session)
     except ValueError as exc:
         await message.answer(escape(str(exc)))
 
@@ -321,6 +372,41 @@ async def receive_voice(
         await message.answer(escape(str(exc)))
 
 
+async def retext_text(
+    message: Message, state: FSMContext, session: AsyncSession, shop_id: int
+) -> None:
+    """ "✏️ Matnni tuzatish": learn the short mishearings, extract again, and
+    come back to the SAME confirmation screen with the new result."""
+    try:
+        data = await state.get_data()
+        draft = await current(message, state, session, shop_id)
+        if draft.revision != data.get("announcement_revision"):
+            raise service.AnnouncementRefused("Bu tahrir eskirgan. Oxirgi tugmani bosing")
+        if message.from_user is None:
+            raise service.AnnouncementRefused("Ruxsat yo'q")
+        learned = await service.retext(
+            session, draft, actor=message.from_user.id, text=message.text or ""
+        )
+        await state.set_state(Announcement.review)
+        await show_review(message, draft, session, learned=learned)
+    except ValueError as exc:
+        await message.answer(escape(str(exc)))
+
+
+async def show_learned(message: Message, session: AsyncSession, draft: AnnouncementDraft) -> None:
+    """The shop's learned corrections, each deletable."""
+    rows = await announcement_learning.corrections(session, draft.shop_id)
+    if not rows:
+        text = "🧠 Hali hech narsa o'rganilmagan."
+    else:
+        text = "🧠 Bot shu do'kon uchun eslab qolgan tuzatishlar:\n" + "\n".join(
+            f"• «{escape(r.heard)}» → «{escape(r.corrected)}» ({r.uses} marta)" for r in rows[:30]
+        )
+    keyboard = [[button(draft, f"🗑 «{r.heard[:24]}»", "unlearn", str(r.id))] for r in rows[:30]]
+    keyboard.append([button(draft, "↩ Tekshiruvga qaytish", "review")])
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard))
+
+
 async def edit_text(
     message: Message, state: FSMContext, session: AsyncSession, shop_id: int
 ) -> None:
@@ -348,7 +434,7 @@ async def edit_text(
         service.invalidate(draft)
         draft.fields = f.data()
         await state.set_state(Announcement.review)
-        await show_review(message, draft)
+        await show_review(message, draft, session)
     except ValueError as exc:
         await message.answer(escape(str(exc)))
 
@@ -537,6 +623,7 @@ async def exact_preview(
             inline_keyboard=[
                 [button(draft, "📢 Joylash", "publish")],
                 [button(draft, "🎨 Uslubni o'zgartirish", "styles")],
+                cancel_row(draft),
             ]
         ),
     )
@@ -643,17 +730,59 @@ async def action(
                 raise service.AnnouncementRefused("Bunday gul/rang yo'q")
             service.invalidate(draft)
             draft.fields = f.data()
+            # CP23 addendum: a button that replaces a wrong GUESS teaches it.
+            taught = (
+                None
+                if cb.action == "flower" and cb.value not in f.flowers
+                else await service.learn_from_button(
+                    session, draft, actor=callback.from_user.id, kind=cb.action, added=cb.value
+                )
+            )
             await state.set_state(Announcement.review)
             if cb.action == "flower":
+                note = (
+                    f"\n🧠 Eslab qolindi: «{taught.heard}» → «{taught.corrected}»" if taught else ""
+                )
                 await message.answer(
-                    "Bir yoki bir nechta gul turini tanlang:", reply_markup=flower_keyboard(draft)
+                    escape("Bir yoki bir nechta gul turini tanlang:" + note),
+                    reply_markup=flower_keyboard(draft),
                 )
             else:
-                await show_review(message, draft)
+                await show_review(message, draft, session, learned=[taught] if taught else [])
+        elif cb.action == "retext":
+            # CP23 addendum: the corrected transcript, extracted again.
+            service.editable(draft)
+            await state.set_state(Announcement.retext)
+            await state.update_data(announcement_revision=draft.revision)
+            await message.answer(
+                "Tuzatilgan matnni yuboring. Eshitilganni nusxalab, xato so'zni almashtirsangiz "
+                "bo'ladi — bot o'sha tuzatishni eslab qoladi.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[cancel_row(draft)]),
+            )
+        elif cb.action == "revoice":
+            service.editable(draft)
+            await state.set_state(Announcement.review)
+            await message.answer(
+                "Yangi ovozli xabar yuboring: oldingi natija butunlay almashtiriladi.",
+                reply_markup=InlineKeyboardMarkup(inline_keyboard=[cancel_row(draft)]),
+            )
+        elif cb.action == "cancel":
+            await service.cancel(session, draft)
+            await state.clear()
+            await message.answer("❌ Bekor qilindi. Hech narsa saqlanmadi.")
+        elif cb.action == "learned":
+            await show_learned(message, session, draft)
+        elif cb.action == "unlearn":
+            if not cb.value.isdigit():
+                raise service.AnnouncementRefused("Bunday yozuv yo'q")
+            await announcement_learning.forget(
+                session, shop_id=draft.shop_id, correction_id=int(cb.value)
+            )
+            await show_learned(message, session, draft)
         elif cb.action == "review":
             service.invalidate(draft)
             await state.set_state(Announcement.review)
-            await show_review(message, draft)
+            await show_review(message, draft, session)
         elif cb.action in {"captions", "images"}:
             if draft.status not in {"confirmed", "preview"}:
                 raise service.AnnouncementRefused("Avval tasdiqlang")
@@ -737,5 +866,8 @@ def build_announcement_router() -> Router:
     router.message.register(receive_text, collecting, F.text, flags={"catch_all": True})
     router.message.register(
         edit_text, StateFilter(Announcement.editing), F.text, flags={"catch_all": True}
+    )
+    router.message.register(
+        retext_text, StateFilter(Announcement.retext), F.text, flags={"catch_all": True}
     )
     return router

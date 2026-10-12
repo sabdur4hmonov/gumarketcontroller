@@ -635,6 +635,12 @@ class AnnouncementCB(CallbackData, prefix="ann"):
             ("story", ""),
             ("storyl", "magazine"),
             ("igpub", "magazine"),
+            # CP23 addendum: the four ways to fix, and the learned list.
+            ("retext", ""),
+            ("revoice", ""),
+            ("cancel", ""),
+            ("learned", ""),
+            ("unlearn", "12"),
         ]
         return [
             cls(action=action, draft=1, revision=1, value=value).pack() for action, value in pairs
