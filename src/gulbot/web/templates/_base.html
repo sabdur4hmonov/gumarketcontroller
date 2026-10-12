@@ -15,22 +15,27 @@
 <meta property="og:title" content="{{ v.og_title }}">
 <meta property="og:description" content="{{ v.og_description }}">
 <meta property="og:type" content="website">
+{% if v.cp24 %}
+<link rel="stylesheet" href="{{ static('css/fonts_cp24.css') }}">
+{% else %}
 <link rel="stylesheet" href="{{ static('css/fonts.css') }}">
 <link rel="stylesheet" href="{{ static('css/fonts_cp17.css') }}">
+{% endif %}
 <link rel="stylesheet" href="{{ static('css/base.css') }}">
 <link rel="stylesheet" href="{{ static('css/theme-' ~ v.theme ~ '.css') }}">
+{% if v.cp24 %}<link rel="stylesheet" href="{{ static('css/cp24.css') }}">{% endif %}
 <noscript><link rel="stylesheet" href="{{ static('css/noscript.css') }}"></noscript>
 <script src="{{ static('js/page.js') }}" defer></script>
 {%- if v.music %}
 <script src="{{ static('js/music.js') }}" defer></script>
 {%- endif %}
 </head>
-<body class="theme-{{ v.theme }}{% if v.theme == 'konvert' %} has-envelope{% endif %}">
-{%- if v.theme == "konvert" %}
+<body class="theme-{{ v.theme }}{% if v.sealed %} has-envelope{% endif %}">
+{%- if v.sealed %}
 <div class="envelope" id="envelope">
   <div class="env">
     <div class="env-flap"></div>
-    <button type="button" class="seal{% if v.seal_letter and v.seal_letter|length > 2 %} seal-long{% endif %}" id="seal" aria-label="{{ v.s.open }}">{% if v.seal_letter %}{{ v.seal_letter }}{% else %}{{ heart() }}{% endif %}</button>
+    <button type="button" class="seal{% if v.seal_letter and v.seal_letter|length > 2 %} seal-long{% endif %}{% if v.seal_letter and v.seal_letter|length > 3 %} seal-max{% endif %}" id="seal" aria-label="{{ v.s.open }}">{% if v.seal_letter %}{{ v.seal_letter }}{% else %}{{ heart() }}{% endif %}</button>
     <p class="seal-hint">{{ v.s.open }}</p>
   </div>
 </div>

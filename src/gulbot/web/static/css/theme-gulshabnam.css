@@ -1,0 +1,28 @@
+/* Gul shabnami: Soft coral blossom washes. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #ece4ff;
+  --card: #fffafa;
+  --ink: #4b3152;
+  --ink-soft: #4b3152;
+  --muted: #4b3152;
+  --accent: #864c91;
+  --accent-ink: #ffffff;
+  --accent-2: #864c91;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #4b3152;
+  --radius: 48px 8px 48px 8px;
+  --font-display: "Cormorant Garamond", serif;
+  --font-display-uzc: "Cormorant Garamond", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #fffafa;
+  --env-flap: #864c91;
+  --env-hint: #4b3152;
+  --seal: #864c91;
+  --seal-hi: #4b3152;
+  --seal-ink: #ffffff;
+}
+body { background-image: radial-gradient(ellipse at 8% 10%, #ffb2a2 0, transparent 38%), radial-gradient(ellipse at 100% 75%, #bda5ec 0, transparent 42%); } .card { background-image: radial-gradient(ellipse at 0 0, #ffe0d5 0, transparent 35%), radial-gradient(ellipse at 100% 100%, #e0d4f4 0, transparent 35%); border: 1px solid #d7bbdc; } .names,.display { font-weight: 400; } .ornament { width: 174px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

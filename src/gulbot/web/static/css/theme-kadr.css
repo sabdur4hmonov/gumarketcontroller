@@ -1,0 +1,28 @@
+/* Kadr xotira: Film contact sheet with upright polaroid gallery. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #f18a6c;
+  --card: #fff9f0;
+  --ink: #3f3835;
+  --ink-soft: #3f3835;
+  --muted: #3f3835;
+  --accent: #954327;
+  --accent-ink: #ffffff;
+  --accent-2: #954327;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #3f3835;
+  --radius: 3px;
+  --font-display: "Oswald", serif;
+  --font-display-uzc: "Oswald", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fff9f0;
+  --env-flap: #954327;
+  --env-hint: #3f3835;
+  --seal: #954327;
+  --seal-hi: #3f3835;
+  --seal-ink: #ffffff;
+}
+.card { border-inline: 10px dashed #56493d; box-shadow: 0 20px 42px #7f3a2444; } .ornament { width: 170px; } .gallery-grid { gap: 18px 10px; } .gallery-grid img { border: 6px solid #fff; border-bottom-width: 22px; box-shadow: 0 3px 10px #0002; border-radius: 0; } .photo { margin: 0 0 20px; aspect-ratio: 1; border: 8px solid #fff; border-bottom-width: 26px; box-shadow: 0 3px 12px #0002; background: #f4cfad; } .photo img { width: 100%; height: 100%; object-fit: cover; } .photo-ph { display: grid; place-items: center; height: 100%; font: 600 52px var(--font-display); } .when { background: #ffe3c3; padding: 12px 0; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

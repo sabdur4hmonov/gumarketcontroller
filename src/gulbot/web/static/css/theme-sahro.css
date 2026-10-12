@@ -1,0 +1,28 @@
+/* Sahro quyoshi: Terracotta sunrise arch and woven stripes. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #c56840;
+  --card: #fff1d8;
+  --ink: #503827;
+  --ink-soft: #503827;
+  --muted: #503827;
+  --accent: #954027;
+  --accent-ink: #ffffff;
+  --accent-2: #954027;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #503827;
+  --radius: 120px 120px 8px 8px;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fff1d8;
+  --env-flap: #954027;
+  --env-hint: #503827;
+  --seal: #954027;
+  --seal-hi: #503827;
+  --seal-ink: #ffffff;
+}
+body { background-image: repeating-linear-gradient(90deg, #c56840 0 25px, #bd6038 25px 26px); } .card { padding-top: 54px; border: 1px solid #8e4e30; background-image: radial-gradient(ellipse at 50% 0, #fbd29c 0, transparent 40%); } .ornament { width: 182px; } .when-day { color: var(--accent); } .btn { border-radius: 8px 24px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

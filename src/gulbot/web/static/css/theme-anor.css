@@ -1,0 +1,28 @@
+/* Anor ipagi: Bright pomegranate embroidery medallions. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #ef6b52;
+  --card: #fffbdf;
+  --ink: #4b202c;
+  --ink-soft: #4b202c;
+  --muted: #4b202c;
+  --accent: #a22347;
+  --accent-ink: #ffffff;
+  --accent-2: #a22347;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #4b202c;
+  --radius: 6px;
+  --font-display: "Nunito", serif;
+  --font-display-uzc: "Nunito", serif;
+  --font-body: "Montserrat", sans-serif;
+  --env-paper: #fffbdf;
+  --env-flap: #a22347;
+  --env-hint: #4b202c;
+  --seal: #a22347;
+  --seal-hi: #4b202c;
+  --seal-ink: #ffffff;
+}
+body { background-image: repeating-linear-gradient(90deg, transparent 0 27px, #f8bd69 28px 30px); } .card { border-block: 12px double var(--accent); } .ornament { width: 192px; color: #a22347; } .divider span { width: 12px; height: 12px; border-radius: 0; transform: rotate(45deg); } .when { background: #ffe49b; border-radius: 6px; padding: 10px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

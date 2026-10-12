@@ -1,0 +1,28 @@
+/* Girih osmoni: Eight-pointed geometric night panels. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #101b49;
+  --card: #172658;
+  --ink: #f0f4ff;
+  --ink-soft: #e0d7c3;
+  --muted: #e0d7c3;
+  --accent: #e2b968;
+  --accent-ink: #101010;
+  --accent-2: #e2b968;
+  --line: #aab4c94d;
+  --cell-bg: #24324f;
+  --display-ink: #f0f4ff;
+  --radius: 2px;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #172658;
+  --env-flap: #e2b968;
+  --env-hint: #ffffff;
+  --seal: #e2b968;
+  --seal-hi: #f0f4ff;
+  --seal-ink: #101010;
+}
+.card { border: 2px solid var(--accent); box-shadow: 8px 8px 0 #31477b; } .ornament { width: 180px; } .eyebrow { border-block: 1px solid var(--line); padding: 8px; } .when { gap: 12px; } .cd-cell { border: 1px solid var(--line); border-radius: 0; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

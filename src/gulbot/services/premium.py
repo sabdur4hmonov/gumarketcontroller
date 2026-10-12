@@ -43,6 +43,26 @@ PREMIUM_TEMPLATES: Final = frozenset(
         "deco",
     }
 )
+#: CP24 selection, pending activation after the CP23 rebase and CHECK migration.
+#: Eight new designs stay free; twelve crafted/photo-led designs use the same
+#: confirmed-order gift, in the customer's own shop. No new payment rule.
+CP24_PREMIUM_TEMPLATES: Final = frozenset(
+    {
+        "zarhal",
+        "zumrad",
+        "anor",
+        "girih",
+        "gulshabnam",
+        "maktub",
+        "sahro",
+        "lavha",
+        "kadr",
+        "zinalar",
+        "marjon",
+        "moviy",
+    }
+)
+
 #: Page fields whose non-empty value is premium.
 PREMIUM_FIELDS: Final = frozenset({"music"})
 #: Any photo on a page (the gallery, the Foto frame) is premium.

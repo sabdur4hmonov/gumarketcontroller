@@ -23,3 +23,7 @@ deploy/rehearsal/out/
 
 # Temporary CP22 development staging; not shipped.
 .cp22-stage/
+
+# Isolated CP24 local tooling/logs.
+.cp24-stage/
+cp24-install.log

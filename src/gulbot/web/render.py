@@ -24,6 +24,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from gulbot.brand import brand_name
 from gulbot.models.share_page import PageKind, SharePage
 from gulbot.web import sections, strings
+from gulbot.web.designs_cp24 import CP24_DESIGNS, PHOTO_FIRST
 
 WEB_ROOT: Final = Path(__file__).resolve().parent
 TEMPLATES: Final = WEB_ROOT / "templates"
@@ -78,6 +79,10 @@ THEME_NAMES: Final = {
 }
 
 
+THEME_COLORS.update({key: design.color for key, design in CP24_DESIGNS.items()})
+THEME_NAMES.update({key: design.name for key, design in CP24_DESIGNS.items()})
+
+
 @cache
 def _static_version(relative: str) -> str:
     """A content hash, so a changed file gets a new URL and the old one can
@@ -101,6 +106,7 @@ def environment() -> Environment:
     env.globals["static"] = static_url
     # A callable, so the name is read at render time from its one place.
     env.globals["brand"] = brand_name
+    env.globals["cp24_designs"] = CP24_DESIGNS
     return env
 
 
@@ -129,6 +135,9 @@ def _common(theme: str, lang: str, branding: Branding) -> dict[str, Any]:
     return {
         "html_lang": strings.HTML_LANG[lang],
         "theme": theme,
+        "cp24": theme in CP24_DESIGNS,
+        "sealed": theme == "konvert" or theme in CP24_DESIGNS,
+        "photo_first": theme in PHOTO_FIRST,
         "theme_color": THEME_COLORS[theme],
         "s": s,
         "shop": {"name": branding.shop_name, "initial": _initial(branding.shop_name)},
@@ -182,6 +191,7 @@ def yesno_view(
 ) -> dict[str, Any]:
     lang = page.lang
     v = _common(page.template, lang, branding)
+    v["seal_letter"] = page.seal_monogram
     if page.kind == PageKind.APOLOGY:
         return v | {
             "title": v["s"]["og_apology"],
@@ -351,16 +361,27 @@ def page_html(
             plan=plan,
             tz_name=tz_name,
         )
-        view["photo_url"] = photos[0].url if photos else None
+        photos = photos or []
+        view["photo_url"] = (
+            photos[0].url
+            if photos and (page.template not in CP24_DESIGNS or page.show_gallery)
+            else None
+        )
+        if page.template in CP24_DESIGNS and page.show_gallery:
+            view["gallery"] = photos[1:] if page.template in PHOTO_FIRST else photos
         view["music"] = page.music
         return render("yesno.html", view)
     view = invite_view(
         page, branding, tz_name=tz_name, rsvp_url=f"{base}/rsvp", ics_url=f"{base}/event.ics"
     )
     photos = photos or []
-    # The Foto design frames the first photo; the gallery shows the rest. Any
-    # other design shows them all in the gallery.
-    framed = page.template == "foto" and bool(photos)
+    # Foto and the CP24 photo-led designs frame the first photo once; the
+    # gallery shows the rest. Other designs show every photo in the gallery.
+    framed = (
+        page.template in PHOTO_FIRST
+        and bool(photos)
+        and (page.template == "foto" or page.show_gallery)
+    )
     view["photo_url"] = photos[0].url if framed else None
     view["gallery"] = (photos[1:] if framed else photos) if page.show_gallery else []
     view["music"] = page.music

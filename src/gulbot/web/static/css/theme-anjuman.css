@@ -1,0 +1,28 @@
+/* Anjuman studiya: Corporate information panels and lime accent tabs. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #1e63c4;
+  --card: #f7fbff;
+  --ink: #193650;
+  --ink-soft: #193650;
+  --muted: #193650;
+  --accent: #1558ad;
+  --accent-ink: #ffffff;
+  --accent-2: #1558ad;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #193650;
+  --radius: 16px;
+  --font-display: "Montserrat", serif;
+  --font-display-uzc: "Montserrat", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #f7fbff;
+  --env-flap: #1558ad;
+  --env-hint: #ffffff;
+  --seal: #1558ad;
+  --seal-hi: #193650;
+  --seal-ink: #ffffff;
+}
+.card { border-top: 12px solid var(--accent); text-align: left; box-shadow: 0 18px 48px #09285044; } .ornament { width: 136px; margin-left: 0; } .eyebrow { border-left: 4px solid #abd93f; padding-left: 10px; } .display,.names { font-size: clamp(30px, 8vw, 42px); } .when { background: #e4f1ff; border-radius: 10px; padding: 14px 0; } .lead,.letter,.closing { margin-left: 0; } .btn { border-radius: 10px; } .program-rows li { border-left: 3px solid #a9d63d; padding-left: 8px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

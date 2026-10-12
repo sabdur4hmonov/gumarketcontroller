@@ -1,0 +1,28 @@
+/* Zumrad saroy: Emerald architectural niche. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #075448;
+  --card: #f4fff5;
+  --ink: #123b32;
+  --ink-soft: #123b32;
+  --muted: #123b32;
+  --accent: #17664b;
+  --accent-ink: #ffffff;
+  --accent-2: #17664b;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #123b32;
+  --radius: 80px 80px 12px 12px;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #f4fff5;
+  --env-flap: #17664b;
+  --env-hint: #ffffff;
+  --seal: #17664b;
+  --seal-hi: #123b32;
+  --seal-ink: #ffffff;
+}
+.card { border: 2px solid var(--accent); padding-top: 60px; background-image: radial-gradient(ellipse at 50% 0, #d8ebbc 0, transparent 44%); } .when-day { border: 1px solid var(--accent); border-radius: 50%; width: 72px; height: 72px; display: grid; place-items: center; } .ornament { width: 150px; } .btn { border-radius: 8px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

@@ -1,0 +1,28 @@
+/* Qish yulduzi: Ice-blue snow rosette with frosted panels. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #b8e6f5;
+  --card: #f7fdff;
+  --ink: #24445b;
+  --ink-soft: #24445b;
+  --muted: #24445b;
+  --accent: #28658e;
+  --accent-ink: #ffffff;
+  --accent-2: #28658e;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #24445b;
+  --radius: 24px 24px 4px 4px;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #f7fdff;
+  --env-flap: #28658e;
+  --env-hint: #24445b;
+  --seal: #28658e;
+  --seal-hi: #24445b;
+  --seal-ink: #ffffff;
+}
+body { background-image: radial-gradient(circle at 30% 10%, #fff 0, transparent 45%); } .card { border: 2px solid #fff; box-shadow: 0 0 0 1px #6eb0cd, 0 20px 50px #23618233; } .ornament { width: 156px; } .when { border-block: 1px dashed #74a7bb; padding-block: 16px; } .cd-cell { border: 1px solid #94bed0; border-radius: 12px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

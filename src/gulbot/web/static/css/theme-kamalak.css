@@ -1,0 +1,28 @@
+/* Kamalak orzusi: Pastel rainbow arches and playful scallops. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #bbe9ef;
+  --card: #fffef5;
+  --ink: #303850;
+  --ink-soft: #303850;
+  --muted: #303850;
+  --accent: #6c4299;
+  --accent-ink: #ffffff;
+  --accent-2: #6c4299;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #303850;
+  --radius: 28px;
+  --font-display: "Balsamiq Sans", serif;
+  --font-display-uzc: "Balsamiq Sans", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fffef5;
+  --env-flap: #6c4299;
+  --env-hint: #303850;
+  --seal: #6c4299;
+  --seal-hi: #303850;
+  --seal-ink: #ffffff;
+}
+body { background-image: radial-gradient(circle at 8% 20%, #ffaec3 0 14%, transparent 15%), radial-gradient(circle at 95% 70%, #ffdf76 0 18%, transparent 19%); } .card { border: 3px solid #7e63b2; box-shadow: 7px 7px 0 #f3adc5; } .ornament { width: 180px; } .when { border: 2px dashed var(--accent); border-radius: 20px; padding: 12px 4px; } .divider { margin: 18px 0; } .btn { border-radius: 12px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

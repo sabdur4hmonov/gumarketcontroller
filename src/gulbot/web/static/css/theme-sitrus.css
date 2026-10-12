@@ -1,0 +1,28 @@
+/* Sitrus bayram: Citrus poster with diagonal header slab. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #fff02e;
+  --card: #fffef4;
+  --ink: #1c382d;
+  --ink-soft: #1c382d;
+  --muted: #1c382d;
+  --accent: #196342;
+  --accent-ink: #ffffff;
+  --accent-2: #196342;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #1c382d;
+  --radius: 0;
+  --font-display: "Oswald", serif;
+  --font-display-uzc: "Oswald", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fffef4;
+  --env-flap: #196342;
+  --env-hint: #1c382d;
+  --seal: #196342;
+  --seal-hi: #1c382d;
+  --seal-ink: #ffffff;
+}
+.card { border: 2px solid var(--ink); box-shadow: 7px 7px 0 #196342; text-align: left; } .ornament { margin-left: 0; width: 164px; } .eyebrow { background: #ffed36; color: var(--ink); padding: 8px; transform: rotate(-2deg); } .names,.display { text-transform: uppercase; font-size: clamp(34px, 10vw, 48px); } .lead,.letter { margin-left: 0; } .btn { border-radius: 3px; } .when { border-top: 3px solid var(--ink); padding-top: 16px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

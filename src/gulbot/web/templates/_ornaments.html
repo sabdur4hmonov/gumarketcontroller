@@ -1,9 +1,11 @@
+{%- from "_ornaments_cp24.html" import ornament_cp24 -%}
 {#- Decorations, one set per theme. Every drawing here was made for this
     project from plain geometry -- squares, arcs, ellipses -- and is not traced
     from any existing artwork. Colour comes from CSS (currentColor and the
     .o2 class), so a theme recolours them without touching this file. -#}
 
 {% macro ornament(theme, bottom=False) -%}
+{% if theme in cp24_designs %}{{ ornament_cp24(theme, bottom) }}{% else %}
 <svg class="ornament{% if bottom %} ornament--bottom{% endif %}" viewBox="0 0 160 44" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
 {%- if theme == "milliy" %}
   <g transform="translate(80 22)">
@@ -126,6 +128,7 @@
   <path d="M20 22h26M114 22h26" opacity=".6"/>
 {%- endif %}
 </svg>
+{% endif %}
 {%- endmacro %}
 
 {% macro heart(cls="") -%}

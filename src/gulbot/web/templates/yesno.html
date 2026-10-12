@@ -2,7 +2,7 @@
 {%- from "_ornaments.html" import ornament, heart -%}
 {% block card %}
 <article class="card">
-  {%- if v.theme == "foto" %}
+  {%- if v.photo_first %}
   <figure class="photo">
     {%- if v.photo_url %}<img src="{{ v.photo_url }}" alt="" width="260" height="325">{% else %}<span class="photo-ph" aria-hidden="true">{{ v.monogram }}</span>{% endif %}
   </figure>
@@ -18,6 +18,13 @@
     <h1 class="display">{{ v.question }}</h1>
     {%- endif %}
   </div>
+  {%- if v.cp24 and v.gallery %}
+  <section class="gallery" aria-label="{{ v.s.gallery }}">
+    <div class="gallery-grid">
+      {% for photo in v.gallery %}<img src="{{ photo.url }}" alt="" width="{{ photo.width }}" height="{{ photo.height }}" loading="lazy">{% endfor %}
+    </div>
+  </section>
+  {%- endif %}
   <div class="answers" id="answers">
     <button type="button" class="btn btn-yes" id="yes" data-post="{{ v.yes_url }}"{% if v.plan %} data-plan="1"{% endif %}{% if v.chosen %} data-chosen="{{ v.chosen }}"{% endif %}>{{ v.yes_label }}</button>
     <button type="button" class="btn btn-no" id="no" data-lines="{{ v.no_lines_json }}">{{ v.no_label }}</button>

@@ -1,0 +1,28 @@
+/* Navro'z nafasi: Spring tulips and fresh grass borders. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #81d36a;
+  --card: #ffffe9;
+  --ink: #25472d;
+  --ink-soft: #25472d;
+  --muted: #25472d;
+  --accent: #26733e;
+  --accent-ink: #ffffff;
+  --accent-2: #26733e;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #25472d;
+  --radius: 6px 46px 6px 46px;
+  --font-display: "Nunito", serif;
+  --font-display-uzc: "Nunito", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #ffffe9;
+  --env-flap: #26733e;
+  --env-hint: #25472d;
+  --seal: #26733e;
+  --seal-hi: #25472d;
+  --seal-ink: #ffffff;
+}
+body { background-image: radial-gradient(ellipse at 5% 0, #faf06a 0, transparent 45%); } .card { border-bottom: 10px solid #3a914b; background-image: linear-gradient(135deg, #ffffdf, #f4ffe8); } .ornament { width: 186px; } .when { border: 1px solid #adc68a; border-radius: 28px; padding: 12px 0; } .divider span { border-radius: 50% 0; background: #e8a139; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

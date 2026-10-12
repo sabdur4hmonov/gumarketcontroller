@@ -1,0 +1,28 @@
+/* Zinalar oltini: Stepped Art Deco fan with ivory/cobalt composition. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #203a57;
+  --card: #f4eedf;
+  --ink: #293e50;
+  --ink-soft: #293e50;
+  --muted: #293e50;
+  --accent: #7d5b20;
+  --accent-ink: #ffffff;
+  --accent-2: #7d5b20;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #293e50;
+  --radius: 0;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Montserrat", sans-serif;
+  --env-paper: #f4eedf;
+  --env-flap: #7d5b20;
+  --env-hint: #ffffff;
+  --seal: #7d5b20;
+  --seal-hi: #293e50;
+  --seal-ink: #ffffff;
+}
+.card { border: 1px solid var(--accent); outline: 1px solid var(--accent); outline-offset: -7px; padding-top: 44px; } .ornament { width: 198px; } .names,.display { letter-spacing: .015em; } .when { border-block: 3px double var(--accent); padding-block: 16px; } .btn { border-radius: 0 20px; } .divider { height: 10px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

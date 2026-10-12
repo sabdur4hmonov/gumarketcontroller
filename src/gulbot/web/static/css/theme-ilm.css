@@ -1,0 +1,28 @@
+/* Ilm nuri: Academic book plate with bright yellow sash. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #673d86;
+  --card: #fffae8;
+  --ink: #372047;
+  --ink-soft: #372047;
+  --muted: #372047;
+  --accent: #684183;
+  --accent-ink: #ffffff;
+  --accent-2: #684183;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #372047;
+  --radius: 8px;
+  --font-display: "Oswald", serif;
+  --font-display-uzc: "Oswald", serif;
+  --font-body: "Montserrat", sans-serif;
+  --env-paper: #fffae8;
+  --env-flap: #684183;
+  --env-hint: #ffffff;
+  --seal: #684183;
+  --seal-hi: #372047;
+  --seal-ink: #ffffff;
+}
+.card { border-left: 8px solid var(--accent); border-top: 8px solid #eed054; padding-inline: 18px; } .ornament { width: 146px; } .eyebrow { font-weight: 700; color: var(--ink); } .when { background: #f7e287; padding: 12px 0; border-radius: 0; } .display,.names { letter-spacing: .02em; } .btn { border-radius: 4px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

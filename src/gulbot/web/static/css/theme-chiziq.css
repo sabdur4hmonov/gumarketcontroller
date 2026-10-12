@@ -1,0 +1,28 @@
+/* Chiziq galereya: Museum label with offset rules and open whitespace. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #ececea;
+  --card: #ffffff;
+  --ink: #191919;
+  --ink-soft: #191919;
+  --muted: #191919;
+  --accent: #191919;
+  --accent-ink: #ffffff;
+  --accent-2: #191919;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #191919;
+  --radius: 0;
+  --font-display: "Montserrat", serif;
+  --font-display-uzc: "Montserrat", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #ffffff;
+  --env-flap: #191919;
+  --env-hint: #191919;
+  --seal: #191919;
+  --seal-hi: #191919;
+  --seal-ink: #ffffff;
+}
+.card { box-shadow: none; border-top: 10px solid var(--ink); text-align: left; } .ornament { width: 100px; margin: 0 0 36px; } .names,.display { font-size: clamp(29px, 8vw, 40px); font-weight: 400; } .eyebrow { letter-spacing: .08em; } .when { border-block: 1px solid var(--ink); padding: 18px 0; } .when-day { font-family: var(--font-body); font-size: 46px; } .closing,.lead,.letter { margin-left: 0; } .btn,.chip { border-radius: 0; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

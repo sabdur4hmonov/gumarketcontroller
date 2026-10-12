@@ -17,6 +17,8 @@ from __future__ import annotations
 import re
 from typing import Final
 
+from gulbot.web.strings import to_cyrillic
+
 #: At most this many programme rows, and this long an item.
 PROGRAM_ROWS_MAX: Final = 8
 PROGRAM_ITEM_MAX: Final = 44
@@ -40,6 +42,11 @@ DRESS_PALETTE: Final[dict[str, tuple[str, dict[str, str]]]] = {
     "kok": ("#2f5aa8", {"uz": "Ko'k", "ru": "Синий", "en": "Blue"}),
     "yashil": ("#3f7a4a", {"uz": "Yashil", "ru": "Зелёный", "en": "Green"}),
 }
+
+# Use the same fixed-string transliteration as every public page label.
+
+for _hex, _names in DRESS_PALETTE.values():
+    _names["uz_cyrl"] = to_cyrillic(_names["uz"])
 
 _TIMED = re.compile(r"^(\d{1,2})[:.](\d{2})\s*[-–—]?\s*(.*)$")
 _STORED = re.compile(r"^(\d{2}:\d{2}) (.+)$")

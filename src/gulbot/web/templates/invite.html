@@ -2,7 +2,7 @@
 {%- from "_ornaments.html" import ornament, icon -%}
 {% block card %}
 <article class="card">
-  {%- if v.theme == "foto" %}
+  {%- if v.photo_first %}
   <figure class="photo">
     {%- if v.photo_url %}<img src="{{ v.photo_url }}" alt="" width="260" height="325">{% else %}<span class="photo-ph" aria-hidden="true">{{ v.monogram }}</span>{% endif %}
   </figure>

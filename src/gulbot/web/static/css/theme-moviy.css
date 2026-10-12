@@ -1,0 +1,28 @@
+/* Moviy tantana: Royal blue ribbon with silver constellation. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #2851c7;
+  --card: #edf4ff;
+  --ink: #223d69;
+  --ink-soft: #223d69;
+  --muted: #223d69;
+  --accent: #244aad;
+  --accent-ink: #ffffff;
+  --accent-2: #244aad;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #223d69;
+  --radius: 12px;
+  --font-display: "Cormorant Garamond", serif;
+  --font-display-uzc: "Cormorant Garamond", serif;
+  --font-body: "Montserrat", sans-serif;
+  --env-paper: #edf4ff;
+  --env-flap: #244aad;
+  --env-hint: #ffffff;
+  --seal: #244aad;
+  --seal-hi: #223d69;
+  --seal-ink: #ffffff;
+}
+.card { border-top: 10px solid var(--accent); border-bottom: 10px solid var(--accent); box-shadow: 0 0 0 2px #bcd1ef, 0 20px 48px #10296255; } .ornament { width: 190px; } .eyebrow { color: #254880; letter-spacing: .22em; } .when { background: #d7e5ff; padding: 16px 0; border-radius: 8px; } .names { color: #173a85; } .btn { border-radius: 8px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

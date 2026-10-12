@@ -1,0 +1,28 @@
+/* Zarhal kecha: Black/gold engraved double frame. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #ffffff;
+  --bg: #111315;
+  --card: #191d20;
+  --ink: #f8eccd;
+  --ink-soft: #e0d7c3;
+  --muted: #e0d7c3;
+  --accent: #d8bc72;
+  --accent-ink: #101010;
+  --accent-2: #d8bc72;
+  --line: #aab4c94d;
+  --cell-bg: #24324f;
+  --display-ink: #f8eccd;
+  --radius: 4px;
+  --font-display: "Cormorant Garamond", serif;
+  --font-display-uzc: "Cormorant Garamond", serif;
+  --font-body: "Montserrat", sans-serif;
+  --env-paper: #191d20;
+  --env-flap: #d8bc72;
+  --env-hint: #ffffff;
+  --seal: #d8bc72;
+  --seal-hi: #f8eccd;
+  --seal-ink: #101010;
+}
+.card { border: 1px solid var(--accent); outline: 1px solid var(--line); outline-offset: -9px; padding-top: 52px; } .ornament { width: 180px; } .when { border-block: 1px solid var(--line); padding-block: 16px; } .names { letter-spacing: .025em; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

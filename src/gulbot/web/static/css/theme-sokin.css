@@ -1,0 +1,28 @@
+/* Sokin bog': Quiet ink circles and vermilion square seal. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #f3ede3;
+  --card: #fffdf6;
+  --ink: #333f3e;
+  --ink-soft: #333f3e;
+  --muted: #333f3e;
+  --accent: #a43c2e;
+  --accent-ink: #ffffff;
+  --accent-2: #a43c2e;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #333f3e;
+  --radius: 4px;
+  --font-display: "Lora", serif;
+  --font-display-uzc: "Lora", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fffdf6;
+  --env-flap: #a43c2e;
+  --env-hint: #333f3e;
+  --seal: #a43c2e;
+  --seal-hi: #333f3e;
+  --seal-ink: #ffffff;
+}
+.card { box-shadow: none; border-bottom: 1px solid #9caba2; padding-block: 48px; } .ornament { width: 136px; margin-bottom: 28px; } .eyebrow { letter-spacing: .1em; } .names,.display { font-weight: 400; font-size: clamp(29px, 8vw, 40px); } .when { border: 1px solid #b7c3bc; border-radius: 50px 50px 4px 4px; padding: 24px 0 14px; } .seal { border-radius: 6px; } .divider { margin-block: 32px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

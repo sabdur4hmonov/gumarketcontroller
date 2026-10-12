@@ -1,0 +1,28 @@
+/* Marjon yurak: Blush scalloped cameo with coral ribbon. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #ffc4b8;
+  --card: #fff9f6;
+  --ink: #5c303d;
+  --ink-soft: #5c303d;
+  --muted: #5c303d;
+  --accent: #a43857;
+  --accent-ink: #ffffff;
+  --accent-2: #a43857;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #5c303d;
+  --radius: 44px 44px 12px 12px;
+  --font-display: "Cormorant Garamond", serif;
+  --font-display-uzc: "Cormorant Garamond", serif;
+  --font-body: "Nunito", sans-serif;
+  --env-paper: #fff9f6;
+  --env-flap: #a43857;
+  --env-hint: #5c303d;
+  --seal: #a43857;
+  --seal-hi: #5c303d;
+  --seal-ink: #ffffff;
+}
+body { background-image: radial-gradient(ellipse at 50% 0, #ffebe3, transparent 70%); } .card { border: 2px solid #c77e8f; box-shadow: 0 0 0 6px #ffe7dc, 0 22px 50px #a4375733; } .ornament { width: 164px; } .eyebrow { background: #fbd1c5; padding: 8px; border-radius: 0 18px; color: var(--ink); } .when-day { border-radius: 50%; border: 1px solid #c47c8b; padding: 4px 12px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

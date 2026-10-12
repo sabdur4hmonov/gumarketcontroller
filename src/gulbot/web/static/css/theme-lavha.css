@@ -1,0 +1,28 @@
+/* Lavha jurnal: Photo-first editorial with large gallery lead image. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #d8f06b;
+  --card: #fffef3;
+  --ink: #283528;
+  --ink-soft: #283528;
+  --muted: #283528;
+  --accent: #455e2b;
+  --accent-ink: #ffffff;
+  --accent-2: #455e2b;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #283528;
+  --radius: 0;
+  --font-display: "Montserrat", serif;
+  --font-display-uzc: "Montserrat", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #fffef3;
+  --env-flap: #455e2b;
+  --env-hint: #283528;
+  --seal: #455e2b;
+  --seal-hi: #283528;
+  --seal-ink: #ffffff;
+}
+.card { border: 1px solid var(--ink); box-shadow: 8px 8px 0 #9fbd39; } .photo { margin: -18px -8px 26px; aspect-ratio: 5 / 4; border-bottom: 8px solid #c8e56b; overflow: hidden; background: #e7edcc; } .photo img { width: 100%; height: 100%; object-fit: cover; display: block; } .photo-ph { display: grid; place-items: center; height: 100%; font: 600 56px var(--font-display); } .ornament { width: 124px; } .gallery-grid { grid-template-columns: 1fr; } .display,.names { font-size: clamp(30px, 8vw, 40px); } .eyebrow { border-block: 1px solid var(--ink); padding: 8px; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }

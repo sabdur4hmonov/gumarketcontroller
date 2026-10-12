@@ -1,0 +1,46 @@
+{# All CP24 paths are authored for Gulbot. No traced or imported artwork. #}
+{% macro ornament_cp24(theme, bottom=False) -%}
+<svg class="ornament{% if bottom %} ornament--bottom{% endif %}" viewBox="0 0 160 52" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{% if theme == "zarhal" %}
+<path d="M12 34H54L80 8l26 26h42M24 22h22L80 2l34 20h22M64 34l16-16 16 16M76 34h8"/><circle cx="80" cy="38" r="2"/>
+{% elif theme == "zumrad" %}
+<path d="M24 40V25C24 4 55 4 55 25v15M62 40V20C62-3 98-3 98 20v20M105 40V25C105 4 136 4 136 25v15M14 40h132M72 28h16M80 20v16"/>
+{% elif theme == "anor" %}
+<circle cx="80" cy="22" r="17"/><circle cx="80" cy="22" r="10"/><path d="M75 9l5-6 5 6M69 22h22M80 12v20M14 22c14-20 31-20 44 0-13 20-30 20-44 0ZM102 22c13-20 30-20 44 0-14 20-31 20-44 0Z"/><path d="M22 22h28M110 22h28"/>
+{% elif theme == "girih" %}
+<path d="M80 1l6 9 11-2-2 11 9 6-9 6 2 11-11-2-6 9-6-9-11 2 2-11-9-6 9-6-2-11 11 2ZM80 11l14 14-14 14-14-14ZM12 10l12 12-12 12L0 22ZM148 10l12 12-12 12-12-12ZM29 22h23M108 22h23"/>
+{% elif theme == "gulshabnam" %}
+<path d="M28 39Q44 20 60 18M100 18q16 2 32 21M48 26q-24-18-30-5 12 17 30 5ZM112 26q24-18 30-5-12 17-30 5Z"/><g fill="currentColor" fill-opacity=".15"><ellipse cx="74" cy="16" rx="11" ry="8"/><ellipse cx="87" cy="16" rx="11" ry="8"/><ellipse cx="80" cy="28" rx="11" ry="8"/></g><circle cx="80" cy="20" r="4"/>
+{% elif theme == "sitrus" %}
+<circle cx="28" cy="23" r="17"/><path d="M28 6v34M11 23h34M16 11l24 24M16 35l24-24M62 32l16-20 16 20 16-20 16 20 16-20"/>
+{% elif theme == "maktub" %}
+<path stroke-dasharray="2 3" d="M100 3h38v38h-38Z"/><path d="M109 12h20v20h-20ZM6 15q10-8 20 0t20 0 20 0 20 0M6 23q10-8 20 0t20 0 20 0 20 0M6 31q10-8 20 0t20 0 20 0 20 0"/>
+{% elif theme == "chiziq" %}
+<path d="M4 4v36h36M52 4v36h36M100 4v36h56M4 18h24M52 18h24M100 18h42"/>
+{% elif theme == "sahro" %}
+<path d="M32 36a48 32 0 0 1 96 0M40 36a40 26 0 0 1 80 0M48 36a32 20 0 0 1 64 0M56 36a24 14 0 0 1 48 0M8 40h144M80 1v7M18 14l9 5M142 14l-9 5"/>
+{% elif theme == "kamalak" %}
+<path d="M42 38a38 34 0 0 1 76 0M50 38a30 27 0 0 1 60 0M58 38a22 20 0 0 1 44 0"/><path d="M7 20l4-7 4 7 8 1-6 5 2 8-8-4-7 4 1-8-5-5ZM137 11l4-7 4 7 8 1-6 5 2 8-8-4-7 4 1-8-5-5"/>
+{% elif theme == "ilm" %}
+<path d="M80 13Q60 1 38 9v27q22-8 42 4 20-12 42-4V9Q100 1 80 13v27M46 16q14-4 25 3M46 24q14-4 25 3M89 19q11-7 25-3M89 27q11-7 25-3M14 8v28M8 30l6 6 6-6M140 8h10v28h-10Z"/>
+{% elif theme == "anjuman" %}
+<path d="M4 32h22V12H4ZM38 32h22V2H38ZM72 32h22V18H72ZM106 32h22V8h-22ZM140 32h16V22h-16ZM4 40h152"/>
+{% elif theme == "navroz" %}
+<path d="M45 41V22M80 41V18M115 41V22M35 9l10 8 10-8v11q-10 16-20 0ZM68 3l12 9 12-9v12q-12 16-24 0ZM105 9l10 8 10-8v11q-10 16-20 0ZM45 35q-18 0-21-12 16 2 21 12ZM80 32q18 0 21-12-16 2-21 12ZM115 35q18 0 21-12-16 2-21 12Z"/>
+{% elif theme == "qish" %}
+<path d="M80 2v40M60 12l40 20M60 32l40-20M73 7l7 7 7-7M73 37l7-7 7 7M62 19l10-2-3-9M98 25l-10 2 3 9M62 25l10 2-3 9M98 19l-10-2 3-9M14 16v12M8 22h12M146 16v12M140 22h12"/>
+{% elif theme == "lavha" %}
+<path d="M3 3h154v38H3ZM12 32l25-20 21 16 28-19 36 23M130 11h16M130 19h16M130 27h16"/><circle cx="105" cy="12" r="5"/>
+{% elif theme == "kadr" %}
+<path d="M8 4h44v36H8ZM58 4h44v36H58ZM108 4h44v36h-44ZM15 10h30v20H15ZM65 10h30v20H65ZM115 10h30v20h-30"/>
+{% elif theme == "zinalar" %}
+<path d="M8 40V28h12V16h12V4h96v12h12v12h12v12M20 40V28h12V16h96v12h12v12M32 40V28h96v12M48 40V28l32-24 32 24v12M64 40V28l16-12 16 12v12M80 28v12"/>
+{% elif theme == "sokin" %}
+<path d="M96 6C47-12 42 46 84 40c34-5 25-34 4-35" stroke-width="3"/><path d="M12 37q23-19 43-8M22 30l-7-10M34 27l-4-12M112 37h20V17h-20Z"/>
+{% elif theme == "marjon" %}
+<path d="M80 32C47 14 72-2 80 13 88-2 113 14 80 32ZM5 24q22 12 49 0M106 24q27 12 49 0M28 26l-6 12 17-5M132 26l6 12-17-5"/><circle cx="60" cy="8" r="2"/><circle cx="100" cy="8" r="2"/>
+{% elif theme == "moviy" %}
+<path d="M10 29l30-16 28 18 27-23 35 14 20-13M68 31l27 8 35-17"/><circle cx="10" cy="29" r="3"/><circle cx="40" cy="13" r="4"/><circle cx="68" cy="31" r="3"/><circle cx="95" cy="8" r="4"/><circle cx="130" cy="22" r="3"/><circle cx="150" cy="9" r="2"/>
+{% endif %}
+</svg>
+{%- endmacro %}

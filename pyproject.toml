@@ -38,6 +38,8 @@ dev = [
     "mypy>=1.14",
     "pyyaml>=6.0",
     "types-pyyaml>=6.0",
+    # Real 360px share-page checks use an installed Chrome/Chromium; no auto download.
+    "playwright>=1.50,<2",
 ]
 
 [build-system]

@@ -1246,3 +1246,15 @@ body {
     opacity: 0;
   }
 }
+
+/* CP24: a long shop name must wrap before a mobile browser expands its
+ * visual viewport (which would also move the envelope's tap target). */
+.shop-brand { max-width: 100%; }
+.shop-brand .mono { flex-shrink: 0; }
+.shop-brand > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.fine { overflow-wrap: anywhere; }
+.eyebrow, .wish-author { overflow-wrap: anywhere; }
+.btn { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Four/five wide initials fit the wax seal without a clipped tap target. */
+.seal-max { font-size: 12px; padding: 0; }

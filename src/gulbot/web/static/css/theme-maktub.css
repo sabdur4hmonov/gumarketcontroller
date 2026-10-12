@@ -1,0 +1,28 @@
+/* Mehr maktubi: Postal letter with handwritten heading and perforated stamp. Original CSS/SVG, no remote assets. */
+:root {
+  --shop-ink: #101010;
+  --bg: #d4bea0;
+  --card: #fff9e9;
+  --ink: #403728;
+  --ink-soft: #403728;
+  --muted: #403728;
+  --accent: #65473e;
+  --accent-ink: #ffffff;
+  --accent-2: #65473e;
+  --line: #453b3938;
+  --cell-bg: #ffffff80;
+  --display-ink: #403728;
+  --radius: 2px;
+  --font-display: "Forum", serif;
+  --font-display-uzc: "Forum", serif;
+  --font-body: "Lora", sans-serif;
+  --env-paper: #fff9e9;
+  --env-flap: #65473e;
+  --env-hint: #403728;
+  --seal: #65473e;
+  --seal-hi: #403728;
+  --seal-ink: #ffffff;
+}
+.card { border: 1px solid #ab9274; background-image: repeating-linear-gradient(0deg, transparent 0 29px, #c7af8c18 30px); } .ornament { margin: 0 0 22px auto; width: 115px; } .eyebrow { text-align: left; border-bottom: 1px dashed var(--accent); padding-bottom: 10px; } .names,.display { font-size: clamp(38px, 11vw, 54px); } .letter { line-height: 1.8; } .closing { text-align: right; }
+
+.shop .fine { color: var(--shop-ink); opacity: 1; }
