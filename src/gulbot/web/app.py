@@ -515,6 +515,77 @@ async def robots(_request: web.Request) -> web.Response:
     return web.Response(text="User-agent: *\nDisallow: /\n", content_type="text/plain")
 
 
+# --- CP23: Instagram (built, off by default) -----------------------------------------
+
+
+async def instagram_image(request: web.Request) -> web.Response:
+    """The story image Meta fetches: only while its upload is live, else 404.
+    The token is 32 random bytes; only its hash is stored."""
+    from gulbot.services import instagram
+
+    limit(request, "ig")
+    if not instagram.enabled():
+        raise web.HTTPNotFound()
+    async with request.app[KEY_SESSIONS]() as session:
+        image = await instagram.served_image(session, request.match_info["token"])
+    if image is None:
+        raise web.HTTPNotFound()
+    return web.Response(
+        body=image, content_type="image/jpeg", headers={"Cache-Control": "no-store"}
+    )
+
+
+async def instagram_callback(request: web.Request) -> web.Response:
+    """Instagram's redirect after the owner allowed (or refused) the connection.
+
+    Outside /shop on purpose: the panel's cookie is SameSite=Strict and is not
+    sent on a navigation that started at instagram.com. The one-time state,
+    bound to the shop and owner who started the flow, is the authority."""
+    import aiohttp
+
+    from gulbot.services import instagram, shop_auth
+    from gulbot.services.instagram_graph import Graph
+
+    limit(request, "ig")
+    if not instagram.enabled():
+        raise web.HTTPNotFound()
+    state, code = request.query.get("state", ""), request.query.get("code", "")
+    reasons = {
+        "state_invalid": (
+            "Havola eskirgan yoki allaqachon ishlatilgan. Panelda qaytadan «ulash»ni bosing."
+        ),
+        "not_owner": "Siz endi bu do‘kon egasi emassiz.",
+    }
+    if not (0 < len(state) <= 100 and 0 < len(code) <= 2048):
+        view = {"ok": False, "reason": "Instagram ruxsat bermadi yoki havola buzilgan."}
+        return web.Response(
+            text=render.render("shop/instagram_done.html", view), content_type="text/html"
+        )
+    async with aiohttp.ClientSession() as http, request.app[KEY_SESSIONS]() as session:
+        try:
+            connection = await instagram.complete_connect(
+                session, Graph(instagram.graph_config(), http), state=state, code=code
+            )
+        except instagram.InstagramRefused as refused:
+            await session.commit()  # the state is spent either way
+            reason = reasons.get(refused.code, instagram.message(refused.code, "uz"))
+            view = {"ok": False, "reason": reason}
+        else:
+            await shop_auth.audit(
+                session,
+                shop_id=connection.shop_id,
+                action="instagram_connected",
+                owner=connection.connected_by,
+                detail={"username": connection.username},
+                ip=client_address(request),
+            )
+            await session.commit()
+            view = {"ok": True, "username": connection.username}
+    return web.Response(
+        text=render.render("shop/instagram_done.html", view), content_type="text/html"
+    )
+
+
 async def healthz(_request: web.Request) -> web.Response:
     return web.Response(text="ok", content_type="text/plain")
 
@@ -547,6 +618,7 @@ def build_app(
     admin_login_limit: int = 10,
     admin_ids: Callable[[], frozenset[int]] | None = None,
     shop_panel_on: bool = False,
+    ig_limit: int = 30,
 ) -> web.Application:
     app = web.Application(
         middlewares=[secure_headers, admin.admin_gate, shop_panel.shop_gate],
@@ -561,6 +633,7 @@ def build_app(
         "wish": RateLimiter(limit=wish_limit, window=60.0),
         "admin_login": RateLimiter(limit=admin_login_limit, window=60.0),
         "shop_login": RateLimiter(limit=admin_login_limit, window=60.0),
+        "ig": RateLimiter(limit=ig_limit, window=60.0),
     }
     app.router.add_get("/p/{token}", page)
     app.router.add_post("/p/{token}/yes", answer_yes)
@@ -576,6 +649,9 @@ def build_app(
     app.router.add_get("/robots.txt", robots)
     app.router.add_get("/healthz", healthz)
     app.router.add_get("/healthz/jobs", healthz_jobs)
+    # CP23: Meta fetches story images here; owners return here from Instagram.
+    app.router.add_get(r"/ig/{token:[A-Za-z0-9_-]{32,64}}.jpg", instagram_image)
+    app.router.add_get("/ig/callback", instagram_callback)
     app.router.add_static("/static/", render.STATIC, show_index=False, follow_symlinks=False)
     # CP18: the platform admin panel. Off (no routes at all) unless an admin
     # list source is given -- the page server's entrypoint always gives one.

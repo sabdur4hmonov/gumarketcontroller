@@ -8,6 +8,7 @@
     GET  /shop/orders               orders, filtered, with where each came from
     GET  /shop/export/customers.csv
     GET  /shop/export/orders.csv    the same filters as the screen
+    GET  /shop/instagram            CP23: the shop's Instagram account (connect / disconnect)
 
 ONE GATE FOR EVERY ROUTE (`shop_gate`), as for /admin: a live session or 401,
 and every POST needs the session's CSRF token. tests/test_shop_panel.py walks
@@ -30,12 +31,14 @@ from datetime import UTC, datetime
 from typing import Any, Final
 
 from aiohttp import web
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from gulbot.holidays import BY_KEY, HOLIDAYS
 from gulbot.i18n import t
+from gulbot.models.instagram import InstagramConnection, InstagramStoryUpload
 from gulbot.scheduling.occurrences import TASHKENT
-from gulbot.services import holiday_campaigns, shop_auth, shop_crm
+from gulbot.services import holiday_campaigns, instagram, shop_auth, shop_crm
 from gulbot.web import render
 
 log = logging.getLogger("gulbot.web.shop_panel")
@@ -313,6 +316,80 @@ async def switch_holiday(request: web.Request) -> web.Response:
     raise web.HTTPSeeOther(PREFIX + "/holidays?done=ok")
 
 
+# --- CP23: the shop's Instagram account -----------------------------------------
+
+UPLOAD_LABELS: Final = {
+    "queued": "navbatda",
+    "container": "yuborilmoqda",
+    "published": "joylandi",
+    "failed": "xato",
+    "expired": "muddati o‘tdi",
+}
+
+
+async def instagram_screen(request: web.Request) -> web.Response:
+    shop_id = request[KEY_OWNER].shop_id
+    async with request.app[KEY_SHOP_SESSIONS]() as session:
+        connection = await session.get(InstagramConnection, shop_id)
+        uploads = (
+            await session.scalars(
+                select(InstagramStoryUpload)
+                .where(InstagramStoryUpload.shop_id == shop_id)
+                .order_by(InstagramStoryUpload.created_at.desc())
+                .limit(10)
+            )
+        ).all()
+        view = await _view(
+            request,
+            session,
+            "instagram",
+            enabled=instagram.enabled(),
+            connection=connection,
+            uploads=uploads,
+            upload_labels=UPLOAD_LABELS,
+            notice=request.query.get("done", ""),
+        )
+    return _html(render.render("shop/instagram.html", view))
+
+
+async def instagram_connect(request: web.Request) -> web.Response:
+    """A fresh one-time state, then a LINK to Instagram (not a redirect: the
+    panel's CSP lets a form go only to this origin)."""
+    owner = request[KEY_OWNER]
+    async with request.app[KEY_SHOP_SESSIONS]() as session:
+        try:
+            link = await instagram.start_connect(
+                session, shop_id=owner.shop_id, owner_id=owner.telegram_id
+            )
+        except instagram.InstagramRefused as refused:
+            raise web.HTTPSeeOther(PREFIX + "/instagram?done=" + refused.code) from None
+        await shop_auth.audit(
+            session,
+            shop_id=owner.shop_id,
+            action="instagram_connect_started",
+            owner=owner.telegram_id,
+            ip=_ip(request),
+        )
+        view = await _view(request, session, "instagram", link=link)
+        await session.commit()
+    return _html(render.render("shop/instagram_go.html", view))
+
+
+async def instagram_disconnect(request: web.Request) -> web.Response:
+    owner = request[KEY_OWNER]
+    async with request.app[KEY_SHOP_SESSIONS]() as session:
+        if await instagram.disconnect(session, shop_id=owner.shop_id, owner_id=owner.telegram_id):
+            await shop_auth.audit(
+                session,
+                shop_id=owner.shop_id,
+                action="instagram_disconnected",
+                owner=owner.telegram_id,
+                ip=_ip(request),
+            )
+        await session.commit()
+    raise web.HTTPSeeOther(PREFIX + "/instagram?done=disconnected")
+
+
 def add_routes(app: web.Application, *, session_factory: async_sessionmaker[AsyncSession]) -> None:
     app[KEY_SHOP_SESSIONS] = session_factory
     app.router.add_get(PREFIX + "/login/{token}", login_page)
@@ -325,3 +402,6 @@ def add_routes(app: web.Application, *, session_factory: async_sessionmaker[Asyn
     app.router.add_get(PREFIX + "/export/orders.csv", export_orders)
     app.router.add_get(PREFIX + "/holidays", holidays_screen)
     app.router.add_post(PREFIX + "/holidays", switch_holiday)
+    app.router.add_get(PREFIX + "/instagram", instagram_screen)
+    app.router.add_post(PREFIX + "/instagram/connect", instagram_connect)
+    app.router.add_post(PREFIX + "/instagram/disconnect", instagram_disconnect)

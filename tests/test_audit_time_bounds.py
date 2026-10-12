@@ -15,6 +15,7 @@ from pathlib import Path
 
 import yaml
 
+import gulbot.worker.instagram_tasks  # noqa: F401  -- CP23 Instagram publishing
 import gulbot.worker.stt_tasks  # noqa: F401  -- CP22 dedicated speech and normal-queue failure tasks
 import gulbot.worker.tasks  # noqa: F401  -- registers the tasks on the app
 from gulbot.bot.factory import TELEGRAM_REQUEST_TIMEOUT
@@ -35,6 +36,8 @@ GULBOT_TASKS = {
     "gulbot.snapshot_shop_health",  # CP18
     "gulbot.transcribe_voice",  # CP22: dedicated stt queue, 360/420 seconds
     "gulbot.transcription_failed",  # CP22: normal-queue acknowledgement recovery
+    "gulbot.publish_instagram_story",  # CP23: one story to Instagram, off by default
+    "gulbot.refresh_instagram_tokens",  # CP23: daily token upkeep
 }
 
 

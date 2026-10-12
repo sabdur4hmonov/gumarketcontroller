@@ -229,6 +229,17 @@ button.primary {
   color: #fff;
 }
 
+/* CP23: a link that must look like the primary button (the Instagram login
+   link is a plain navigation: the panel's CSP allows forms only to itself). */
+a.button.primary {
+  display: inline-block;
+  border-radius: 6px;
+  padding: 8px 14px;
+  background: var(--accent);
+  color: #fff;
+  text-decoration: none;
+}
+
 button.danger {
   border-color: var(--bad);
   color: var(--bad);

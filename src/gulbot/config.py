@@ -86,6 +86,19 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr = SecretStr("")
     stt_gemini_model: str = ""
 
+    #: CP23 phase 3: publishing story images to a shop's Instagram BUSINESS
+    #: account through Meta's official API. OFF until the owner has a Meta app
+    #: with content publishing approved (docs/DEPLOY.md, "Instagram"); off,
+    #: the bot offers only the downloadable story image.
+    instagram_publishing_enabled: bool = False
+    instagram_app_id: str = ""
+    instagram_app_secret: SecretStr = SecretStr("")
+    #: Overridable for the tests' fake Graph server; never in production.
+    instagram_graph_url: str = "https://graph.instagram.com"
+    instagram_oauth_url: str = "https://api.instagram.com"
+    instagram_authorize_url: str = "https://www.instagram.com/oauth/authorize"
+    instagram_graph_version: str = "v21.0"
+
     @field_validator("brand_name")
     @classmethod
     def _brand_fits_every_surface(cls, value: str) -> str:
@@ -192,6 +205,21 @@ def production_config_problems(
             "PLATFORM_ADMIN_TELEGRAM_IDS is empty or not a list of Telegram ids "
             "(nobody could log into the admin panel)"
         )
+    # CP23: Instagram publishing switched on must be able to work, and Meta
+    # must reach the story image over https.
+    if settings.instagram_publishing_enabled:
+        if not settings.instagram_app_id.strip():
+            problems.append("INSTAGRAM_PUBLISHING_ENABLED is on but INSTAGRAM_APP_ID is empty")
+        if not settings.instagram_app_secret.get_secret_value().strip():
+            problems.append("INSTAGRAM_PUBLISHING_ENABLED is on but INSTAGRAM_APP_SECRET is empty")
+        if not settings.public_base_url.startswith("https://"):
+            problems.append(
+                "INSTAGRAM_PUBLISHING_ENABLED is on but PUBLIC_BASE_URL is not https "
+                "(Meta fetches the story image from it)"
+            )
+        for name in ("graph", "oauth", "authorize"):
+            if not getattr(settings, f"instagram_{name}_url").startswith("https://"):
+                problems.append(f"INSTAGRAM_{name.upper()}_URL is not https")
     return problems
 
 

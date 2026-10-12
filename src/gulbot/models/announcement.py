@@ -13,6 +13,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Text,
+    UniqueConstraint,
     func,
     text,
 )
@@ -60,6 +61,8 @@ class AnnouncementDraft(IdMixin, TimestampMixin, Base):
     )
     caption_lang: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("'uz'"))
     __table_args__ = (
+        # CP23: what instagram_story_uploads' composite foreign key points at.
+        UniqueConstraint("id", "shop_id"),
         CheckConstraint(
             "template IS NULL OR template ~ '^[a-z_]+[.][a-z_]+$'", name="template_shape"
         ),

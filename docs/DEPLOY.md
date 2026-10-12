@@ -158,7 +158,7 @@ sudo -u gulbot bash -c 'set -a; . /etc/gulbot/gulbot.env; set +a; \
   .venv/bin/alembic upgrade head && .venv/bin/alembic current && .venv/bin/alembic heads'
 ```
 
-`current` and `heads` must print the same revision (`c23a1f5e7b90` at CP23).
+`current` and `heads` must print the same revision (`d23b4e8f1a26` at CP23).
 **A report of "applied" is not evidence** -- on this project it has been wrong
 twice; read it here. Every migration is additive. Five DOWNGRADES change data,
 because the old CHECKs cannot hold it -- back up before ever going below them:
@@ -170,7 +170,7 @@ because the old CHECKs cannot hold it -- back up before ever going below them:
 | `b996b9032869` | purged photo rows are deleted |
 | `4b6e1d9c2a07`, the CP18 revisions, `0956590ccce1`, `3c8e5a1f7d20` | their columns and tables are dropped (CP19: every shop's staff list; CP20: the shop panel's logins and audit log) |
 | `8f2d6c41b9a3` | holiday reminder rows and holiday consent are deleted, holiday orders lose their source |
-| `9c22e4d87b10`, `c23a1f5e7b90` | announcement drafts and favourite styles are dropped (CP22; CP23: flower-template choices and per-flower favourites) |
+| `9c22e4d87b10`, `c23a1f5e7b90`, `d23b4e8f1a26` | announcement drafts and favourite styles are dropped (CP22; CP23: flower-template choices, per-flower favourites, Instagram connections and story uploads) |
 
 ## 7b. The pilot shop (a fresh database has none)
 
@@ -228,7 +228,8 @@ Check each one's log (`journalctl -u gulbot-bot -n 50`):
   prefork pool, and one hung task would otherwise hold the worker forever.
 - **beat**: lists `send-due-reminders`, `send-order-pings`, `health-check`,
   `snapshot-shop-health`, `daily-summary`, `materialize-nightly`,
-  `scrub-expired-pages`. **Run beat exactly once**, on one machine.
+  `scrub-expired-pages`, `instagram-upkeep` (CP23; a no-op while Instagram
+  publishing is off). **Run beat exactly once**, on one machine.
 - **web**: `pages: serving on 127.0.0.1:8088 for https://pages... (environment=production)`.
   It writes no access log, on purpose: every page path is a secret.
 
@@ -485,3 +486,60 @@ leave `ambiguous`/`publishing`: inspect the channel before a new announcement;
 there is deliberately no blind retry. Every edit invalidates confirmation and
 preview; “Joylash” accepts only the current confirmed preview. Preview Telegram
 file IDs are used for the final post, so the first-photo overlay is identical.
+
+## 18. Instagram story publishing (CP23) -- built, OFF until you enable it
+
+Without any of this, every published announcement already offers
+"📸 Instagram istoriya": a 1080x1920 story image the owner saves and shares
+from the phone. Nothing below is needed for that.
+
+Automatic publishing (the "📲 Instagram'ga joylash" button) uses Meta's
+official **Instagram API with Instagram Login**. It stays off until
+`INSTAGRAM_PUBLISHING_ENABLED=true`, and the production guard refuses that
+switch without an app id, an app secret and an https `PUBLIC_BASE_URL`.
+
+**What only you can do, in this order:**
+
+1. **A Meta developer account** at developers.facebook.com, and a **Meta app**
+   of type *Business*. Add the product **Instagram** -> *API setup with
+   Instagram login*.
+2. **Business Verification** of your business in Meta Business Manager
+   (company documents; it can take days). Advanced access requires it.
+3. In the app's Instagram settings:
+   - **Valid OAuth redirect URI:** `https://pages.<your-domain>/ig/callback`
+     -- exactly, https, no trailing slash.
+   - Copy the **Instagram app ID** -> `INSTAGRAM_APP_ID` and the **Instagram
+     app secret** -> `INSTAGRAM_APP_SECRET` in `/etc/gulbot/gulbot.env`. The
+     secret is a secret: password manager, never a chat.
+4. **App Review** for the permissions `instagram_business_basic` and
+   `instagram_business_content_publish`, with a screencast of the flow
+   (owner connects in `/shop/instagram`; a story is published from the bot).
+   Until approved, only the Instagram accounts you add as **testers** of the
+   app can connect -- enough to try it on your own shop first.
+5. Each shop's Instagram account must be a **Business or Creator** account.
+6. Set `INSTAGRAM_PUBLISHING_ENABLED=true`, run step 6's check, then
+   `systemctl restart gulbot-web gulbot-worker gulbot-beat gulbot-bot`.
+7. Test: an owner opens `/shop/instagram`, presses **Instagram'ni ulash**,
+   follows the link, allows; the page says "Instagram ulandi". In the bot,
+   publish an announcement -> "📸 Instagram istoriya" -> a layout ->
+   "📲 Instagram'ga joylash" -> within a minute "✅ Istoriya Instagram'ga
+   joylandi" and the story is on the account.
+
+**How it works, so you know what to look at.** The story image is stored
+for 15 minutes behind `https://pages.<domain>/ig/<32 random bytes>.jpg` (only
+a hash is stored); Meta fetches it from there, so Caddy must serve `/ig/`
+publicly -- do not put it behind the `/admin` allow-list. The worker creates
+a STORIES container, polls it, publishes it, then wipes the image (the URL
+404s from then on) and tells the author the outcome in the shop's language.
+Meta's own publishing limit is asked first, and a shop may queue at most 25
+stories a day. Tokens are stored encrypted with `SHOP_TOKEN_ENCRYPTION_KEY`
+(so step 13's backup rule covers them too), refreshed daily at 04:10 when
+within 15 days of their 60-day end; a token Meta rejects retires the
+connection and the owner is asked to reconnect. Tokens never appear in a
+log. The endpoint version is `INSTAGRAM_GRAPH_VERSION` (default `v21.0`);
+Meta retires versions about two years after release -- raise it then.
+
+**Not verified against Meta.** Everything is tested against a fake Graph
+server that answers the documented endpoints; no real Meta call was made
+from this project. The first real connection (step 7) is also the first
+check of the live API.

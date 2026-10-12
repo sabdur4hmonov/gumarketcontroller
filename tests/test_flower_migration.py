@@ -38,3 +38,33 @@ def test_cp23_flower_template_revision_roundtrip(settings):
     finally:
         engine.dispose()
         drop_database(settings, database)
+
+
+def test_cp23_instagram_revision_roundtrip(settings):
+    database = "gulbot_cp23_ig_roundtrip"
+    tables = {"instagram_connections", "instagram_oauth_states", "instagram_story_uploads"}
+    drop_database(settings, database)
+    create_database(settings, database)
+    engine = create_engine(settings.database_url(database=database, driver="psycopg"))
+
+    def present() -> tuple[set[str], bool]:
+        with engine.connect() as connection:
+            inspector = inspect(connection)
+            unique = {
+                tuple(c["column_names"])
+                for c in inspector.get_unique_constraints("announcement_drafts")
+            }
+            return set(inspector.get_table_names()) & tables, ("id", "shop_id") in unique
+
+    try:
+        with alembic_config_for(database) as config:
+            command.upgrade(config, "head")
+            assert present() == (tables, True)
+            revision = ScriptDirectory.from_config(config).get_revision("d23b4e8f1a26")
+            command.downgrade(config, revision.down_revision)
+            assert present() == (set(), False)
+            command.upgrade(config, "head")
+            assert present() == (tables, True)
+    finally:
+        engine.dispose()
+        drop_database(settings, database)

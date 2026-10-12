@@ -43,6 +43,7 @@ from gulbot.i18n import t
 from gulbot.models.announcement import AnnouncementDraft
 from gulbot.models.shop import Shop
 from gulbot.services import announcements as service
+from gulbot.services import instagram
 
 
 def button(
@@ -422,6 +423,25 @@ async def send_story(
     bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft, layout: str
 ) -> None:
     """The 1080x1920 story: as a DOCUMENT (no recompression) and as a photo."""
+    jpeg, name = await _rendered_story(bot, session, draft, layout)
+    await bot.send_document(message.chat.id, BufferedInputFile(jpeg, filename=name))
+    await bot.send_photo(message.chat.id, BufferedInputFile(jpeg, filename=name))
+    if instagram.enabled() and await instagram.active_connection(session, draft.shop_id):
+        # CP23 phase 3: only when switched on AND this shop is connected;
+        # otherwise the owner shares the image themselves (phase 2).
+        await message.answer(
+            STORY_HELP,
+            reply_markup=InlineKeyboardMarkup(
+                inline_keyboard=[[button(draft, "📲 Instagram'ga joylash", "igpub", layout)]]
+            ),
+        )
+    else:
+        await message.answer(STORY_HELP)
+
+
+async def _rendered_story(
+    bot: Bot, session: AsyncSession, draft: AnnouncementDraft, layout: str
+) -> tuple[bytes, str]:
     photo, shop_name, fields, theme = await _story_inputs(bot, session, draft)
     story = await asyncio.to_thread(
         render_story,
@@ -433,10 +453,29 @@ async def send_story(
         shop_name=shop_name,
         lang=draft.caption_lang,
     )
-    name = f"istoriya-{theme}-{layout}.jpg"
-    await bot.send_document(message.chat.id, BufferedInputFile(story.jpeg, filename=name))
-    await bot.send_photo(message.chat.id, BufferedInputFile(story.jpeg, filename=name))
-    await message.answer(STORY_HELP)
+    return story.jpeg, f"istoriya-{theme}-{layout}.jpg"
+
+
+async def queue_instagram_story(
+    bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft, layout: str
+) -> str:
+    """Store the story for Meta and queue the publishing task. Returns the
+    owner's message; refusals arrive as InstagramRefused."""
+    from gulbot.worker.instagram_tasks import enqueue_story
+
+    jpeg, _ = await _rendered_story(bot, session, draft, layout)
+    upload_id, token = await instagram.queue_story(
+        session,
+        shop_id=draft.shop_id,
+        actor=draft.author_id,
+        draft_id=draft.id,
+        layout=layout,
+        jpeg=jpeg,
+    )
+    await session.commit()  # the worker must see the upload before it runs
+    await enqueue_story(upload_id, token)
+    lang = await session.scalar(select(Shop.lang).where(Shop.id == draft.shop_id)) or "uz"
+    return instagram.message("queued", lang)
 
 
 async def exact_preview(
@@ -550,6 +589,18 @@ async def action(
             if cb.value not in STORY_LAYOUTS:
                 raise service.AnnouncementRefused("Bunday istoriya yo'q")
             await send_story(bot, message, session, draft, cb.value)
+        elif cb.action == "igpub":
+            # CP23 phase 3: built, off by default; refused in the shop's language.
+            service.require_published(draft)
+            if cb.value not in STORY_LAYOUTS:
+                raise service.AnnouncementRefused("Bunday istoriya yo'q")
+            try:
+                text = await queue_instagram_story(bot, message, session, draft, cb.value)
+            except instagram.InstagramRefused as refused:
+                lang = await session.scalar(select(Shop.lang).where(Shop.id == shop_id)) or "uz"
+                await callback.answer(instagram.message(refused.code, lang)[:180], show_alert=True)
+                return
+            await message.answer(text)
         elif cb.action == "confirm":
             service.confirm(draft)
             await service.apply_default_template(session, draft)

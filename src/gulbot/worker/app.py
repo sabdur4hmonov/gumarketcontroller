@@ -56,12 +56,16 @@ PAGE_SCRUB_SOFT_LIMIT, PAGE_SCRUB_HARD_LIMIT = 300, 360
 # CP18: every shop's bot asked three questions, ten shops at a time.
 SNAPSHOT_SOFT_LIMIT, SNAPSHOT_HARD_LIMIT = 240, 300
 SNAPSHOT_EXPIRES_SECONDS = 590
+# CP23: one story -- six Graph calls of at most 20 s and up to a minute of
+# polling (12 x 5 s) -- and the daily token upkeep over every connected shop.
+INSTAGRAM_PUBLISH_SOFT_LIMIT, INSTAGRAM_PUBLISH_HARD_LIMIT = 240, 300
+INSTAGRAM_REFRESH_SOFT_LIMIT, INSTAGRAM_REFRESH_HARD_LIMIT = 600, 660
 
 app = Celery(
     "gulbot",
     broker=settings.redis_url(settings.redis_db_broker),
     backend=settings.redis_url(settings.redis_db_results),
-    include=["gulbot.worker.tasks", "gulbot.worker.stt_tasks"],
+    include=["gulbot.worker.tasks", "gulbot.worker.stt_tasks", "gulbot.worker.instagram_tasks"],
 )
 
 app.conf.update(
@@ -109,6 +113,13 @@ app.conf.update(
             "task": "gulbot.snapshot_shop_health",
             "schedule": 600.0,
             "options": {"expires": SNAPSHOT_EXPIRES_SECONDS},
+        },
+        # CP23: Instagram tokens refreshed well before their 60 days end, dead
+        # ones retired, stale story uploads wiped. A no-op while publishing is
+        # off. 04:10: after the 03:10 backup and the 03:30 scrub.
+        "instagram-upkeep": {
+            "task": "gulbot.refresh_instagram_tokens",
+            "schedule": crontab(hour=4, minute=10),
         },
         "materialize-nightly": {
             "task": "gulbot.materialize_all_shops",

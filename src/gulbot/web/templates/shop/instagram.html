@@ -1,0 +1,42 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+<h1>Instagram</h1>
+{% if v.notice == 'disconnected' %}<p class="notice">Instagram akkaunti uzildi va jurnalga yozildi.</p>
+{% elif v.notice == 'off' %}<p class="notice">Instagram'ga avtomatik joylash hozircha o‘chirilgan.</p>
+{% elif v.notice %}<p class="notice">Rad etildi.</p>{% endif %}
+{% if not v.enabled %}
+<section class="panel">
+  <p>Instagram'ga avtomatik joylash hozircha <strong>o‘chirilgan</strong>.</p>
+  <p class="muted">Har bir e'londan keyin botingiz Instagram istoriya rasmini beradi: uni telefoningizga saqlab, Instagram'da o‘zingiz joylaysiz. Avtomatik joylash Meta ilovasi tasdiqlangandan keyin yoqiladi.</p>
+</section>
+{% else %}
+<section class="panel">
+  {% if v.connection and v.connection.status == 'active' %}
+  <p>Ulangan akkaunt: <strong>@{{ v.connection.username }}</strong></p>
+  <p class="muted">Ulangan: {{ v.local(v.connection.connected_at) }} · ruxsat muddati: {{ v.local(v.connection.token_expires_at) }} (har kuni avtomatik yangilanadi)</p>
+  <form method="post" action="/shop/instagram/disconnect" class="inline">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link">Uzish</button>
+  </form>
+  {% else %}
+  {% if v.connection %}<p class="notice">Oldingi ulanish eskirgan (@{{ v.connection.username }}). Qayta ulang.</p>{% endif %}
+  <p>Do‘koningizning Instagram <strong>biznes</strong> yoki <strong>muallif</strong> akkauntini ulang: shunda botda «Instagram'ga joylash» tugmasi istoriyani o‘zi joylaydi.</p>
+  <form method="post" action="/shop/instagram/connect" class="inline">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="primary">Instagram'ni ulash</button>
+  </form>
+  {% endif %}
+</section>
+{% if v.uploads %}
+<section class="panel">
+  <h2>Oxirgi istoriyalar</h2>
+  <ol class="log">
+    {% for u in v.uploads %}
+    <li><div class="log-head"><span>{{ v.local(u.created_at) }}</span>
+      <span class="badge {{ 'ok' if u.status == 'published' else '' }}">{{ v.upload_labels.get(u.status, u.status) }}</span></div></li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}

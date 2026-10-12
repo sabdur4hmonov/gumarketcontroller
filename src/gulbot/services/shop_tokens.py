@@ -126,6 +126,23 @@ def decrypt_token(ciphertext: str) -> str:
         raise TokenUndecryptable from None
 
 
+#: An Instagram access token's shape: long, url-safe. Checked so a stored
+#: value can never carry a newline or a quote into a request.
+ACCESS_TOKEN_SHAPE = re.compile(r"[A-Za-z0-9_\-.|]{20,1024}")
+
+
+def encrypt_access_token(token: str) -> str:
+    """CP23: an Instagram account's access token, stored exactly as bot tokens
+    are -- Fernet under SHOP_TOKEN_ENCRYPTION_KEY, in this module only."""
+    if not ACCESS_TOKEN_SHAPE.fullmatch(token):
+        raise ValueError("that is not an access token")
+    return _cipher().encrypt(token.encode()).decode()
+
+
+def decrypt_access_token(ciphertext: str) -> str:
+    return decrypt_token(ciphertext)
+
+
 async def set_shop_bot_token(session: AsyncSession, *, shop_id: int, token: str) -> None:
     """Store `token` for one shop, encrypted. Raises LookupError for no such shop.
 

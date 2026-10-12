@@ -1,0 +1,13 @@
+{% extends "shop/_layout.html" %}
+{% block main %}
+<section class="panel narrow">
+  {% if v.ok %}
+  <h1>Instagram ulandi</h1>
+  <p>Akkaunt: <strong>@{{ v.username }}</strong>. Endi botda istoriyani «Instagram'ga joylash» tugmasi bilan joylashingiz mumkin.</p>
+  {% else %}
+  <h1>Ulanmadi</h1>
+  <p>{{ v.reason }}</p>
+  {% endif %}
+  <p><a href="/shop/instagram">Panelga qaytish</a></p>
+</section>
+{% endblock %}
