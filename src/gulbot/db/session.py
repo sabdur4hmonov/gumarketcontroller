@@ -38,14 +38,20 @@ from gulbot.config import get_settings
 STATEMENT_TIMEOUT_MS = 30_000
 
 
-def build_engine(database: str | None = None) -> AsyncEngine:
+def build_engine(database: str | None = None, *, task: bool = False) -> AsyncEngine:
     settings = get_settings()
     return create_async_engine(
         settings.database_url(database=database),
         future=True,
+        pool_size=settings.postgres_task_pool_size if task else settings.postgres_pool_size,
+        max_overflow=0 if task else settings.postgres_pool_overflow,
+        pool_timeout=5,
         # Set per connection at connect time, so every pooled connection has it
         # and nothing needs to remember a SET.
-        connect_args={"server_settings": {"statement_timeout": str(STATEMENT_TIMEOUT_MS)}},
+        connect_args={
+            "timeout": 10,
+            "server_settings": {"statement_timeout": str(STATEMENT_TIMEOUT_MS)},
+        },
     )
 
 
@@ -72,7 +78,7 @@ async def task_session_factory(
     `bot.run` must NOT use this. Disposing the engine after one update would
     throw away the pool between every message.
     """
-    engine = build_engine(database)
+    engine = build_engine(database, task=True)
     try:
         yield async_sessionmaker(engine, expire_on_commit=False)
     finally:

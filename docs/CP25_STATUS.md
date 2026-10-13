@@ -120,3 +120,41 @@ Next: PhaseD read-only EXPLAIN on the owned small fixture, additive indexes if
 plans justify them, configurable pools/connect timeouts, photo/static caching
 and Caddy compression; then shadow source-location cache. Only focused files
 and new mutation cases. Full100/500/1000 and loaded gate remain queued.
+
+## D1 data efficiency prepared (local commit pending)
+
+Three new pool/cache tests and the cursor-index test failed first on assertions.
+After implementation,35 focused data/index/attachment/DB-lifetime neighbours
+passed. Two plan-admission tests passed. Ten new assertion mutations passed;
+runtime report33/33 plus harness12/12. Six touched source files passed strict
+mypy; final Ruff check follows formatting.
+
+Actual EXPLAIN ANALYZE captured on the owned10-shop fixture, including1000
+temporary product rows rolled back after each plan capture. Cursor selection
+went from0.468ms with a1000-row scan/sort to0.057ms using the new partial
+tenant/cursor index; choice from0.479ms to0.070ms. These are small synthetic
+measurements, not fleet capacity. Raw plans under docs/capacity/.
+
+Additive revision a25f2c7d9e10 aftera25e1d6c8b90 adds only the sellable catalogue
+cursor index concurrently. Fresh probe upgrade/downgrade repeated twice passed.
+Owned load DB is at the new head; dev remains at the preceding revision.
+Worker task pools default1/no overflow; long-lived bot/web remain5+10,
+configurable. Pool wait5s and connect10s; statement30s unchanged. Catalogue
+choices, including None, cached per(shop,preference) within one bounded tick;
+captions/buttons remain customer-specific and checkout revalidates products.
+
+The next two new EXPLAIN admission mutations were not executed because automatic
+approval review hit its usage limit (not an unsafe-action finding). On resume,
+the memory/status check was approved and measured1645MiB free. Exact next:
+run only those two new mutations, final touched-file lint, D1 local commit;
+then web/cache/compression, remaining runtime observations and shadow speedup.
+No prior harness gate/proof rerun, no heavy job, no push or merge.
+
+D1 completion: the two plan-admission mutations and worker tick-binding guard
+also caught assertions (new13/13; accumulated runtime36/36+harness12/12).
+Real worker callback integration passed once; separate ticks refresh choices.
+Final lint found three long lines, now fixed; six source files strict mypy passed.
+Before/after catalogue plans use scan/sort versus reverse index scan, and all
+temporary inserted rows were rolled back. Tonight's command remains unchanged.
+Next after D1 local commit: photo/static validators and bounded template I/O;
+Caddy gzip and precompressed Brotli path; source-metadata-only shadow speedup.

@@ -25,7 +25,7 @@ def test_runtime_schema_is_additive_on_a_fresh_database(settings) -> None:
     try:
         with alembic_config_for(PROBE) as cfg:
             script = ScriptDirectory.from_config(cfg)
-            assert script.get_heads() == [REVISION]
+            assert len(script.get_heads()) == 1
             assert script.get_revision(REVISION).down_revision == BEFORE
             command.upgrade(cfg, BEFORE)
             old = set(inspect(engine).get_table_names())

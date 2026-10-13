@@ -1999,3 +1999,29 @@ Two-point marginal slopes (25 to 50 shops), RSS MiB/additional shop: bot=2.0964,
 | 1000 | **extrapolated**, 25/50 slope | 3872.2 | 2377.0 | Not extrapolated; actual measurement queued |
 
 Extrapolations omit OS, Docker/VMM, DB growth, Caddy, web, STT and background applications. Actual RAM guards remain authoritative. Quantiles cannot be multiplied from a small fleet; larger fleets may be nonlinear. No 4/8/24 GB server capacity is certified. See CP25_STATUS.md for the frozen baseline and tonight command.
+
+CP25 D1 small-query measurements: actual application SELECTs were captured on
+the owned10-shop fixture. A rollback-only transaction added1000 sellable products
+to shop1 for cursor tests. Before/after plans are committed under
+`docs/capacity/cp25-query-plans-{before-index,after-index}.json`.
+
+| Query | Kind | Before ms | After ms | Interpretation |
+|---|---|---|---|---|
+| Catalogue keyset | measured | 0.468 | 0.057 | Scan/top-N sort becomes reverse partial index scan |
+| Latest bouquet | measured | 0.479 | 0.070 | Same index, no preference tier in this fixture |
+| Shop customer list | measured | 0.212 | 0.211 | Small fixture only |
+| Shop order list | measured | 0.096 | 0.104 | No demonstrated missing-index bottleneck |
+| Admin shop summary | measured | 0.854 | 0.908 | Correlated aggregates remain; not a fleet claim |
+| Order card | measured | 0.075 | 0.073 | One joined snapshot query |
+| Reminder selection | measured | 0.107 | 0.104 | Sent outbox; loaded pending-group plans still queued |
+
+Revision `a25f2c7d9e10` adds only `(shop_id,indexed_at,id)` for active,
+not-deleted, finalized products, built concurrently. Fresh additive roundtrip
+tested twice. No index changes justified by the tiny order/reminder plans yet.
+Long-lived process pools remain5+10 (configurable); sequential task pools default
+1 with no overflow, disposed per task. Pool wait5s, DB connect10s, statement30s.
+One tick caches bouquet choices per(shop,preference), including empty results;
+customer captions stay separate and a new tick sees catalogue changes.
+Focused data/index/attachment/DB tests35 passed, plan admission2 and real worker
+cache binding1 passed; new assertion mutations13/13. Full loaded interaction
+and real100/500/1000 before/after remain queued; these timings do not certify capacity.

@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 23,
-  "total": 23,
+  "caught": 36,
+  "total": 36,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -144,11 +144,88 @@
       "test": "tests/test_cp25_reliability.py::test_handler_p95_uses_the_same_interpolated_quantile_as_capacity",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "worker pool enlarged",
+      "test": "tests/test_cp25_data_efficiency.py::test_task_pool_is_small_without_shrinking_the_bot_pool",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker overflow enabled",
+      "test": "tests/test_cp25_data_efficiency.py::test_task_pool_is_small_without_shrinking_the_bot_pool",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "pool wait unbounded",
+      "test": "tests/test_cp25_data_efficiency.py::test_pool_and_connect_waits_are_bounded",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "DB connect deadline removed",
+      "test": "tests/test_cp25_data_efficiency.py::test_pool_and_connect_waits_are_bounded",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "catalogue cache loses tenancy",
+      "test": "tests/test_cp25_data_efficiency.py::test_bouquet_cache_is_per_tick_and_per_shop_and_preference",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "catalogue cache loses preference",
+      "test": "tests/test_cp25_data_efficiency.py::test_bouquet_cache_is_per_tick_and_per_shop_and_preference",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "catalogue choice queried per customer",
+      "test": "tests/test_cp25_data_efficiency.py::test_bouquet_cache_is_per_tick_and_per_shop_and_preference",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "catalogue choice survives tick",
+      "test": "tests/test_cp25_data_efficiency.py::test_bouquet_cache_is_per_tick_and_per_shop_and_preference",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "cursor index omitted",
+      "test": "tests/test_cp25_catalog_index.py::test_cursor_index_roundtrips_without_changing_existing_tables",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "cursor predicate admits provisional products",
+      "test": "tests/test_cp25_catalog_index.py::test_cursor_index_roundtrips_without_changing_existing_tables",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "plan collection ignores ownership",
+      "test": "tests/test_cp25_query_plans.py::test_explain_admission_rejects_before_fixture_writes[foreign-10]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "plan collection accepts large fleet",
+      "test": "tests/test_cp25_query_plans.py::test_explain_admission_rejects_before_fixture_writes[gulbot-cp25-capacity-fixtures-only-51]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker loses tick-owned lookup",
+      "test": "tests/test_cp25_data_efficiency.py::test_worker_shares_lookup_inside_tick_and_rebuilds_it_next_tick",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "runtime additive table omitted",
-    "admin quantile changed"
+    "worker loses tick-owned lookup"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

@@ -36,6 +36,27 @@ from gulbot.utils.render import escape, format_price
 Renderer = Callable[[DueGroup], str]
 
 
+class BouquetLookup:
+    """One tick's choices, including empty catalogues; contains no I/O clients.
+
+    At most one entry per group in the bounded tick. Captions/buttons remain
+    customer specific; checkout revalidates the current product as before.
+    """
+
+    def __init__(self) -> None:
+        self.choices: dict[tuple[int, str | None], Bouquet | None] = {}
+
+    async def choose(
+        self, session: AsyncSession, shop_id: int, preference: str | None
+    ) -> Bouquet | None:
+        key = (shop_id, preference)
+        if key not in self.choices:
+            self.choices[key] = await choose_bouquet(
+                session, shop_id=shop_id, preferred_hashtag=preference
+            )
+        return self.choices[key]
+
+
 def leading_recipient(group: DueGroup) -> Recipient | None:
     """Whose preference wins in a merged reminder.
 
@@ -81,15 +102,16 @@ def caption_for(group: DueGroup, bouquet: Bouquet, *, render: Renderer) -> str:
 
 
 async def attach_bouquet(
-    session: AsyncSession, group: DueGroup, *, render: Renderer
+    session: AsyncSession,
+    group: DueGroup,
+    *,
+    render: Renderer,
+    lookup: BouquetLookup | None = None,
 ) -> Attachment | None:
     """Pick a bouquet for this group and compose the photo message."""
     recipient = leading_recipient(group)
-    bouquet = await choose_bouquet(
-        session,
-        shop_id=group.shop_id,
-        preferred_hashtag=recipient.preferred_hashtag if recipient else None,
-    )
+    preference = recipient.preferred_hashtag if recipient else None
+    bouquet = await (lookup or BouquetLookup()).choose(session, group.shop_id, preference)
     if bouquet is None:
         return None
 

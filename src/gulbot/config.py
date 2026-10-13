@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from functools import lru_cache
 from zoneinfo import ZoneInfo
 
-from pydantic import SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Uzbekistan is UTC+5 with no DST, but we resolve it through zoneinfo rather
@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     postgres_password: SecretStr = SecretStr("gulbot")
     postgres_db: str = "gulbot"
     postgres_test_db: str = "gulbot_test"
+    postgres_pool_size: int = Field(default=5, ge=1, le=100)
+    postgres_pool_overflow: int = Field(default=10, ge=0, le=100)
+    postgres_task_pool_size: int = Field(default=1, ge=1, le=20)
 
     redis_host: str = "localhost"
     redis_port: int = 6380

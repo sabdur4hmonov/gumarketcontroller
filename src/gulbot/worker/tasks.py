@@ -57,7 +57,7 @@ def _transports(registry: BotRegistry) -> TransportFor:
 async def _send_due_reminders() -> dict[str, int]:
     from functools import partial
 
-    from gulbot.sending.attach import attach_bouquet
+    from gulbot.sending.attach import BouquetLookup, attach_bouquet
 
     # One limiter for the tick; its buckets are per shop's bot (H4).
     limiter = RateLimiter(clock=lambda: asyncio.get_event_loop().time())
@@ -75,7 +75,9 @@ async def _send_due_reminders() -> dict[str, int]:
                 limiter=limiter,
                 # CP9. Returns None for an empty catalogue or no match, and the
                 # tick then sends bare text exactly as CP6 did.
-                attach=partial(attach_bouquet, session, render=render_reminder),
+                attach=partial(
+                    attach_bouquet, session, render=render_reminder, lookup=BouquetLookup()
+                ),
             )
             await session.commit()
         finally:

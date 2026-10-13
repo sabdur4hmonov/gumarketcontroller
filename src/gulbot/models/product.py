@@ -125,6 +125,15 @@ class Product(IdMixin, TimestampMixin, Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     __table_args__ = (
+        Index(
+            "ix_products_shop_sellable_cursor",
+            "shop_id",
+            "indexed_at",
+            "id",
+            postgresql_where=text(
+                "active IS TRUE AND deleted_at IS NULL AND finalized_at IS NOT NULL"
+            ),
+        ),
         # CP1's tenancy pattern: children reference (id, shop_id).
         UniqueConstraint("id", "shop_id"),
         # Redelivery idempotency. Telegram may deliver the same channel_post
