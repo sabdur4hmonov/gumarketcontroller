@@ -1,17 +1,18 @@
-"""The twenty designs: each one complete, self-contained and readable in
+"""The forty designs: each one complete, self-contained and readable in
 Uzbek Cyrillic.
 
 * Every design in PAGE_TEMPLATES has its stylesheet, its theme colour, its
   name and its picker icon -- a design added in one place and forgotten in
   another fails here, not on a customer's phone.
 * Every font a theme names is one we ship, declared in fonts.css or
-  fonts_cp17.css, with its license file beside it.
+  fonts_cp17.css / fonts_cp24.css, with its license file beside it.
 * A theme that leads with a face lacking Қ Ғ Ҳ (checked glyph by glyph, see
   static/fonts/LICENSES.md) must set `--font-display-uzc` to a complete one.
 """
 
 from __future__ import annotations
 
+import asyncio
 import re
 
 import pytest
@@ -42,7 +43,7 @@ SYSTEM = frozenset({"Georgia", "Arial", "Segoe UI", "Arial Narrow", "Comic Sans 
 def declared_families() -> set[str]:
     text = "".join(
         (STATIC / "css" / name).read_text(encoding="utf-8")
-        for name in ("fonts.css", "fonts_cp17.css")
+        for name in ("fonts.css", "fonts_cp17.css", "fonts_cp24.css")
     )
     return set(re.findall(r'font-family: "([^"]+)"', text))
 
@@ -60,9 +61,18 @@ def variable(source: str, name: str) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def test_there_are_twenty_designs() -> None:
-    assert len(PAGE_TEMPLATES) == 20
-    assert len(set(PAGE_TEMPLATES)) == 20
+def test_browser_module_has_released_its_event_loop() -> None:
+    """A sync browser fixture must end before subsequent async DB fixtures."""
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    assert loop is None, "browser fixture leaked a running loop into the next test module"
+
+
+def test_there_are_forty_designs() -> None:
+    assert len(PAGE_TEMPLATES) == 40
+    assert len(set(PAGE_TEMPLATES)) == 40
 
 
 @pytest.mark.parametrize("theme", PAGE_TEMPLATES)

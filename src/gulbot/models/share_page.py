@@ -67,7 +67,7 @@ class PageKind(StrEnum):
 ANSWERABLE_KINDS: Final = (PageKind.YESNO.value, PageKind.APOLOGY.value)
 
 
-#: The ten designs. Every one of them serves both kinds.
+#: Forty designs, shared by every page kind (CP16, CP17, CP24).
 PAGE_TEMPLATES: Final = (
     "milliy",
     "atlas",
@@ -90,6 +90,27 @@ PAGE_TEMPLATES: Final = (
     "suzani",
     "neon",
     "deco",
+    # CP24
+    "zarhal",
+    "zumrad",
+    "anor",
+    "girih",
+    "gulshabnam",
+    "sitrus",
+    "maktub",
+    "chiziq",
+    "sahro",
+    "kamalak",
+    "ilm",
+    "anjuman",
+    "navroz",
+    "qish",
+    "lavha",
+    "kadr",
+    "zinalar",
+    "sokin",
+    "marjon",
+    "moviy",
 )
 
 #: The language the PAGE is written in -- not the customer's bot language.

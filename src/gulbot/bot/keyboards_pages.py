@@ -37,6 +37,7 @@ from gulbot.i18n import t
 from gulbot.models.share_page import EVENT_TYPES, PAGE_TEMPLATES, PageKind, SharePage
 from gulbot.services.premium import PREMIUM_TEMPLATES
 from gulbot.web import strings
+from gulbot.web.designs_cp24 import CP24_DESIGNS
 from gulbot.web.render import THEME_NAMES
 
 #: Start hours offered for an event. Nothing before seven in the morning.
@@ -64,6 +65,7 @@ THEME_ICONS: Final = {
     "suzani": "🌺",
     "neon": "💡",
     "deco": "🏛",
+    **{key: design.icon for key, design in CP24_DESIGNS.items()},
 }
 
 LANG_BUTTONS: Final = (

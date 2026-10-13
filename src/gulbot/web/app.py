@@ -51,7 +51,6 @@ from gulbot.models.share_page import (
 )
 from gulbot.services import share_page_photos, share_page_wishes, share_pages
 from gulbot.web import admin, render, shop_panel, strings
-from gulbot.web.designs_cp24 import CP24_DESIGNS
 
 log = logging.getLogger("gulbot.web")
 
@@ -488,7 +487,7 @@ def _demo_lang(request: web.Request) -> str:
 
 async def demo_page(request: web.Request) -> web.Response:
     kind, theme = request.match_info["kind"], request.match_info["theme"]
-    if kind not in tuple(PageKind) or theme not in (*PAGE_TEMPLATES, *CP24_DESIGNS):
+    if kind not in tuple(PageKind) or theme not in PAGE_TEMPLATES:
         raise web.HTTPNotFound()
     event = request.query.get("event", "wedding")
     if event not in strings.EVENT_LABELS:

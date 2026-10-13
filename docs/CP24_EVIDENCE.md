@@ -3,7 +3,7 @@
 Generated from original bounded samples, at 360 CSS px, in a fresh Chrome context per visit.
 Gallery fixtures are authored SVG flowers, not customer photos. All links below are local.
 
-All new designs remain preview-only until CP23 lands and the additive CHECK migration activates them.
+All new designs are activated after CP23 by the single additive CHECK-widening migration.
 
 | Design | Gift | Cold chrome KiB (max of 3 kinds × 4 languages) | Fonts KiB | Screenshots |
 |---|---|---:|---:|---|

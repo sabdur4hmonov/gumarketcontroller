@@ -1,7 +1,7 @@
 """Premium parts of a share page, and the gift that unlocks them (CP18).
 
 WHAT IS PREMIUM -- defined here and nowhere else:
-  * PREMIUM_TEMPLATES: the ten designs CP17 added (photo-led, editorial,
+  * PREMIUM_TEMPLATES: the ten CP17 and twelve CP24 designs (photo-led, editorial,
     geometric, watercolour, vintage, black-and-white, children's, suzani,
     neon, deco). The ten CP16 designs stay free.
   * music (PREMIUM_FIELDS);
@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.share_page import PAGE_TEMPLATES
 
-PREMIUM_TEMPLATES: Final = frozenset(
+_CP17_PREMIUM_TEMPLATES: Final = frozenset(
     {
         "foto",
         "bold",
@@ -43,7 +43,7 @@ PREMIUM_TEMPLATES: Final = frozenset(
         "deco",
     }
 )
-#: CP24 selection, pending activation after the CP23 rebase and CHECK migration.
+#: CP24: twelve new premium styles; eight stay free.
 #: Eight new designs stay free; twelve crafted/photo-led designs use the same
 #: confirmed-order gift, in the customer's own shop. No new payment rule.
 CP24_PREMIUM_TEMPLATES: Final = frozenset(
@@ -62,6 +62,8 @@ CP24_PREMIUM_TEMPLATES: Final = frozenset(
         "moviy",
     }
 )
+
+PREMIUM_TEMPLATES: Final = _CP17_PREMIUM_TEMPLATES | CP24_PREMIUM_TEMPLATES
 
 #: Page fields whose non-empty value is premium.
 PREMIUM_FIELDS: Final = frozenset({"music"})

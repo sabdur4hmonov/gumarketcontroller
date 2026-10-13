@@ -1,7 +1,7 @@
 """CP24 artwork preflight: real HTTP/CSP and all designs × kinds × languages.
 
-The pending catalog is deliberately absent from persistent creation until CP23
-lands. No fixture inserts new design names ahead of the additive migration.
+The catalog is active after CP23, with an additive CHECK migration.
+Synthetic HTTP cases do not write customer data.
 """
 
 from __future__ import annotations
@@ -37,7 +37,28 @@ async def demo_client() -> AsyncIterator[TestClient]:
 
 def test_twenty_new_keys_never_replace_original_designs() -> None:
     assert len(CP24_DESIGNS) == 20
-    assert not set(PAGE_TEMPLATES) & set(CP24_DESIGNS)
+    assert set(PAGE_TEMPLATES) - set(CP24_DESIGNS) == {
+        "oqqora",
+        "minimal",
+        "bog",
+        "neon",
+        "pastel",
+        "vintaj",
+        "suzani",
+        "quvnoq",
+        "tungi",
+        "konvert",
+        "foto",
+        "atlas",
+        "milliy",
+        "geometrik",
+        "oltin",
+        "deco",
+        "bold",
+        "romantik",
+        "akvarel",
+        "bolalar",
+    }
     assert len(set(ALL_DESIGNS)) == 40
     assert all(len(key) <= 16 and re.fullmatch("[a-z]+", key) for key in CP24_DESIGNS)
 

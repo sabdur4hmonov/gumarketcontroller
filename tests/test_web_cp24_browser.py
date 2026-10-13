@@ -2,7 +2,8 @@
 
 Install .[dev] plus Chrome, or point CP24_CHROME_PATH at an existing Chromium.
 Missing browser tooling is a failure, not a silently skipped coverage claim.
-One browser is shared; contexts run serially and are closed after each case.
+One browser is shared within this module; contexts close after each case.
+The sync Playwright loop closes before other modules request async fixtures.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from gulbot.models.share_page import PAGE_LANGUAGES, PageKind
 from gulbot.web.designs_cp24 import CP24_DESIGNS
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def chrome_world() -> Iterator[tuple[Browser, str]]:
     with browser_world() as world:
         yield world

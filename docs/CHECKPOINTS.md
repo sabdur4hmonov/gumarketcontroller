@@ -33,7 +33,7 @@ product on its own: reminders work with no catalog and no ordering.
 | CP19 | Brand name in one setting, staff allowlist for order decisions, dev scripts under the gate, the two flaky tests | done, one commit per item; code-only (nothing here needed a live bot) |
 | CP20 | The shop owner's own panel (/shop), holiday campaigns | done, one commit per feature; code-only, screens shot at 360 px on a throwaway database |
 | CP22 | Staff-only photo/voice/text announcements, correction, confirmation, 20 captions and 10 overlays, channel publication and catalog indexing | code and text live proof done; real STT benchmark awaits the owner's ten recordings |
-
+| CP24 | Twenty original share-page designs, forty active styles across all kinds/languages, CP18 gift policy, mobile evidence | done after CP23 rebase and one additive migration; 7,706-test full gate and 32/32 assertion mutations |
 CP10 replaces the old CP10–CP13 block. The order FSM, the single-flight submit
 guard and the one-message-per-order shop card are one deliverable; splitting
 them produced a checkpoint that could not be demonstrated on its own.
@@ -1906,3 +1906,57 @@ qilish", any learning, and any way to touch a post after publication.
   e'lonlarim" and the catalogue's Product 26 shows 350 000. No speech model
   runs on this machine: the "heard" text stands in for the recogniser's
   output, said so in the proof.
+
+## CP24 — twenty more share-page designs, activated after CP23
+
+Twenty original CSS/SVG designs join the original twenty in the persistent
+catalog, bot picker and renderer. All forty work for invitation, Ha/Yo'q and
+apology pages in Uzbek Latin/Cyrillic, Russian and English, with existing
+sections, gallery, RSVP/guest count, wishes, monogram reveal, tap-only music,
+escaping button and shop branding/order link. Research is recorded with links
+in [the CP24 invitation brief](DESIGN_BRIEF_INVITES.md); inaccessible/login-only
+sources are stated there. No source artwork, layout or text was copied.
+Local OFL faces and adjacent licence files are reused; no model/font download.
+
+### Gift decision and schema
+
+Twelve new premium styles use CP18's existing per-shop confirmed-order gift:
+`zarhal`, `zumrad`, `anor`, `girih`, `gulshabnam`, `maktub`, `sahro`, `lavha`,
+`kadr`, `zinalar`, `marjon`, `moviy`. Eight new styles stay free: `sitrus`,
+`chiziq`, `kamalak`, `ilm`, `anjuman`, `navroz`, `qish`, `sokin`.
+The central decision remains services/premium.py: 22 premium / 18 free overall.
+Actual creation tests cover all twenty new styles before/after an order at
+shop A, while shop B remains independent; existing grants and free styles stay.
+
+Migration `a24d9e7b2c10` follows CP23's `f23d7c2e5a41` and widens only the
+existing named template CHECK. There is one Alembic head. A fresh database
+round-trip preserves an original page and verifies all forty literals; the
+existing DB admission guard covers every style. Downgrading with new styles
+in use refuses transactionally instead of rewriting or deleting their pages.
+
+### Evidence and verification, 2026-10-13
+
+[Visual index](cp24-designs.html) links sixty 360-px page screenshots plus
+twenty seal views. [Per-design weights](CP24_EVIDENCE.md) and the complete
+request ledger record 240 ordinary visits: cold chrome 122.3–162.9 KiB,
+fonts at most 103.0 KiB, within the 180/110 KiB budgets. Authored small SVG
+photo fixtures are reported separately; screenshot PNGs are not dependencies.
+
+The complete gate passed **7,706 tests**, no failures/errors/skips, including
+480 headless cases across all forty designs x three kinds x four languages
+with worst-case text at 360 px. Ruff/format checked 395 files; strict mypy
+checked 185 source files; shop/platform shadow sweeps found zero collisions.
+[The complete mutation sweep](CP24_MUTATIONS.json) caught **32/32 on assertions**,
+restoring every file byte-for-byte. Final configured-secret scanning covers
+tracked and new files against the main checkout's configured secret bytes.
+
+The full gate found a test-lifetime defect that focused browser checks did
+not: a session-scoped sync Playwright fixture kept its loop running into a
+later async DB fixture. A new synchronous guard failed on assertion; scoping
+that browser to its module fixes the real browser -> async DB sequence. The
+new mutant reverses that scope and fails on the guard, not setup errors.
+Private Redis test index 13 was verified empty and kept distinct from broker 9,
+results 10 and FSM 11. Earlier RAM-aborted gates are not passing evidence.
+
+CP25's capacity baseline and production reliability/performance changes follow
+this integration; no capacity claim is inferred from design tests.

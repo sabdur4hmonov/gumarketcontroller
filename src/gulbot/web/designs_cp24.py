@@ -1,8 +1,6 @@
-"""Original CP24 artwork, previewable before the post-CP23 CHECK migration.
+"""Original CP24 artwork metadata. Persistent keys live in models/share_page.py.
 
-This catalog does not admit designs into database-backed creation. Activation
-adds these keys to PAGE_TEMPLATES only after CP23 has landed and its additive
-migration has widened the CHECK. Premium policy lives in services/premium.py.
+Premium policy lives only in services/premium.py.
 """
 
 from dataclasses import dataclass

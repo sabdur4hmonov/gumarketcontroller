@@ -7,9 +7,8 @@ from typing import Any
 
 from gulbot.models.share_page import PAGE_TEMPLATES
 from gulbot.web import render
-from gulbot.web.designs_cp24 import CP24_DESIGNS
 
-ALL_DESIGNS = (*PAGE_TEMPLATES, *CP24_DESIGNS)
+ALL_DESIGNS = PAGE_TEMPLATES
 HOSTILE = '<script>alert(1)</script><img src=x onerror=alert(2)>"&'
 
 

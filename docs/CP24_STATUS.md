@@ -1,4 +1,45 @@
-# CP24 isolated design phase
+# CP24 integration during CP25
+
+CP25 rebased `cp24-designs` onto CP23 (`d541808`) without conflicts.
+Migration `a24d9e7b2c10`, following `f23d7c2e5a41`, widens the existing
+share-page template CHECK to forty names and preserves existing pages.
+Creation, the bot picker and CP18's central confirmed-order gift policy
+activate twelve new premium designs and eight free (22 premium / 18 free).
+
+The initial activation assertion failed against the twenty-design registry
+before implementation; focused schema, design and actual per-shop gift
+checks passed afterwards. A fresh database round-trip preserves an old page.
+The complete assertion-mutation sweep is now **32/32**, including a browser
+lifecycle guard. Every mutated file is restored byte-for-byte.
+
+## Integration checks, 2026-10-13
+
+Earlier gates stopped for low RAM; those are not passing gates. A subsequent
+run exposed our private Redis configuration collision (FSM and test both 11).
+The corrected allocation is broker 9 / results 10 / FSM 11 / test 13, using
+`gulbot_cp24_test`; Redis 13 was verified empty before assignment.
+
+The corrected full run passed lint/format, strict mypy and both shadow
+sweeps, then **7,611 tests passed** before two fixture errors. The sync
+Playwright fixture was scoped to the entire session and kept a running loop
+alive when a later async database fixture started. A new synchronous guard
+reproduced this on an assertion. The browser fixture now ends with its module;
+one real browser case, the cleanup guard and the async DB admission check
+pass together. Reverting that scope is caught on an assertion.
+
+The final full gate on **2026-10-13 passed: 7,706 tests**, with zero
+failures, errors or skips, including all 480 browser cases. Ruff/format
+(395 files), strict mypy (185 source files), and both standalone shadow
+sweeps passed; the fresh JUnit report verifies the full count. The earlier
+partial and interrupted runs are not counted as successful gates.
+
+The configured-secret scanner also passed against main's actual secret
+values and the tracked/new CP24 paths. It is rerun after this final record,
+before the activation commit and push. The review ZIP is already preserved
+outside the CP24 worktree for migration to the new laptop.
+
+## Original preparation record (before CP23 integration)
+
 
 CP24 is implemented as a preview catalog on `cp24-designs` in
 `D:\Coding projects\gulbot-cp24`, based on CP22.2 (`62571a3`). CP23 is still

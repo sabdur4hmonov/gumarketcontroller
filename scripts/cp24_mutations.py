@@ -48,6 +48,35 @@ def mutants() -> list[Mutant]:
     geometry = slot[2]
     return [
         Mutant(
+            "browser loop cleanup",
+            "tests/test_web_cp24_browser.py",
+            '@pytest.fixture(scope="module")',
+            '@pytest.fixture(scope="session")',
+            BROWSER + "[uz-invite-milliy] "
+            "tests/test_web_designs.py::test_browser_module_has_released_its_event_loop",
+        ),
+        Mutant(
+            "persistent design missing",
+            "src/gulbot/models/share_page.py",
+            '    "sitrus",\n',
+            "",
+            "tests/test_cp24_activation.py::test_cp24_is_active_in_creation_and_existing_gift_policy",
+        ),
+        Mutant(
+            "gift activation missing",
+            "src/gulbot/services/premium.py",
+            "_CP17_PREMIUM_TEMPLATES | CP24_PREMIUM_TEMPLATES",
+            "_CP17_PREMIUM_TEMPLATES",
+            "tests/test_cp24_activation.py::test_cp24_is_active_in_creation_and_existing_gift_policy",
+        ),
+        Mutant(
+            "migration design missing",
+            "migrations/versions/a24d9e7b2c10_share_page_designs_cp24.py",
+            '    "sitrus",',
+            '    "sitrusx",',
+            "tests/test_cp24_activation.py::test_additive_cp24_migration_round_trips_on_fresh_db",
+        ),
+        Mutant(
             "lost design",
             REGISTRY,
             moviy,
@@ -237,7 +266,7 @@ def main() -> None:
 
     os.chdir(ROOT)
     settings = get_settings()
-    if settings.postgres_test_db != "gulbot_cp24_test" or settings.redis_db_test != 11:
+    if settings.postgres_test_db != "gulbot_cp24_test" or settings.redis_db_test != 13:
         raise SystemExit("CP24 mutation proof requires its own database.")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -269,7 +298,7 @@ def main() -> None:
         try:
             file.write_text(source.replace(mutant.old, mutant.new, 1), encoding="utf-8")
             completed = subprocess.run(
-                [sys.executable, "-m", "pytest", mutant.test, "-x", "--tb=short"],
+                [sys.executable, "-m", "pytest", *mutant.test.split(), "-x", "--tb=short"],
                 cwd=ROOT,
                 capture_output=True,
                 text=True,

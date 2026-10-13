@@ -1,7 +1,35 @@
 {
-  "caught": 28,
-  "total": 28,
+  "caught": 32,
+  "total": 32,
   "results": [
+    {
+      "guard": "browser loop cleanup",
+      "file": "tests/test_web_cp24_browser.py",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-invite-milliy] tests/test_web_designs.py::test_browser_module_has_released_its_event_loop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "persistent design missing",
+      "file": "src/gulbot/models/share_page.py",
+      "test": "tests/test_cp24_activation.py::test_cp24_is_active_in_creation_and_existing_gift_policy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "gift activation missing",
+      "file": "src/gulbot/services/premium.py",
+      "test": "tests/test_cp24_activation.py::test_cp24_is_active_in_creation_and_existing_gift_policy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "migration design missing",
+      "file": "migrations/versions/a24d9e7b2c10_share_page_designs_cp24.py",
+      "test": "tests/test_cp24_activation.py::test_additive_cp24_migration_round_trips_on_fresh_db",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
     {
       "guard": "lost design",
       "file": "src/gulbot/web/designs_cp24.py",
@@ -164,6 +192,20 @@
       "exit_code": 1
     },
     {
+      "guard": "HTML language lost",
+      "file": "src/gulbot/web/render.py",
+      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-invite-sitrus]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "maximum seal text overflows",
+      "file": "src/gulbot/web/static/css/base.css",
+      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-yesno-zarhal]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
       "guard": "footer ink matches background",
       "file": "src/gulbot/web/static/css/theme-zarhal.css",
       "test": "tests/test_web_cp24.py::test_shop_brand_and_primary_buttons_have_readable_contrast[zarhal]",
@@ -183,24 +225,41 @@
       "test": "tests/test_web_cp24.py::test_twenty_new_ornaments_are_drawn_and_distinct",
       "assertion_caught": true,
       "exit_code": 1
-    },
-    {
-      "guard": "HTML language lost",
-      "file": "src/gulbot/web/render.py",
-      "test": "tests/test_web_cp24.py::test_every_design_kind_language_renders_200_without_foreign_assets[uz-invite-sitrus]",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
-      "guard": "maximum seal text overflows",
-      "file": "src/gulbot/web/static/css/base.css",
-      "test": "tests/test_web_cp24_browser.py::test_worst_case_at_360_has_no_overflow_or_foreign_requests[uz-yesno-zarhal]",
-      "assertion_caught": true,
-      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "maximum seal text overflows"
+    "browser loop cleanup",
+    "persistent design missing",
+    "gift activation missing",
+    "migration design missing",
+    "lost design",
+    "old key overwritten",
+    "empty picker name",
+    "empty picker icon",
+    "meta palette mismatch",
+    "unlicensed display face",
+    "incomplete Uzbek fallback",
+    "foreign CSS import",
+    "theme byte budget exceeded",
+    "missing font declaration",
+    "gift selection changed",
+    "new envelope removed",
+    "creator seal replaced",
+    "unsafe inline CSP",
+    "autoescape disabled",
+    "lead photo duplicated",
+    "disabled gallery leaks lead",
+    "shop label cannot shrink",
+    "long title/wish overflows",
+    "Cyrillic colours corrupted",
+    "audio context before tap",
+    "guest counter removed",
+    "escaping button removed",
+    "HTML language lost",
+    "maximum seal text overflows",
+    "footer ink matches background",
+    "gold button ink matches fill",
+    "ornament left blank"
   ],
-  "report_scope": "Accumulated per-guard proof"
+  "report_scope": "Complete sweep"
 }

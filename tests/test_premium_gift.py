@@ -28,6 +28,7 @@ from gulbot.models.share_page import PAGE_TEMPLATES
 from gulbot.services import order_status, premium, share_page_photos, share_pages
 from gulbot.services.orders import OrderDraft, create_order
 from gulbot.services.share_pages import EditRefused
+from gulbot.web.designs_cp24 import CP24_DESIGNS
 
 pytestmark = pytest.mark.infra
 
@@ -116,13 +117,13 @@ async def make(two: dict[str, Any], label: str, draft: Any) -> object:
 # --- what is premium ------------------------------------------------------------------
 
 
-def test_premium_is_the_ten_cp17_designs_and_the_rest_stay_free() -> None:
+def test_premium_preserves_cp17_and_adds_twelve_cp24_designs() -> None:
     assert {
         "foto", "bold", "geometrik", "akvarel", "vintaj",
         "oqqora", "bolalar", "suzani", "neon", "deco",
-    } == premium.PREMIUM_TEMPLATES  # fmt: skip
+    } | premium.CP24_PREMIUM_TEMPLATES == premium.PREMIUM_TEMPLATES  # fmt: skip
     free = set(PAGE_TEMPLATES) - premium.PREMIUM_TEMPLATES
-    assert len(free) == 10 and "milliy" in free and "konvert" in free
+    assert len(free) == 18 and "milliy" in free and "konvert" in free
     assert {"music"} == premium.PREMIUM_FIELDS
 
 
@@ -296,3 +297,23 @@ async def test_picking_a_premium_design_without_the_gift_says_why_and_stays(
     assert bot.texts() == [LOCKED_UZ], bot.texts()
     await bot.tap(PageTemplateCB(template="romantik").pack(), user=PERSON)
     assert LOCKED_UZ not in bot.texts()[1:], "a free design was refused"
+
+
+@pytest.mark.parametrize("template", CP24_DESIGNS)
+async def test_cp24_creation_uses_same_shop_gift(two: dict[str, Any], template: str) -> None:
+    before = await make(two, "a", yesno(template=template))
+    if template in premium.CP24_PREMIUM_TEMPLATES:
+        assert isinstance(before, premium.PremiumLocked), repr(before)
+    else:
+        assert not isinstance(before, Exception), repr(before)
+        assert before.template == template
+    order = await an_order(two, "a", "cp24-gift")
+    await confirm(two, "a", order)
+    granted = await make(two, "a", yesno(template=template))
+    assert not isinstance(granted, Exception), repr(granted)
+    assert granted.template == template
+    other = await make(two, "b", yesno(template=template))
+    if template in premium.CP24_PREMIUM_TEMPLATES:
+        assert isinstance(other, premium.PremiumLocked), repr(other)
+    else:
+        assert not isinstance(other, Exception), repr(other)

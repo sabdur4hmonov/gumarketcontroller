@@ -109,7 +109,7 @@ def main() -> None:
             'itle><link rel="stylesheet" href="cp24-designs.css"></head><body>'
             "<header><p>GULBOT · CP24 DESIGN REVIEW</p><h1>Twenty new ways to "
             "share a moment.</h1><p>Bright originals, three page types, 360 px"
-            ". Pending the CP23 rebase and database activation.</p><p>Click ea"
+            ". Activated after CP23 with the CP24 CHECK migration.</p><p>Click ea"
             "ch image for the full screenshot. Columns: Taklifnoma, Ha/Yo‘q, U"
             'zrnoma. Each also has a sealed-envelope screenshot.</p><a href="s'
             'creenshots/cp24/weights.json">Cold byte ledger: 240 fresh-context'
@@ -150,8 +150,8 @@ def main() -> None:
         ),
         "",
         (
-            "All new designs remain preview-only until CP23 lands and the addi"
-            "tive CHECK migration activates them."
+            "All new designs are activated after CP23 by the single addi"
+            "tive CHECK-widening migration."
         ),
         "",
         (
