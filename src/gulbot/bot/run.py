@@ -52,6 +52,7 @@ from gulbot.bot.registry import BotFactory, build_bot_for, stored_tokens
 from gulbot.config import get_settings
 from gulbot.db.session import build_session_factory
 from gulbot.sending.transport import ShopBotUnavailable
+from gulbot.services.offload import run_cpu
 from gulbot.services.shop_tokens import TokenCipherError, cipher_ready, load_bot_credentials
 
 log = logging.getLogger("gulbot")
@@ -156,12 +157,19 @@ class ShopPollers:
                 del self.running[shop_id]
 
             try:
-                bot = self._bot_factory(token_for(shop_id))
+                bot = await asyncio.wait_for(
+                    run_cpu(self._bot_factory, token_for(shop_id)), timeout=20
+                )
             except ShopBotUnavailable as missing:
                 self._report(shop_id, str(missing))
                 continue
             except TokenValidationError:
                 self._report(shop_id, "its stored token is not one Telegram would accept")
+                continue
+            except Exception as error:
+                # Exception text can contain a credential or URL. Store/log
+                # only its type, and keep starting the remaining shops.
+                self._report(shop_id, f"factory_error:{type(error).__name__}")
                 continue
 
             clash = next((p.shop_id for p in self.running.values() if p.bot.id == bot.id), None)

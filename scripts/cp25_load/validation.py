@@ -15,7 +15,7 @@ def reconcile_deliveries(replies: Any, *, shops: int, fault: str) -> None:
                 expected[(bot, 2000000 + wave * 10000 + shop, "customer")] = 1
             expected[(bot, 3000000 + shop, "owner")] = 1
             expected[(bot, -1001000000 - shop, "other")] = 1
-        if shop != 1 or fault in ("none", "poll-flood"):
+        if shop != 1 or fault in ("none", "poll-flood", "crash"):
             expected[(bot, 2000000 + shop, "other")] = 1
             expected[(bot, -1002000000 - shop, "other")] = 1
     actual: Counter[tuple[int, int, str]] = Counter()

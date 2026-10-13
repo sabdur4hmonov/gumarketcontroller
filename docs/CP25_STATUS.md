@@ -75,3 +75,25 @@ a claim that every one was independently runtime-proven. Audit read notes exist 
 EXPLAIN/index/pool/cache/logging work and shadow metadata speedup follow in
 that order. Heavy proofs stay queued. No heavy proof, full gate, shadow sweep or Playwright matrix ran in this pass;
 no push/merge. C1 loaded whole-suite interaction waits for RAM.
+
+## C2 completed (small-scale proof)
+
+17 focused poller tests plus one new one-shot crash test passed. Three new
+assertion mutations caught, accumulated runtime report9/9 (C1 six + C2 three).
+Per-shop unexpected factory errors are isolated; TLS construction runs in
+the bounded executor with a20s startup deadline. No token/error text logged.
+
+| One failed shop in10 | Healthy replies | Healthy p95/p99 ms | Expected reminder/order sends |
+|---|---|---|---|
+| unauthorized | 36/36 | 1385.724/1412.597 | 9/9 |
+| flood | 36/36 | 1707.235/1725.047 | 9/9 |
+| network | 36/36 | 1532.860/1557.832 | 9/9 |
+| crash | 36/36 | 1352.976/1358.800 | 10/10 |
+
+All four actual fault runs passed once with per-target reconciliation and
+zero uploads. Healthy p95 remained below the original10-shop baseline3414ms
+in these observations; laptop variability is not a universal latency guarantee.
+Crash is one-shot task cancellation, replies for that shop excluded, worker
+sends still required for all10. Source JSON under docs/capacity/cp25-fault-*.json.
+Next low-RAM item: watchdog/backoff/admin record and handler/API deadline/pacing
+guards. Full-scale isolation and loaded full-suite interaction wait for tonight.

@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 6,
-  "total": 6,
+  "caught": 9,
+  "total": 9,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -42,11 +42,30 @@
       "test": "tests/test_cp25_loop_lag.py::test_delayed_loop_is_reported_and_normal_timing_recovers",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "crash injection removed",
+      "test": "tests/test_cp25_crash_hook.py::test_crash_is_one_shot_and_only_the_bad_shop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "factory crash stops fleet",
+      "test": "tests/test_cp25_poll_isolation.py::test_unexpected_factory_error_is_isolated",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "TLS constructor blocks loop",
+      "test": "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "legacy overlay on loop",
-    "loop lag not reported"
+    "crash injection removed",
+    "factory crash stops fleet",
+    "TLS constructor blocks loop"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

@@ -29,6 +29,29 @@ class Mutation:
 def mutations() -> list[Mutation]:
     return [
         Mutation(
+            "crash injection removed",
+            "load_roles.py",
+            'raise asyncio.CancelledError("one-shot synthetic poller crash")',
+            "pass",
+            "tests/test_cp25_crash_hook.py::test_crash_is_one_shot_and_only_the_bad_shop",
+        ),
+        Mutation(
+            "factory crash stops fleet",
+            "src/gulbot/bot/run.py",
+            'self._report(shop_id, f"factory_error:{type(error).__name__}")',
+            "raise",
+            "tests/test_cp25_poll_isolation.py::test_unexpected_factory_error_is_isolated",
+        ),
+        Mutation(
+            "TLS constructor blocks loop",
+            "src/gulbot/bot/run.py",
+            "bot = await asyncio.wait_for(\n"
+            "                    run_cpu(self._bot_factory, token_for(shop_id)), timeout=20\n"
+            "                )",
+            "bot = self._bot_factory(token_for(shop_id))",
+            "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
+        ),
+        Mutation(
             "photo cleaning on loop",
             "src/gulbot/services/share_page_photos.py",
             "photo = await run_cpu(clean_photo, raw)",

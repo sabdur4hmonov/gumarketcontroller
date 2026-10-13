@@ -48,6 +48,12 @@ def install_local_api(api: str) -> Callable[[], None]:
     async def request(self: Any, bot: Any, method: Any, *args: Any, **kwargs: Any) -> Any:
         if "CP25TEST" not in bot.token:
             raise ValueError("Real tokens are forbidden in this harness")
+        marker = os.environ.get("CP25_CRASH_FILE")
+        if marker and bot.id == 600001 and method.__api_method__ == "getUpdates":
+            path = Path(marker)
+            if await asyncio.to_thread(path.exists):
+                await asyncio.to_thread(path.unlink)
+                raise asyncio.CancelledError("one-shot synthetic poller crash")
         self.api = endpoint
         return await original_request(self, bot, method, *args, **kwargs)
 

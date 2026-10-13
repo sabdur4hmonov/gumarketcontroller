@@ -119,6 +119,9 @@ async def _run_owned_scale(shops: int, output: Path, fault: str) -> dict[str, An
     print(f"Scale {shops}: free RAM {free:.0f} MiB; DB gulbot_cp25_load; Redis FSM15", flush=True)
     os.environ["CP25_RUN_ID"] = uuid.uuid4().hex
     await asyncio.to_thread(output.mkdir, parents=True, exist_ok=False)
+    os.environ["CP25_CRASH_FILE"] = (
+        str((output / "crash-shop-1").resolve()) if fault == "crash" else ""
+    )
     await asyncio.to_thread(seed, shops)
     children: list[tuple[subprocess.Popen[Any], Any]] = []
     enqueued: dict[tuple[int, int], int] = {}
@@ -144,6 +147,8 @@ async def _run_owned_scale(shops: int, output: Path, fault: str) -> dict[str, An
             else:
                 raise TimeoutError("Not every shop reached real HTTP long polling")
             if fault != "none":
+                if fault == "crash":
+                    await asyncio.to_thread((output / "crash-shop-1").touch)
                 fault_request: dict[str, Any] = {"bot_id": BOT_BASE + 1, "mode": fault}
                 if fault == "flood":
                     fault_request["methods"] = ["sendMessage", "sendPhoto", "sendMediaGroup"]
@@ -258,7 +263,7 @@ async def _run_owned_scale(shops: int, output: Path, fault: str) -> dict[str, An
             await asyncio.to_thread((output / "worker-metrics.json").read_text, encoding="utf-8")
         )
         # A polling-only refusal leaves that shop's outgoing API usable.
-        expected_outbox_shops = shops - int(fault not in ("none", "poll-flood"))
+        expected_outbox_shops = shops - int(fault not in ("none", "poll-flood", "crash"))
         validate_outboxes(worker_metrics, expected_outbox_shops)
         reconcile_deliveries(stats["replies"], shops=shops, fault=fault)
         await asyncio.to_thread((output / "stop-api").touch)
@@ -325,7 +330,7 @@ def main() -> None:
     parser.add_argument("--api", default="")
     parser.add_argument(
         "--fault",
-        choices=("none", "unauthorized", "network", "flood", "poll-flood", "stall"),
+        choices=("none", "unauthorized", "network", "flood", "poll-flood", "stall", "crash"),
         default="none",
     )
     parser.add_argument("--output", type=Path, required=True)
