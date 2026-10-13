@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.announcement import ShopLogo
 from gulbot.models.shop import Shop
+from gulbot.services.offload import run_cpu
 
 LOGO_SIDE = 512
 MIN_SIDE = 16
@@ -68,7 +69,7 @@ async def is_owner(session: AsyncSession, *, shop_id: int, actor: int) -> bool:
 async def set_logo(session: AsyncSession, *, shop_id: int, actor: int, data: bytes) -> ShopLogo:
     if not await is_owner(session, shop_id=shop_id, actor=actor):
         raise LogoRefused("Logoni faqat do'kon egasi o'rnatadi")
-    png, width, height = normalise(data)
+    png, width, height = await run_cpu(normalise, data)
     values = {
         "image": png,
         "width": width,
@@ -99,6 +100,10 @@ async def logo_image(session: AsyncSession, shop_id: int) -> Image.Image | None:
     data = await session.scalar(select(ShopLogo.image).where(ShopLogo.shop_id == shop_id))
     if data is None:
         return None
+    return await run_cpu(decode_logo, data)
+
+
+def decode_logo(data: bytes) -> Image.Image:
     with Image.open(io.BytesIO(data)) as image:
         decoded: Image.Image = image.convert("RGBA")
     return decoded

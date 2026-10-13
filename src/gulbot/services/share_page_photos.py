@@ -35,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.share_page import ANSWERABLE_KINDS, GALLERY_MAX, SharePage, SharePagePhoto
 from gulbot.services import premium
+from gulbot.services.offload import run_cpu
 
 #: The upload itself: Telegram's own photos are far below this.
 MAX_INPUT_BYTES: Final = 10 * 1024 * 1024
@@ -142,7 +143,7 @@ async def store_photo(
         raise GalleryFull("full")
     else:
         position = max(taken, default=0) + 1  # photos are only ever cleared all at once
-    photo = clean_photo(raw)
+    photo = await run_cpu(clean_photo, raw)
     row = SharePagePhoto(
         shop_id=page.shop_id,
         page_id=page.id,

@@ -45,7 +45,7 @@ One command from the main repo:
 .\.venv\Scripts\python.exe -m scripts.cp25_load.tonight
 ```
 
-Before ref is recorded in CP25_BEFORE_REF.txt after the baseline commit.
+Before ref is frozen at f8f73b8405322ec99cb1e06305fc9f7330f31df0 in CP25_BEFORE_REF.txt.
 Runner archives that immutable commit into an ignored private snapshot and
 sets PYTHONPATH to its src so editable installation cannot substitute hot fixes.
 Private .env copy is removed in finally. It runs before100/500/1000, then
@@ -60,8 +60,18 @@ limit and retain the explicitly extrapolated estimate; do not call it measured.
 
 ## Exact next low-RAM step
 
-Freeze baseline local commit, then failing-first async blocking tests and
-bounded executors/event-loop lag guard. Audit read notes exist under
+Baseline frozen at f8f73b8. C1 image/spelling offloads and a 100ms loop-lag
+guard are implemented; 43 touched/direct-neighbour tests passed, C1 mutations
+6/6 assertion catches, strict typing passed for 8 touched files. A process-owned
+two-thread executor carries only byte/text/Pillow work; AsyncSession stays on
+the loop. Existing CP23 rendering now also uses that bounded pool.
+
+Next: per-shop factory/poll fault isolation and small fault harness, then
+watchdog/backoff/deadlines/reply pacing. Web cold Jinja/static file I/O awaits
+the cache/web phase; bot factory SSL work awaits polling phase. The async
+inventory lists 635 async definitions in167 files; this is an inventory, not
+a claim that every one was independently runtime-proven. Audit read notes exist under
 .cp22-stage/cp25/ASYNC_AUDIT.md. Polling faults/watchdog/timeouts/reply pacing,
 EXPLAIN/index/pool/cache/logging work and shadow metadata speedup follow in
-that order. Heavy proofs stay queued. No production hot path changed yet.
+that order. Heavy proofs stay queued. No heavy proof, full gate, shadow sweep or Playwright matrix ran in this pass;
+no push/merge. C1 loaded whole-suite interaction waits for RAM.

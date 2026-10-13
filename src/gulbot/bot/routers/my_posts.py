@@ -10,7 +10,6 @@ edited channel post; a deleted post deactivates its product.
 
 from __future__ import annotations
 
-import asyncio
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -40,6 +39,7 @@ from gulbot.services import announcements as service
 from gulbot.services import published_posts as posts
 from gulbot.services import shop_logo
 from gulbot.services.indexer import FinalizeResult
+from gulbot.services.offload import run_cpu
 
 FIELD_PROMPTS = {
     "price": "Yangi narxni yozing (masalan: 450 ming):",
@@ -179,7 +179,7 @@ async def action(
 
             photo = await first_photo(bot, draft)
             logo = await shop_logo.logo_image(session, shop_id) if draft.logo_on else None
-            rendered = await asyncio.to_thread(
+            rendered = await run_cpu(
                 render_post,
                 photo,
                 template=cb.value,

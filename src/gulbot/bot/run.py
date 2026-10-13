@@ -47,6 +47,7 @@ from gulbot.bot.factory import (
     build_platform_dispatcher,
     build_storage,
 )
+from gulbot.bot.loop_lag import monitor as monitor_event_loop
 from gulbot.bot.registry import BotFactory, build_bot_for, stored_tokens
 from gulbot.config import get_settings
 from gulbot.db.session import build_session_factory
@@ -266,6 +267,7 @@ async def main() -> None:
     session_factory = build_session_factory()
     storage = build_storage()
     pollers = ShopPollers(session_factory, storage=storage)
+    loop_monitor = asyncio.create_task(monitor_event_loop(), name="event-loop-lag")
     platform: PlatformPoller | None = None
     try:
         await pollers.sync()
@@ -285,6 +287,9 @@ async def main() -> None:
                 # A database blip must not take down every shop's bot.
                 log.exception("refreshing the shop pollers failed; trying again later")
     finally:
+        loop_monitor.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await loop_monitor
         if platform is not None:
             await platform.stop()
         await pollers.stop()

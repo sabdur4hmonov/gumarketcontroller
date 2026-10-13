@@ -30,6 +30,7 @@ from gulbot.models.shop import Shop, ShopStatus
 from gulbot.models.staff import ShopStaff
 from gulbot.services import announcement_learning
 from gulbot.services.indexer import ChannelPost, finalize_product, ingest_post
+from gulbot.services.offload import run_cpu
 
 
 class AnnouncementRefused(ValueError):
@@ -127,8 +128,11 @@ async def parse_description(session: AsyncSession, draft: AnnouncementDraft, tex
     ).all()
     # CP23 addendum: this shop's learned corrections, before the lexicon.
     learned = await announcement_learning.learned_for(session, draft.shop_id)
-    fields = extract(
-        text, aliases={r.alias_normalized: r.canonical_hashtag for r in rows}, learned=learned
+    fields = await run_cpu(
+        extract,
+        text,
+        aliases={r.alias_normalized: r.canonical_hashtag for r in rows},
+        learned=learned,
     )
     await announcement_learning.mark_used(session, shop_id=draft.shop_id, applied=fields.learned)
     draft.fields = fields.data()

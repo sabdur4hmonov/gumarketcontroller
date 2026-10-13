@@ -29,6 +29,48 @@ class Mutation:
 def mutations() -> list[Mutation]:
     return [
         Mutation(
+            "photo cleaning on loop",
+            "src/gulbot/services/share_page_photos.py",
+            "photo = await run_cpu(clean_photo, raw)",
+            "photo = clean_photo(raw)",
+            "tests/test_cp25_nonblocking.py::test_photo_cleaning_is_off_loop_but_session_writes_are_on_loop",
+        ),
+        Mutation(
+            "logo normalisation on loop",
+            "src/gulbot/services/shop_logo.py",
+            "png, width, height = await run_cpu(normalise, data)",
+            "png, width, height = normalise(data)",
+            "tests/test_cp25_nonblocking.py::test_logo_normalisation_and_decoding_are_off_loop",
+        ),
+        Mutation(
+            "logo decode on loop",
+            "src/gulbot/services/shop_logo.py",
+            "return await run_cpu(decode_logo, data)",
+            "return decode_logo(data)",
+            "tests/test_cp25_nonblocking.py::test_logo_normalisation_and_decoding_are_off_loop",
+        ),
+        Mutation(
+            "spelling extraction on loop",
+            "src/gulbot/services/announcements.py",
+            "fields = await run_cpu(\n        extract,",
+            "fields = extract(",
+            "tests/test_cp25_nonblocking.py::test_cold_spelling_extraction_is_off_loop",
+        ),
+        Mutation(
+            "legacy overlay on loop",
+            "src/gulbot/bot/routers/announcements.py",
+            "rendered = await run_cpu(\n            overlay,",
+            "rendered = overlay(",
+            "tests/test_cp25_nonblocking.py::test_legacy_overlay_is_off_loop",
+        ),
+        Mutation(
+            "loop lag not reported",
+            "src/gulbot/bot/loop_lag.py",
+            "return lag if lag > self.threshold else None",
+            "return None",
+            "tests/test_cp25_loop_lag.py::test_delayed_loop_is_reported_and_normal_timing_recovers",
+        ),
+        Mutation(
             "night precheck bypassed",
             "tonight.py",
             "if free < 3072:",
@@ -124,9 +166,14 @@ def main() -> None:
     known = {m.name: m for m in mutations()}
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--only", nargs="+", choices=list(known))
+    parser.add_argument(
+        "--report", type=Path, default=ROOT / "docs" / "CP25_HARNESS_MUTATIONS.json"
+    )
     args = parser.parse_args()
     selected = [m for m in known.values() if not args.only or m.name in args.only]
-    report = ROOT / "docs" / "CP25_HARNESS_MUTATIONS.json"
+    report = args.report.resolve()
+    if not report.is_relative_to(ROOT / "docs"):
+        raise SystemExit("Mutation reports stay inside docs")
     results: list[dict[str, Any]] = []
     if args.only and report.exists():
         results = [
@@ -139,9 +186,13 @@ def main() -> None:
     for mutation in selected:
         if available_mib() < 640:
             raise SystemExit("Insufficient RAM for the next small guard process")
-        path = Path(__file__).resolve().parent / mutation.file
+        path = (
+            (ROOT / mutation.file)
+            if mutation.file.startswith("src/")
+            else Path(__file__).resolve().parent / mutation.file
+        )
         original = path.read_bytes()
-        source = original.decode("utf-8")
+        source = original.decode("utf-8").replace("\r\n", "\n")
         if source.count(mutation.old) != 1:
             raise SystemExit(f"Nonunique mutation anchor: {mutation.name}")
         try:
@@ -177,7 +228,7 @@ def main() -> None:
     report.write_text(
         json.dumps(
             {
-                "scope": "capacity harness guards only; not CP25 production fixes",
+                "scope": "CP25 assertion guards (scope defined by each file/test)",
                 "caught": sum(r["assertion_caught"] for r in results),
                 "total": len(results),
                 "results": results,

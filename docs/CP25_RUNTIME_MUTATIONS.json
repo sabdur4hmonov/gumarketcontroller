@@ -1,0 +1,52 @@
+{
+  "scope": "CP25 assertion guards (scope defined by each file/test)",
+  "caught": 6,
+  "total": 6,
+  "results": [
+    {
+      "guard": "photo cleaning on loop",
+      "test": "tests/test_cp25_nonblocking.py::test_photo_cleaning_is_off_loop_but_session_writes_are_on_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_log": ".cp22-stage/cp25/C1-mutations.log"
+    },
+    {
+      "guard": "logo normalisation on loop",
+      "test": "tests/test_cp25_nonblocking.py::test_logo_normalisation_and_decoding_are_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_log": ".cp22-stage/cp25/C1-mutations.log"
+    },
+    {
+      "guard": "logo decode on loop",
+      "test": "tests/test_cp25_nonblocking.py::test_logo_normalisation_and_decoding_are_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_log": ".cp22-stage/cp25/C1-mutations.log"
+    },
+    {
+      "guard": "spelling extraction on loop",
+      "test": "tests/test_cp25_nonblocking.py::test_cold_spelling_extraction_is_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_log": ".cp22-stage/cp25/C1-mutations.log"
+    },
+    {
+      "guard": "legacy overlay on loop",
+      "test": "tests/test_cp25_nonblocking.py::test_legacy_overlay_is_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "loop lag not reported",
+      "test": "tests/test_cp25_loop_lag.py::test_delayed_loop_is_reported_and_normal_timing_recovers",
+      "assertion_caught": true,
+      "exit_code": 1
+    }
+  ],
+  "last_rechecked_guards": [
+    "legacy overlay on loop",
+    "loop lag not reported"
+  ],
+  "report_scope": "Accumulated per-guard proof"
+}

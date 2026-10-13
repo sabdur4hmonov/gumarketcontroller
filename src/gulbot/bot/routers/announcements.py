@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import io
 from collections.abc import Sequence
 from html import escape
@@ -47,6 +46,7 @@ from gulbot.models.announcement import AnnouncementDraft
 from gulbot.models.shop import Shop
 from gulbot.services import announcement_learning, instagram, shop_logo
 from gulbot.services import announcements as service
+from gulbot.services.offload import run_cpu
 
 
 def button(
@@ -247,9 +247,7 @@ async def send_template_previews(
     photo = await first_photo(bot, draft)
     logo = await shop_logo.logo_image(session, draft.shop_id) if draft.logo_on else None
     # Pillow is CPU work: off the event loop, so other shops' updates flow.
-    images = await asyncio.to_thread(
-        _previews, photo, theme_id, fields, shop_name, draft.caption_lang, logo
-    )
+    images = await run_cpu(_previews, photo, theme_id, fields, shop_name, draft.caption_lang, logo)
     await bot.send_media_group(
         message.chat.id,
         media=[
@@ -500,7 +498,7 @@ async def send_story_previews(
     bot: Bot, message: Message, session: AsyncSession, draft: AnnouncementDraft
 ) -> None:
     photo, shop_name, fields, theme, logo = await _story_inputs(bot, session, draft)
-    images = await asyncio.to_thread(
+    images = await run_cpu(
         _story_previews, photo, theme, fields, shop_name, draft.caption_lang, logo
     )
     await bot.send_media_group(
@@ -546,7 +544,7 @@ async def _rendered_story(
     bot: Bot, session: AsyncSession, draft: AnnouncementDraft, layout: str
 ) -> tuple[bytes, str]:
     photo, shop_name, fields, theme, logo = await _story_inputs(bot, session, draft)
-    story = await asyncio.to_thread(
+    story = await run_cpu(
         render_story,
         photo,
         theme=theme,
@@ -598,7 +596,7 @@ async def exact_preview(
             f, template=draft.template, shop_name=shop_name or "", lang=draft.caption_lang
         )
         photo = await first_photo(bot, draft)
-        themed = await asyncio.to_thread(
+        themed = await run_cpu(
             render_post,
             photo,
             template=draft.template,
@@ -614,14 +612,15 @@ async def exact_preview(
     if draft.template is None and draft.image_style != "none":
         buffer = io.BytesIO()
         await bot.download(draft.photos[0], destination=buffer)
-        rendered = overlay(
+        rendered = await run_cpu(
+            overlay,
             buffer.getvalue(),
             style=draft.image_style,
             price=f.price or 0,
             shop_name=shop_name or "",
         )
         if logo is not None:
-            rendered = await asyncio.to_thread(stamp_logo, rendered, logo)
+            rendered = await run_cpu(stamp_logo, rendered, logo)
         media[0] = BufferedInputFile(rendered, filename="bouquet.jpg")
     if logo is not None:
         # Every photo not already rendered above carries the logo alone.
@@ -629,7 +628,7 @@ async def exact_preview(
             if isinstance(item, str):
                 buffer = io.BytesIO()
                 await bot.download(item, destination=buffer)
-                stamped = await asyncio.to_thread(stamp_logo, buffer.getvalue(), logo)
+                stamped = await run_cpu(stamp_logo, buffer.getvalue(), logo)
                 media[index] = BufferedInputFile(stamped, filename=f"bouquet-{index}.jpg")
     if len(media) == 1:
         messages = [
