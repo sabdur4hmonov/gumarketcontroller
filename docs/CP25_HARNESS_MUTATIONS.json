@@ -1,0 +1,84 @@
+{
+  "scope": "capacity harness guards only; not CP25 production fixes",
+  "caught": 12,
+  "total": 12,
+  "results": [
+    {
+      "guard": "per-target reconciliation removed",
+      "test": "tests/test_cp25_delivery.py::test_delivery_total_cannot_hide_missing_shop_with_duplicate[4]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "foreign delivery ignored",
+      "test": "tests/test_cp25_delivery.py::test_extra_cross_shop_delivery_cannot_be_silently_ignored",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "readiness memory floor removed",
+      "test": "tests/test_cp25_memory_guard.py::CoordinatorMemoryTests::test_readiness_does_not_bypass_ram_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "fake API shutdown not awaited",
+      "test": "tests/test_cp25_api_shutdown.py::ApiShutdownTests::test_resource_report_is_published_after_api_close",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reset and children bypass lease",
+      "test": "tests/test_cp25_lease_lifetime.py::test_reset_and_children_cannot_start_without_lease",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "public reminder body bypassed",
+      "test": "tests/test_cp25_worker_lifetime.py::WorkerLifecycleTests::test_worker_exercises_public_task_bodies_on_distinct_closed_loops",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reply flood also affects polling",
+      "test": "tests/test_cp25_fleet_api.py::FleetProtocolTests::test_reply_only_flood_does_not_fake_a_polling_failure",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "small scale excluded",
+      "test": "tests/test_cp25_small_scales.py::test_small_scale_reaches_the_owned_seed_boundary[10]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "unbounded scale admitted",
+      "test": "tests/test_cp25_small_scales.py::test_unapproved_scale_never_resets_a_database[11]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "heavy startup floor bypassed",
+      "test": "tests/test_cp25_small_scales.py::test_heavy_scale_requires_three_gib_before_seed",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "night precheck bypassed",
+      "test": "tests/test_cp25_tonight.py::test_tonight_precheck_records_refusal_without_launch",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "night runtime floor bypassed",
+      "test": "tests/test_cp25_tonight.py::test_runtime_floor_stops_only_the_returned_child",
+      "assertion_caught": true,
+      "exit_code": 1
+    }
+  ],
+  "last_rechecked_guards": [
+    "night precheck bypassed",
+    "night runtime floor bypassed"
+  ],
+  "report_scope": "Accumulated per-guard proof"
+}

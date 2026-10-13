@@ -1,0 +1,67 @@
+# CP25 status — low-RAM pass, 2026-10-13
+
+Branch: `codex/cp25-reliability`. Local commits authorized; **no push/merge until
+full gate, both shadow sweeps and configured-secret scan with enough RAM**.
+Never access `D:/Coding projects/gulbot-designs`. Preserve unrelated Compose
+loopback edits and backup. Private DBs gulbot_cp25_load / gulbot_cp25_test;
+Redis broker6/results7/test8/FSM15, prefix-scoped cleanup and DB advisory lease.
+
+CP24 is complete at 0d5072a: 7706 gate tests, 32/32 mutations, shadows0,
+secrets scan, merge/push/cleanup and local single migration head a24d9e7b2c10.
+Not rerun. The prior 36 harness checks, 7/7 proofs and two 2-shop runs were
+also retained without rerunning. New small-scale admission: 8 tests and three
+assertion mutations. Night runner: 3 tests and two assertion mutations.
+Accumulated harness guard proof is 12/12; source bytes restored.
+
+## Small baseline complete, before hot-path changes
+
+10/25/50-shop runs all measured once and completed with 4 replies, one reminder
+and one order ping per shop, every target reconciled and zero uploads.
+See CHECKPOINTS.md and docs/capacity/cp25-before-{10,25,50}.json for all process
+CPU/RAM, query counts/times, pool connections and Redis ops, plus clearly
+marked extrapolations. Reply p50/p95/p99 ms:
+
+| Shops | Kind | p50 | p95 | p99 | Reminder tick s |
+|---|---|---|---|---|---|
+| 10 | measured | 1638.658 | 3414.314 | 3513.391 | 9.7122 |
+| 25 | measured | 1898.265 | 3235.328 | 3408.544 | 27.6413 |
+| 50 | measured | 4490.434 | 12605.364 | 13463.527 | 54.0587 |
+
+50 was the largest approved small scale; minimum sampled free RAM 599.65 MiB.
+Operator startup headroom was 1300/1800/2000 MiB respectively, checked in real
+time before each job. The runtime floor remains **512 MiB**, ordinary startup
+1024 MiB; >=100 scales now additionally require **3072 MiB before seeding**.
+No guard was weakened, no precheck retried in a loop, no model downloaded.
+
+## Tonight queue
+
+The original 100 attempt aborted at 509 MiB and is not a capacity result.
+Actual 100/500/1000 before/after runs, full gate (including both shadow sweeps),
+Playwright matrix and final secrets scan wait for >=3 GiB actual free RAM.
+
+One command from the main repo:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.cp25_load.tonight
+```
+
+Before ref is recorded in CP25_BEFORE_REF.txt after the baseline commit.
+Runner archives that immutable commit into an ignored private snapshot and
+sets PYTHONPATH to its src so editable installation cannot substitute hot fixes.
+Private .env copy is removed in finally. It runs before100/500/1000, then
+current after100/500/1000, collection, full gate and secrets, sequentially.
+Every job checks 3072 MiB and stops at 512 MiB; any failed precheck/job is
+recorded here and stops the queue without retry. No automatic push/merge.
+Collection count must match fresh JUnit with no failures/errors/skips.
+
+Extrapolated four-process RSS at1000 is 3872 MiB before OS/DB/VMM/web/STT;
+3 GiB free alone may not suffice. If actual1000 refuses/aborts, record that
+limit and retain the explicitly extrapolated estimate; do not call it measured.
+
+## Exact next low-RAM step
+
+Freeze baseline local commit, then failing-first async blocking tests and
+bounded executors/event-loop lag guard. Audit read notes exist under
+.cp22-stage/cp25/ASYNC_AUDIT.md. Polling faults/watchdog/timeouts/reply pacing,
+EXPLAIN/index/pool/cache/logging work and shadow metadata speedup follow in
+that order. Heavy proofs stay queued. No production hot path changed yet.

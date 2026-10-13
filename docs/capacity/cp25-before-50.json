@@ -1,0 +1,589 @@
+{
+  "shops": 50,
+  "fault": "none",
+  "healthy_replies": 200,
+  "expected_healthy_replies": 200,
+  "expected_reminder_sends": 50,
+  "expected_order_sends": 50,
+  "p50_ms": 4490.434,
+  "p95_ms": 12605.364,
+  "p99_ms": 13463.527,
+  "customer_updates_per_shop": 3,
+  "owner_announcements_per_shop": 1,
+  "wave_interval_s": 10,
+  "fake_api_delay_ms": 5,
+  "bot": {
+    "resources": {
+      "pid": 12596,
+      "elapsed_s": 200.313,
+      "cpu_seconds": 45.969,
+      "cpu_percent_one_core": 22.95,
+      "peak_rss_mib": 336.75
+    },
+    "db": {
+      "queries": 1453,
+      "query_total_ms": 104018.03,
+      "query_p50_ms": 51.042,
+      "query_p95_ms": 138.928,
+      "query_p99_ms": 434.964,
+      "peak_connections": 15,
+      "peak_checked_out": 15
+    },
+    "redis_ops": {
+      "GET": 250,
+      "DEL": 400,
+      "SET": 50
+    },
+    "redis_total_ms": 485109.5,
+    "startup_s": 39.564
+  },
+  "worker": {
+    "resources": {
+      "pid": 14620,
+      "elapsed_s": 109.779,
+      "cpu_seconds": 62.391,
+      "cpu_percent_one_core": 56.83,
+      "peak_rss_mib": 268.65
+    },
+    "db": {
+      "queries": 461,
+      "query_total_ms": 2085.11,
+      "query_p50_ms": 3.272,
+      "query_p95_ms": 11.544,
+      "query_p99_ms": 29.41,
+      "peak_connections": 1,
+      "peak_checked_out": 1
+    },
+    "reminder_ticks": [
+      {
+        "seconds": 54.0587,
+        "groups": 50,
+        "sent": 50
+      }
+    ],
+    "order_ticks": [
+      {
+        "seconds": 55.7167,
+        "claimed": 50,
+        "sent": 50
+      }
+    ]
+  },
+  "api_process": {
+    "pid": 16224,
+    "elapsed_s": 217.629,
+    "cpu_seconds": 5.578,
+    "cpu_percent_one_core": 2.56,
+    "peak_rss_mib": 65.31
+  },
+  "api_calls": {
+    "getMe": 50,
+    "getUpdates": 801,
+    "sendMessage": 200,
+    "sendPhoto": 150,
+    "answerCallbackQuery": 50
+  },
+  "peak_polls": 50,
+  "telegram_uploads": 0,
+  "telegram_upload_bytes": 0,
+  "infrastructure": {
+    "sampling_interval_s": 5,
+    "elapsed_s": 230.208,
+    "min_sampled_free_mib": 599.65,
+    "containers": {
+      "gulbot-postgres": {
+        "sampled_peak_memory_mib": 110.8,
+        "sampled_peak_cpu_percent": 31.25
+      },
+      "gulbot-redis": {
+        "sampled_peak_memory_mib": 14.39,
+        "sampled_peak_cpu_percent": 34.11
+      }
+    },
+    "samples": [
+      {
+        "elapsed_s": 1.815,
+        "free_mib": 2200.02,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 3.7,
+            "memory_mib": 75.07
+          },
+          "gulbot-redis": {
+            "cpu_percent": 3.85,
+            "memory_mib": 13.65
+          }
+        }
+      },
+      {
+        "elapsed_s": 10.908,
+        "free_mib": 2125.26,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.03,
+            "memory_mib": 75.32
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.69,
+            "memory_mib": 13.18
+          }
+        }
+      },
+      {
+        "elapsed_s": 17.388,
+        "free_mib": 1798.43,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.02,
+            "memory_mib": 74.85
+          },
+          "gulbot-redis": {
+            "cpu_percent": 4.33,
+            "memory_mib": 13.46
+          }
+        }
+      },
+      {
+        "elapsed_s": 24.687,
+        "free_mib": 1757.32,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.92,
+            "memory_mib": 75.06
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.61,
+            "memory_mib": 13.35
+          }
+        }
+      },
+      {
+        "elapsed_s": 31.858,
+        "free_mib": 1494.47,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 8.03,
+            "memory_mib": 77.12
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.76,
+            "memory_mib": 13.42
+          }
+        }
+      },
+      {
+        "elapsed_s": 39.213,
+        "free_mib": 1474.68,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.02,
+            "memory_mib": 77.23
+          },
+          "gulbot-redis": {
+            "cpu_percent": 6.42,
+            "memory_mib": 13.55
+          }
+        }
+      },
+      {
+        "elapsed_s": 46.19,
+        "free_mib": 2648.33,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.0,
+            "memory_mib": 77.47
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.5,
+            "memory_mib": 13.09
+          }
+        }
+      },
+      {
+        "elapsed_s": 52.409,
+        "free_mib": 2602.21,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 3.1,
+            "memory_mib": 77.16
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.68,
+            "memory_mib": 13.42
+          }
+        }
+      },
+      {
+        "elapsed_s": 59.646,
+        "free_mib": 2553.88,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.01,
+            "memory_mib": 77.51
+          },
+          "gulbot-redis": {
+            "cpu_percent": 6.72,
+            "memory_mib": 13.14
+          }
+        }
+      },
+      {
+        "elapsed_s": 66.467,
+        "free_mib": 2218.02,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.0,
+            "memory_mib": 77.34
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.9,
+            "memory_mib": 12.85
+          }
+        }
+      },
+      {
+        "elapsed_s": 74.073,
+        "free_mib": 2223.84,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 31.25,
+            "memory_mib": 110.8
+          },
+          "gulbot-redis": {
+            "cpu_percent": 34.11,
+            "memory_mib": 14.39
+          }
+        }
+      },
+      {
+        "elapsed_s": 81.462,
+        "free_mib": 2084.04,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 17.48,
+            "memory_mib": 88.7
+          },
+          "gulbot-redis": {
+            "cpu_percent": 1.64,
+            "memory_mib": 13.09
+          }
+        }
+      },
+      {
+        "elapsed_s": 88.068,
+        "free_mib": 2114.2,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 16.34,
+            "memory_mib": 98.75
+          },
+          "gulbot-redis": {
+            "cpu_percent": 1.43,
+            "memory_mib": 13.17
+          }
+        }
+      },
+      {
+        "elapsed_s": 95.643,
+        "free_mib": 2009.71,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 17.01,
+            "memory_mib": 86.14
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.92,
+            "memory_mib": 13.23
+          }
+        }
+      },
+      {
+        "elapsed_s": 102.285,
+        "free_mib": 1992.85,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.01,
+            "memory_mib": 85.99
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.8,
+            "memory_mib": 13.49
+          }
+        }
+      },
+      {
+        "elapsed_s": 109.558,
+        "free_mib": 1797.04,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 5.78,
+            "memory_mib": 88.28
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.79,
+            "memory_mib": 13.79
+          }
+        }
+      },
+      {
+        "elapsed_s": 116.551,
+        "free_mib": 1933.47,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.3,
+            "memory_mib": 88.56
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.73,
+            "memory_mib": 13.72
+          }
+        }
+      },
+      {
+        "elapsed_s": 123.834,
+        "free_mib": 1318.31,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.28,
+            "memory_mib": 88.45
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.83,
+            "memory_mib": 13.49
+          }
+        }
+      },
+      {
+        "elapsed_s": 130.902,
+        "free_mib": 1950.43,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.2,
+            "memory_mib": 88.7
+          },
+          "gulbot-redis": {
+            "cpu_percent": 4.24,
+            "memory_mib": 13.6
+          }
+        }
+      },
+      {
+        "elapsed_s": 137.4,
+        "free_mib": 2029.4,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.23,
+            "memory_mib": 88.49
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.59,
+            "memory_mib": 13.43
+          }
+        }
+      },
+      {
+        "elapsed_s": 144.67,
+        "free_mib": 2073.92,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 1.72,
+            "memory_mib": 88.73
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.71,
+            "memory_mib": 13.21
+          }
+        }
+      },
+      {
+        "elapsed_s": 151.042,
+        "free_mib": 2061.12,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 7.71,
+            "memory_mib": 88.87
+          },
+          "gulbot-redis": {
+            "cpu_percent": 4.41,
+            "memory_mib": 13.4
+          }
+        }
+      },
+      {
+        "elapsed_s": 157.404,
+        "free_mib": 2206.72,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 7.98,
+            "memory_mib": 89.54
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.49,
+            "memory_mib": 13.16
+          }
+        }
+      },
+      {
+        "elapsed_s": 164.831,
+        "free_mib": 2207.88,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.27,
+            "memory_mib": 89.47
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.8,
+            "memory_mib": 13.25
+          }
+        }
+      },
+      {
+        "elapsed_s": 172.046,
+        "free_mib": 1892.22,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.22,
+            "memory_mib": 89.23
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.7,
+            "memory_mib": 13.38
+          }
+        }
+      },
+      {
+        "elapsed_s": 179.398,
+        "free_mib": 1416.18,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.34,
+            "memory_mib": 89.61
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.74,
+            "memory_mib": 13.39
+          }
+        }
+      },
+      {
+        "elapsed_s": 185.846,
+        "free_mib": 1339.27,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.25,
+            "memory_mib": 89.57
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.75,
+            "memory_mib": 13.19
+          }
+        }
+      },
+      {
+        "elapsed_s": 192.441,
+        "free_mib": 1167.09,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.22,
+            "memory_mib": 89.14
+          },
+          "gulbot-redis": {
+            "cpu_percent": 6.29,
+            "memory_mib": 13.39
+          }
+        }
+      },
+      {
+        "elapsed_s": 199.681,
+        "free_mib": 1278.82,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.41,
+            "memory_mib": 89.59
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.67,
+            "memory_mib": 13.63
+          }
+        }
+      },
+      {
+        "elapsed_s": 206.292,
+        "free_mib": 1182.45,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.04,
+            "memory_mib": 89.43
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.79,
+            "memory_mib": 13.43
+          }
+        }
+      },
+      {
+        "elapsed_s": 213.52,
+        "free_mib": 825.44,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.0,
+            "memory_mib": 85.94
+          },
+          "gulbot-redis": {
+            "cpu_percent": 3.17,
+            "memory_mib": 13.37
+          }
+        }
+      },
+      {
+        "elapsed_s": 220.06,
+        "free_mib": 721.73,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.03,
+            "memory_mib": 85.58
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.48,
+            "memory_mib": 13.12
+          }
+        }
+      },
+      {
+        "elapsed_s": 226.475,
+        "free_mib": 599.65,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.03,
+            "memory_mib": 85.87
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.63,
+            "memory_mib": 12.93
+          }
+        }
+      },
+      {
+        "elapsed_s": 230.208,
+        "free_mib": 939.55,
+        "containers": {
+          "gulbot-postgres": {
+            "cpu_percent": 0.01,
+            "memory_mib": 75.71
+          },
+          "gulbot-redis": {
+            "cpu_percent": 0.62,
+            "memory_mib": 13.01
+          }
+        }
+      }
+    ]
+  },
+  "coordinator_process": {
+    "pid": 21536,
+    "elapsed_s": 230.805,
+    "cpu_seconds": 6.812,
+    "cpu_percent_one_core": 2.95,
+    "peak_rss_mib": 107.54
+  }
+}
