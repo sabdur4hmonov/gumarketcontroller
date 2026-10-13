@@ -69,6 +69,7 @@ class ShopRow:
     created_at: datetime
     photo_bytes: int
     gift_rule: bool
+    runtime: dict[str, Any] | None = None
 
 
 _SHOPS = text(
@@ -76,7 +77,7 @@ _SHOPS = text(
     SELECT s.id, s.name, s.status, s.created_at, s.subscription_status, s.paid_until,
            s.gift_premium_after_order, s.group_chat_id, s.channel_id,
            h.bot_username, h.token_valid, h.channel_ok, h.group_ok, h.checked_at,
-           h.detail ? 'bot' AS no_bot,
+           h.detail ? 'bot' AS no_bot, rt.state AS runtime,
            (SELECT max(p.indexed_at) FROM products p
              WHERE p.shop_id = s.id AND p.finalized_at IS NOT NULL) AS last_indexed_at,
            (SELECT count(*) FROM products p
@@ -88,6 +89,7 @@ _SHOPS = text(
            (SELECT coalesce(sum(ph.size_bytes), 0) FROM share_page_photos ph
              WHERE ph.shop_id = s.id AND ph.data IS NOT NULL) AS photo_bytes
       FROM shops s
+      LEFT JOIN shop_runtime_states rt ON rt.shop_id = s.id
       LEFT JOIN LATERAL (
             SELECT bot_username, token_valid, channel_ok, group_ok, checked_at, detail
               FROM shop_health_snapshots x
@@ -101,6 +103,9 @@ _SHOPS = text(
 
 def _health(row: Any, now: datetime) -> tuple[str, str, bool]:
     stale = row.last_indexed_at is None or row.last_indexed_at < now - STALE_CATALOGUE
+    runtime = getattr(row, "runtime", None) or {}
+    if runtime.get("status") in {"backoff", "stalled", "crashed", "start_error"}:
+        return "bad", "poller " + runtime["status"], stale
     if row.checked_at is None:
         return "unknown", "not checked yet", stale
     if row.no_bot:
@@ -146,6 +151,7 @@ async def shops_overview(session: AsyncSession, *, now: datetime | None = None) 
                 created_at=r.created_at,
                 photo_bytes=int(r.photo_bytes),
                 gift_rule=bool(r.gift_premium_after_order),
+                runtime=r.runtime,
             )
         )
     return out

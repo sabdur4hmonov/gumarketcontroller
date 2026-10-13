@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 9,
-  "total": 9,
+  "caught": 23,
+  "total": 23,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -60,12 +60,95 @@
       "test": "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "handler deadline bypassed",
+      "test": "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "cancellation rollback skipped",
+      "test": "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reply pacing removed",
+      "test": "tests/test_cp25_reliability.py::test_replies_in_one_chat_are_paced_without_delaying_another_bot",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "429 not retried",
+      "test": "tests/test_cp25_reliability.py::test_429_waits_then_retries_only_the_same_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "429 retry cap widened",
+      "test": "tests/test_cp25_reliability.py::test_permanent_429_is_bounded",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "poll progress failure not recorded",
+      "test": "tests/test_cp25_reliability.py::test_poll_failure_and_recovery_update_progress_without_reply_noise",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "crashed poller ignored",
+      "test": "tests/test_cp25_watchdog.py::test_crashed_poller_is_detected_without_touching_the_healthy_shop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "stalled poller ignored",
+      "test": "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "restart backoff bypassed",
+      "test": "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "backoff cap removed",
+      "test": "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "runtime state not persisted",
+      "test": "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin ignores poller failure",
+      "test": "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "runtime additive table omitted",
+      "test": "tests/test_cp25_runtime_schema.py::test_runtime_schema_is_additive_on_a_fresh_database",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin quantile changed",
+      "test": "tests/test_cp25_reliability.py::test_handler_p95_uses_the_same_interpolated_quantile_as_capacity",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "crash injection removed",
-    "factory crash stops fleet",
-    "TLS constructor blocks loop"
+    "runtime additive table omitted",
+    "admin quantile changed"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

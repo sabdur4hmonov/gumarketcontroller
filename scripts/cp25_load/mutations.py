@@ -27,7 +27,114 @@ class Mutation:
 
 
 def mutations() -> list[Mutation]:
+    reliability = (ROOT / "src/gulbot/bot/reliability.py").read_text(encoding="utf-8")
+    retry = reliability[
+        reliability.index("        for attempt in range(3):") : reliability.index(
+            '        raise RuntimeError("Unreachable reply retry state")'
+        )
+    ]
+    migration_file = "migrations/versions/a25e1d6c8b90_shop_runtime_states.py"
+    migration = (ROOT / migration_file).read_text(encoding="utf-8")
+    upgrade = migration[migration.index("def upgrade()") : migration.index("def downgrade()")]
     return [
+        Mutation(
+            "runtime additive table omitted",
+            migration_file,
+            upgrade,
+            "def upgrade() -> None:\n    pass\n\n\n",
+            "tests/test_cp25_runtime_schema.py::test_runtime_schema_is_additive_on_a_fresh_database",
+        ),
+        Mutation(
+            "admin quantile changed",
+            "src/gulbot/bot/reliability.py",
+            "position = (len(ordered) - 1) * 0.95",
+            "position = (len(ordered) - 1) * 1.0",
+            "tests/test_cp25_reliability.py::test_handler_p95_uses_the_same_interpolated_quantile_as_capacity",
+        ),
+        Mutation(
+            "handler deadline bypassed",
+            "src/gulbot/bot/reliability.py",
+            "return await asyncio.wait_for(handler(event, data), timeout=self.seconds)",
+            "return await handler(event, data)",
+            "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
+        ),
+        Mutation(
+            "cancellation rollback skipped",
+            "src/gulbot/bot/middlewares.py",
+            "except BaseException:",
+            "except Exception:",
+            "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
+        ),
+        Mutation(
+            "reply pacing removed",
+            "src/gulbot/bot/reliability.py",
+            "interval = 3 if numeric_chat < 0 else 1",
+            "interval = 0",
+            "tests/test_cp25_reliability.py::test_replies_in_one_chat_are_paced_without_delaying_another_bot",
+        ),
+        Mutation(
+            "429 not retried",
+            "src/gulbot/bot/reliability.py",
+            "if attempt == 2 or self.clock() + wait > deadline:",
+            "if True:",
+            "tests/test_cp25_reliability.py::test_429_waits_then_retries_only_the_same_request",
+        ),
+        Mutation(
+            "429 retry cap widened",
+            "src/gulbot/bot/reliability.py",
+            retry,
+            retry.replace("range(3)", "range(4)").replace("attempt == 2", "attempt == 3"),
+            "tests/test_cp25_reliability.py::test_permanent_429_is_bounded",
+        ),
+        Mutation(
+            "poll progress failure not recorded",
+            "src/gulbot/bot/reliability.py",
+            "self.progress.consecutive_failures += 1",
+            "pass",
+            "tests/test_cp25_reliability.py::test_poll_failure_and_recovery_update_progress_without_reply_noise",
+        ),
+        Mutation(
+            "crashed poller ignored",
+            "src/gulbot/bot/run.py",
+            "if poller.task.done():",
+            "if False:",
+            "tests/test_cp25_watchdog.py::test_crashed_poller_is_detected_without_touching_the_healthy_shop",
+        ),
+        Mutation(
+            "stalled poller ignored",
+            "src/gulbot/bot/run.py",
+            "elif now - poller.progress.last_progress > 90:",
+            "elif False:",
+            "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+        ),
+        Mutation(
+            "restart backoff bypassed",
+            "src/gulbot/bot/run.py",
+            "if self._clock() < self._retry_at.get(shop_id, 0):",
+            "if False:",
+            "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+        ),
+        Mutation(
+            "backoff cap removed",
+            "src/gulbot/bot/run.py",
+            "delay = min(60, 2 ** min(count - 1, 6))",
+            "delay = 2 ** min(count - 1, 6)",
+            "tests/test_cp25_watchdog.py::test_stall_backoff_and_restart_use_injected_time",
+        ),
+        Mutation(
+            "runtime state not persisted",
+            "src/gulbot/services/runtime_state.py",
+            "if not states:",
+            "if True:",
+            "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+        ),
+        Mutation(
+            "admin ignores poller failure",
+            "src/gulbot/services/admin_panel.py",
+            'if runtime.get("status") in {"backoff", "stalled", "crashed", "start_error"}:',
+            "if False:",
+            "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+        ),
         Mutation(
             "crash injection removed",
             "load_roles.py",
@@ -211,7 +318,7 @@ def main() -> None:
             raise SystemExit("Insufficient RAM for the next small guard process")
         path = (
             (ROOT / mutation.file)
-            if mutation.file.startswith("src/")
+            if mutation.file.startswith(("src/", "migrations/"))
             else Path(__file__).resolve().parent / mutation.file
         )
         original = path.read_bytes()

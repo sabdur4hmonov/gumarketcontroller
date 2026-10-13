@@ -32,6 +32,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import time
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
@@ -49,10 +50,12 @@ from gulbot.bot.factory import (
 )
 from gulbot.bot.loop_lag import monitor as monitor_event_loop
 from gulbot.bot.registry import BotFactory, build_bot_for, stored_tokens
+from gulbot.bot.reliability import PollObserver, PollProgress
 from gulbot.config import get_settings
 from gulbot.db.session import build_session_factory
 from gulbot.sending.transport import ShopBotUnavailable
 from gulbot.services.offload import run_cpu
+from gulbot.services.runtime_state import store_states
 from gulbot.services.shop_tokens import TokenCipherError, cipher_ready, load_bot_credentials
 
 log = logging.getLogger("gulbot")
@@ -110,6 +113,8 @@ class ShopPoller:
     dispatcher: Dispatcher
     bot: Bot
     task: asyncio.Task[None]
+    progress: PollProgress
+    started_at: float
 
 
 class ShopPollers:
@@ -122,6 +127,7 @@ class ShopPollers:
         storage: BaseStorage,
         bot_factory: BotFactory = build_bot_for,
         poll: PollFn = poll_forever,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self._session_factory = session_factory
         # ONE storage for every dispatcher: its keys carry the bot id (C3 of
@@ -129,6 +135,10 @@ class ShopPollers:
         self._storage = storage
         self._bot_factory = bot_factory
         self._poll = poll
+        self._clock = clock
+        self._retry_at: dict[int, float] = {}
+        self._failures: dict[int, int] = {}
+        self._states: dict[int, dict[str, Any]] = {}
         self.running: dict[int, ShopPoller] = {}
         #: The last problem reported per shop, so a refresh every minute does
         #: not repeat the same error line forever.
@@ -142,12 +152,22 @@ class ShopPollers:
     async def sync(self) -> list[int]:
         """Start polling every shop that has a usable bot and is not already
         polled. Returns the shops started this time."""
+        await self.watchdog()
         async with self._session_factory() as session:
             credentials = await load_bot_credentials(session)
         token_for = stored_tokens(credentials)
+        for shop_id in list(self.running):
+            if shop_id not in credentials:
+                poller = self.running.pop(shop_id)
+                await _stop_poll(poller.dispatcher, poller.task)
+                await self._close_bot(poller.bot)
+        self._states = {k: v for k, v in self._states.items() if k in credentials}
+        self._retry_at = {k: v for k, v in self._retry_at.items() if k in credentials}
 
         started: list[int] = []
         for shop_id in sorted(credentials):
+            if self._clock() < self._retry_at.get(shop_id, 0):
+                continue
             current = self.running.get(shop_id)
             if current is not None and not current.task.done():
                 continue
@@ -170,6 +190,7 @@ class ShopPollers:
                 # Exception text can contain a credential or URL. Store/log
                 # only its type, and keep starting the remaining shops.
                 self._report(shop_id, f"factory_error:{type(error).__name__}")
+                self._backoff(shop_id, type(error).__name__)
                 continue
 
             clash = next((p.shop_id for p in self.running.values() if p.bot.id == bot.id), None)
@@ -184,11 +205,22 @@ class ShopPollers:
             dispatcher = build_dispatcher(
                 session_factory=self._session_factory, shop_id=shop_id, storage=self._storage
             )
+            progress = PollProgress(last_progress=self._clock())
+            middleware = getattr(bot.session, "middleware", None)
+            if middleware is not None:
+                middleware.register(PollObserver(progress))
             task = asyncio.create_task(self._poll(dispatcher, bot), name=f"poll-shop-{shop_id}")
-            self.running[shop_id] = ShopPoller(shop_id, dispatcher, bot, task)
+            self.running[shop_id] = ShopPoller(
+                shop_id, dispatcher, bot, task, progress, self._clock()
+            )
+            self._states[shop_id] = {
+                "status": "running",
+                "restarts": self._failures.get(shop_id, 0),
+            }
             self._reported.pop(shop_id, None)
             started.append(shop_id)
             log.info("shop %s: polling bot %s", shop_id, bot.id)
+        await self._persist()
         return started
 
     async def stop(self) -> None:
@@ -197,10 +229,69 @@ class ShopPollers:
         for poller in pollers:
             await self._close_bot(poller.bot)
 
+    async def watchdog(self) -> list[int]:
+        found = []
+        now = self._clock()
+        for shop_id, poller in list(self.running.items()):
+            reason = ""
+            if poller.task.done():
+                error = None if poller.task.cancelled() else poller.task.exception()
+                reason = type(error).__name__ if error else "poller_stopped"
+            elif now - poller.progress.last_progress > 90:
+                reason = "poller_stalled"
+            elif poller.progress.consecutive_failures >= 3:
+                reason = poller.progress.error_type or "poll_errors"
+            if reason:
+                await _stop_poll(poller.dispatcher, poller.task)
+                await self._close_bot(poller.bot)
+                del self.running[shop_id]
+                self._backoff(shop_id, reason)
+                found.append(shop_id)
+            elif now - poller.started_at >= 60:
+                self._failures[shop_id] = 0
+        if found:
+            await self._persist()
+        return found
+
+    def _backoff(self, shop_id: int, reason: str) -> None:
+        count = self._failures.get(shop_id, 0) + 1
+        self._failures[shop_id] = count
+        delay = min(60, 2 ** min(count - 1, 6))
+        self._retry_at[shop_id] = self._clock() + delay
+        self._states[shop_id] = {
+            "status": "backoff",
+            "reason": reason,
+            "retry_delay_s": delay,
+            "restarts": count,
+        }
+        self._report(shop_id, reason)
+
+    def restart_due(self) -> bool:
+        return any(
+            k not in self.running and due <= self._clock() for k, due in self._retry_at.items()
+        )
+
+    async def _persist(self) -> None:
+        for shop_id, poller in self.running.items():
+            metrics = (
+                poller.dispatcher.get("handler_deadline")
+                if isinstance(poller.dispatcher, Dispatcher)
+                else None
+            )
+            state = self._states.setdefault(shop_id, {"status": "running"})
+            if metrics is not None:
+                state.update(metrics.snapshot())
+        try:
+            async with asyncio.timeout(5), self._session_factory() as session:
+                await store_states(session, self._states)
+                await session.commit()
+        except Exception as error:
+            log.warning("runtime snapshot unavailable: %s", type(error).__name__)
+
     @staticmethod
     async def _close_bot(bot: Bot) -> None:
         with contextlib.suppress(Exception):
-            await bot.session.close()
+            await asyncio.wait_for(bot.session.close(), timeout=5)
 
 
 @dataclass
@@ -287,10 +378,18 @@ async def main() -> None:
             "on" if platform is not None else "off",
             settings.environment,
         )
+        last_refresh = time.monotonic()
         while True:
-            await asyncio.sleep(SHOP_REFRESH_SECONDS)
+            await asyncio.sleep(5)
             try:
-                await pollers.sync()
+                found = await pollers.watchdog()
+                if (
+                    found
+                    or pollers.restart_due()
+                    or time.monotonic() - last_refresh >= SHOP_REFRESH_SECONDS
+                ):
+                    await pollers.sync()
+                    last_refresh = time.monotonic()
             except Exception:
                 # A database blip must not take down every shop's bot.
                 log.exception("refreshing the shop pollers failed; trying again later")

@@ -216,6 +216,9 @@ async def test_a_poller_that_died_is_restarted_on_the_next_sync(
     dead.task.cancel()
     await asyncio.sleep(0)
 
+    assert await subject.sync() == []
+    assert subject._states[a]["status"] == "backoff"
+    subject._clock = lambda: subject._retry_at[a] + 0.01
     assert await subject.sync() == [a]
     assert subject.running[a] is not dead
 

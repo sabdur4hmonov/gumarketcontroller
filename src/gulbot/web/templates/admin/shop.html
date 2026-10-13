@@ -18,6 +18,10 @@
     <dt>Admin guruhi</dt><dd>{% if d.group_chat_id is none %}<span class="badge warn">yo‘q</span>{% elif row and row.group_ok %}ulangan{% else %}<span class="badge bad">bot guruhda ishlay olmaydi</span>{% endif %}</dd>
     <dt>Oxirgi post</dt><dd>{% if row and row.last_indexed_at %}{{ row.last_indexed_at.strftime('%Y-%m-%d') }}{% else %}—{% endif %}</dd>
     {% if row and row.health_reason %}<dt>Sabab</dt><dd>{{ row.health_reason }}</dd>{% endif %}
+    {% if row and row.runtime %}
+    <dt>Bot jarayoni</dt><dd>{{ row.runtime.get('status', '') }} · xato {{ row.runtime.get('errors', 0) }} · kutish chegarasi {{ row.runtime.get('timeouts', 0) }}</dd>
+    <dt>Javob p95</dt><dd>{{ row.runtime.get('p95_ms') or '—' }} ms (oxirgi {{ row.runtime.get('samples', 0) }} yangilanish)</dd>
+    {% endif %}
     <dt>Egalari</dt><dd>{{ d.owner_count }} · tel. {{ d.owner_phone_masked }}</dd>
     <dt>Kim tasdiqlaydi</dt><dd>{% if d.staff_count %}ro‘yxatdagi {{ d.staff_count }} xodim va egalari{% else %}<span class="badge warn">ro‘yxat yo‘q</span> guruhdagi har kim buyurtmani tasdiqlay yoki rad eta oladi (ega /staff bilan ro‘yxat tuzadi){% endif %}</dd>
     <dt>Til / vaqt zonasi</dt><dd>{{ d.lang }} · {{ d.timezone }}</dd>

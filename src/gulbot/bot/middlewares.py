@@ -178,7 +178,7 @@ class DbSessionMiddleware(BaseMiddleware):
                 result = await handler(event, data)
                 await session.commit()
                 return result
-            except Exception:
+            except BaseException:
                 await session.rollback()
                 raise
 

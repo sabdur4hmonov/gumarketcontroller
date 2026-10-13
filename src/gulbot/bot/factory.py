@@ -31,6 +31,7 @@ from gulbot.bot.middlewares import (
     ShopPausedMiddleware,
 )
 from gulbot.bot.owner_panel import OwnerPanelMiddleware
+from gulbot.bot.reliability import HandlerDeadline, ReplyPolicy
 from gulbot.bot.routers import build_platform_routers, build_routers
 from gulbot.config import get_settings
 from gulbot.worker.debounce import schedule_album_finalize
@@ -70,9 +71,11 @@ def build_bot(token: str | None = None) -> Bot:
     Uncached on purpose; see worker/tasks.py. A token is passed only by
     `gulbot.bot.registry`, which picks one per shop.
     """
+    session = AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT)
+    session.middleware.register(ReplyPolicy())
     return Bot(
         token=token if token is not None else get_settings().bot_token.get_secret_value(),
-        session=AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT),
+        session=session,
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 
@@ -142,6 +145,9 @@ def build_dispatcher(
     # Outer: run once per update, before routing. The chat gate is FIRST so a
     # message in the shop's admin group opens no session and creates no
     # customer -- see ChatGateMiddleware for what it used to do instead.
+    deadline = HandlerDeadline(shop_id)
+    dispatcher["handler_deadline"] = deadline
+    dispatcher.update.outer_middleware(deadline)
     dispatcher.update.outer_middleware(
         ChatGateMiddleware(shop_id=shop_id, session_factory=session_factory)
     )

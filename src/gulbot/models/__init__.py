@@ -30,6 +30,7 @@ from gulbot.models.product import (
     ProductSource,
 )
 from gulbot.models.recipient import Recipient
+from gulbot.models.runtime import ShopRuntimeState
 from gulbot.models.share_page import (
     SharePage,
     SharePageOption,
@@ -43,6 +44,7 @@ from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
 
 __all__ = [
+    "ShopRuntimeState",
     "AnnouncementCorrection",
     "AnnouncementDraft",
     "AnnouncementPreference",

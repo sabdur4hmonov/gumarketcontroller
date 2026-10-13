@@ -97,3 +97,26 @@ Crash is one-shot task cancellation, replies for that shop excluded, worker
 sends still required for all10. Source JSON under docs/capacity/cp25-fault-*.json.
 Next low-RAM item: watchdog/backoff/admin record and handler/API deadline/pacing
 guards. Full-scale isolation and loaded full-suite interaction wait for tonight.
+
+## C3 in progress
+
+25s handler deadline encloses DB middleware; cancellation rolls back. Per-bot/chat reply pacing and max3 Telegram429 attempts with10s retry-wait budget; global28 messages/s, groups20/min; media counts included. Poll progress watches getMe/getUpdates, crash/stall90s/three failed polls -> backoff1/2/4/... capped60s; supervisor checks every5s. A single batch upsert persists shop runtime state independently of10-minute health snapshots, admin shop view shows p95/errors/timeouts and existing alerts flag poller failures.
+
+New additive revision a25e1d6c8b90 aftera24 creates shop_runtime_states. Fresh probe upgrade/downgrade/upgrade passed; 18 poller/admin neighbours and6 reliability guards pass, strict mypy6 touched files pass. New C3 mutations are running (do not rerun earlier proof); migration not yet applied to dev DB. C3 not committed yet. Exact next: finish new mutation subset, schema guard proof, verify dev current=head, local C3 commit, then low-RAM EXPLAIN/cache/shadow-cache implementation. No100/500/1000, full gate, shadow or Playwright job started.
+
+## C3 complete locally (heavy interaction proof queued)
+
+New guards:6 reliability tests,2 watchdog tests, runtime/admin test and fresh
+additive migration roundtrip;18 focused poller/admin-neighbour run passed.
+C3 assertion mutations14/14; accumulated runtime23/23 plus harness12/12.
+Source restored byte-exact; Ruff and strict mypy7 touched files passed.
+Local dev current=head=a25e1d6c8b90. Admin view exposes persisted per-shop
+p95/errors/timeouts; poller failures enter existing alerts without replacing
+token/channel/group health. Cancellation rolls back before deadline returns.
+Reply limits are per-session/process with Telegram429 recovery; cross-process
+collision is recovered via429, not represented as a global Redis quota.
+
+Next: PhaseD read-only EXPLAIN on the owned small fixture, additive indexes if
+plans justify them, configurable pools/connect timeouts, photo/static caching
+and Caddy compression; then shadow source-location cache. Only focused files
+and new mutation cases. Full100/500/1000 and loaded gate remain queued.
