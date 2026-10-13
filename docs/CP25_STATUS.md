@@ -158,3 +158,73 @@ Before/after catalogue plans use scan/sort versus reverse index scan, and all
 temporary inserted rows were rolled back. Tonight's command remains unchanged.
 Next after D1 local commit: photo/static validators and bounded template I/O;
 Caddy gzip and precompressed Brotli path; source-metadata-only shadow speedup.
+
+## D2 web/cache in progress
+
+D1 committed locally as309bfc0; no push. New web3 guards failed first on
+assertions (unversioned immutable cache, missing photo ETag, cold file I/O on
+loop). Templates now prepare dicts on the loop and render in the bounded CPU
+pool; auth/admin/shop/public render paths converted. Static immutable applies
+only to the exact current hash; other URLs revalidate. Photo ETag is checked
+only after live-page/tenancy/moderation checks, private max-age0 must-revalidate.
+
+First focused web run:72 passed,2 failed. One real issue: FileResponse changes
+404 status during prepare, now final security/cache headers re-applied there.
+One new fixture error: hidden page needs hidden_by+hidden_reason, corrected;
+not counted as mutation evidence. Corrected web/compression/shop tests running.
+Small Brotli1.2 codec installed (369kB wheel), no models or large downloads.
+Static CSS/JS/SVG sidecar builder bounded1MiB/input, no customer photos; stock
+Caddy gzip/zstd with upstream negotiated .br forwarding. Actual free RAM before
+this job1023MiB; no heavy jobs run. New web/compression guard mutations next.
+
+D2 progress: corrected web/compression/shop tests35/35 passed; two extra
+compression guard tests and affected admin/login/static neighbours5/5 passed.
+Ten web/cache/compression assertion mutations10/10 caught (runtime46/46,
+harness12/12); source restored. Resolved-root and temporary-symlink mutations
+are still pending. The final lint/type job refused at718MiB before execution;
+recorded once, no retry loop. D2 remains uncommitted pending that check.
+Move next to the shadow cache design and tiny focused proof; no full sweep.
+Other runtime follow-ups: platform deadline/TLS constructor, stale persisted
+runtime heartbeat, shared supervisor cadence in the after harness, bounded
+parallel registry closure. Loaded pending-reminder plans still await RAM.
+
+## Current resume point: memory refusal, no retry loop
+
+Actual next independent job (tiny shadow RED test) also refused, at525MiB free.
+No new job started after that. Existing512MiB runtime floor and >=100-shop
+3072MiB startup floor are unchanged. No application/process stopped.
+
+Shadow design is docs/CP25_SHADOW_SPEEDUP.md. The unexecuted tiny regression
+is staged under ignored .cp22-stage/cp25/test_cp25_shadow_cache.py, outside
+pytest collection until its RED run can be executed. No shadow implementation
+or production sweep is claimed complete. D2 remains uncommitted with35+5
+focused passing runs and10 assertion mutations; final lint/type and two extra
+compression mutations waiting for RAM. D1 local commit309bfc0 is complete.
+
+Exact next focused commands once the precheck permits (not a retry loop):
+
+```powershell
+$env:POSTGRES_TEST_DB='gulbot_cp25_test'; $env:REDIS_DB_BROKER='6'; $env:REDIS_DB_RESULTS='7'; $env:REDIS_DB_FSM='15'; $env:REDIS_DB_TEST='8'
+# First check actual free RAM; focused jobs need768MiB. Stop/record if refused.
+.\.venv\Scripts\python.exe -m scripts.cp25_load.mutations --report docs/CP25_RUNTIME_MUTATIONS.json --only 'static builder ignores resolved root' 'static builder writes temporary symlink'
+.\.venv\Scripts\python.exe -m ruff check --fix src/gulbot/web scripts/compress_static.py scripts/cp25_load/mutations.py tests/test_cp25_web_cache.py tests/test_cp25_compression.py
+.\.venv\Scripts\python.exe -m ruff format src/gulbot/web/app.py src/gulbot/web/render.py src/gulbot/web/admin.py src/gulbot/web/admin_screens.py src/gulbot/web/shop_panel.py scripts/compress_static.py scripts/cp25_load/mutations.py tests/test_cp25_web_cache.py tests/test_cp25_compression.py
+.\.venv\Scripts\python.exe -m mypy src/gulbot/web/app.py src/gulbot/web/render.py src/gulbot/web/admin.py src/gulbot/web/admin_screens.py src/gulbot/web/shop_panel.py scripts/compress_static.py
+# Each command is a separate job: re-check actual RAM before each.
+# Then D2 local commit; prepare/run shadow tiny RED, implement local metadata
+# cache, focused GREEN and new mutations. Remaining runtime items above follow.
+```
+
+Tonight heavy queue remains one line from the repo, checking3072MiB before each
+job,512MiB while running, frozen f8f73b8 baseline, no automatic push/merge:
+
+```powershell
+.\.venv\Scripts\python.exe -m scripts.cp25_load.tonight
+```
+
+Finish the listed focused checks/source fixes before expecting its full gate
+to go green. Actual100/500/1000, loaded pending-query plans, full gate/both
+production sweeps, Playwright matrix, final configured-secret scan and
+4/8/24GB capacity/webhook decision remain waiting. No heavy run/push/merge.
+`nD2 final lint/type precheck refused below768MiB; no retry.
+`nShadow tiny RED precheck refused below768MiB; no retry. Test/design prepared; implementation waits for RAM.
