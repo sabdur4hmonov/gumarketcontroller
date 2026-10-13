@@ -13,19 +13,18 @@ also retained without rerunning. New small-scale admission: 8 tests and three
 assertion mutations. Night runner: 3 tests and two assertion mutations.
 Accumulated harness guard proof is 12/12; source bytes restored.
 
-## Small baseline complete, before hot-path changes
+## Historical pressure runs — NOT a baseline
 
-10/25/50-shop runs all measured once and completed with 4 replies, one reminder
+10/25/50-shop runs all measured under memory pressure, NOT a baseline, once and completed with 4 replies, one reminder
 and one order ping per shop, every target reconciled and zero uploads.
 See CHECKPOINTS.md and docs/capacity/cp25-before-{10,25,50}.json for all process
-CPU/RAM, query counts/times, pool connections and Redis ops, plus clearly
-marked extrapolations. Reply p50/p95/p99 ms:
+CPU/RAM, query counts/times, pool connections and Redis ops, plus withdrawn historical extrapolations that must not support capacity conclusions. Reply p50/p95/p99 ms:
 
 | Shops | Kind | p50 | p95 | p99 | Reminder tick s |
 |---|---|---|---|---|---|
-| 10 | measured | 1638.658 | 3414.314 | 3513.391 | 9.7122 |
-| 25 | measured | 1898.265 | 3235.328 | 3408.544 | 27.6413 |
-| 50 | measured | 4490.434 | 12605.364 | 13463.527 | 54.0587 |
+| 10 | measured under memory pressure, NOT a baseline | 1638.658 | 3414.314 | 3513.391 | 9.7122 |
+| 25 | measured under memory pressure, NOT a baseline | 1898.265 | 3235.328 | 3408.544 | 27.6413 |
+| 50 | measured under memory pressure, NOT a baseline | 4490.434 | 12605.364 | 13463.527 | 54.0587 |
 
 50 was the largest approved small scale; minimum sampled free RAM 599.65 MiB.
 Operator startup headroom was 1300/1800/2000 MiB respectively, checked in real
@@ -54,13 +53,11 @@ Every job checks 3072 MiB and stops at 512 MiB; any failed precheck/job is
 recorded here and stops the queue without retry. No automatic push/merge.
 Collection count must match fresh JUnit with no failures/errors/skips.
 
-Extrapolated four-process RSS at1000 is 3872 MiB before OS/DB/VMM/web/STT;
-3 GiB free alone may not suffice. If actual1000 refuses/aborts, record that
-limit and retain the explicitly extrapolated estimate; do not call it measured.
+Historical1000-shop extrapolation3872MiB is withdrawn because its source runs were under memory pressure. New capacity/extrapolation waits for valid pre-change measurements; do not use the old slope.
 
 ## Exact next low-RAM step
 
-Baseline frozen at f8f73b8. C1 image/spelling offloads and a 100ms loop-lag
+Pre-change source ref frozen at f8f73b8; this does not validate the pressure measurements. C1 image/spelling offloads and a 100ms loop-lag
 guard are implemented; 43 touched/direct-neighbour tests passed, C1 mutations
 6/6 assertion catches, strict typing passed for 8 touched files. A process-owned
 two-thread executor carries only byte/text/Pillow work; AsyncSession stays on
@@ -91,8 +88,7 @@ the bounded executor with a20s startup deadline. No token/error text logged.
 | crash | 36/36 | 1352.976/1358.800 | 10/10 |
 
 All four actual fault runs passed once with per-target reconciliation and
-zero uploads. Healthy p95 remained below the original10-shop baseline3414ms
-in these observations; laptop variability is not a universal latency guarantee.
+zero uploads. The historical comparison to10-shop3414ms is withdrawn for capacity conclusions: both workload timing and machine pressure need a valid controlled rerun.
 Crash is one-shot task cancellation, replies for that shop excluded, worker
 sends still required for all10. Source JSON under docs/capacity/cp25-fault-*.json.
 Next low-RAM item: watchdog/backoff/admin record and handler/API deadline/pacing
@@ -226,5 +222,86 @@ Finish the listed focused checks/source fixes before expecting its full gate
 to go green. Actual100/500/1000, loaded pending-query plans, full gate/both
 production sweeps, Playwright matrix, final configured-secret scan and
 4/8/24GB capacity/webhook decision remain waiting. No heavy run/push/merge.
-`nD2 final lint/type precheck refused below768MiB; no retry.
-`nShadow tiny RED precheck refused below768MiB; no retry. Test/design prepared; implementation waits for RAM.
+D2 final lint/type precheck refused below768MiB; no retry.
+Shadow tiny RED precheck refused below768MiB; no retry. Test/design prepared; implementation waits for RAM.
+
+
+## Latest steering: invalidate pressure timings and remeasure before any remaining fixes
+
+All10/25/50 rows are **measured under memory pressure, NOT a baseline**. Do not
+use their CPU/RAM slopes, extrapolations, latency or tick timings for capacity.
+Recorded historical HEAD was0d5072a with harness additions later committed as
+f8f73b8405322ec99cb1e06305fc9f7330f31df0. Raw artifacts already exist in that
+commit, and git diff0d5072a..f8f73b8 -- src migrations is empty; first production
+performance commit8291a3d, catalogue/pool/cache309bfc0 later. Runtime SHA/blob
+hash provenance was not captured, so a clean exact executed-tree claim would
+be unsupported. Fresh before uses the immutable immediate pre-changef8f73b8.
+
+Historical harness scale-start log free RAM:10=2191,25=2697,50=1948MiB;
+minimum sampled739.20/1116.62/599.65MiB respectively.525MiB was a later denied
+focused-job precheck. Swap was not measured, so no claim of proven swapping.
+Nonetheless every historical capacity row is invalidated as requested.
+
+Current verification:1628MiB actual free RAM (<3072); no measurement run started.
+Next prepare an isolated detached pre-change checkout, separate before DB/test
+DB and Redis indexes, record source/dependency provenance per run, and profile
+real public reminder task. Keep main working tree and designer folder intact.
+All new measurements including10/25/50 now require3072MiB free at precheck.
+Order: fresh pre-change10/25/50 -> profile and compare pressure observations ->
+real100/500/1000 before then current after -> remaining focused web checks,
+shadow implementation, full gate and secrets. No push until full gate green.
+
+Harness issue found before after-table: measured_engine only accepts database,
+but D1 task engine now passes task=True. Fix only the measurement wrapper to
+forward keyword options; otherwise the after harness would fail or mask pool
+settings. Before source task engine has no such option. Profile must separate
+RPC5ms, production bot/TLS construction, DB time, registry closure and limiter
+wait; no attribution of ~1s/shop without that evidence.
+
+Isolated detached checkout prepared at D:/Coding projects/gulbot-cp25-before,
+HEAD=f8f73b8405322ec99cb1e06305fc9f7330f31df0, initially clean. Preparation
+RAM1992MiB, not a benchmark. No private .env copied, no main tree stash/reset.
+Before resources: gulbot_cp25_before_load / gulbot_cp25_before_test,
+Redis broker9/results10/FSM12/test11. After remains own6/7/15/8 resources.
+Databases are not created/seeded until a run is admitted.
+
+Prepared measurement-only adapter scripts/cp25_load/reference_measure.py:
+records actual commit, production file/tree SHA256, dirty state, dependency
+versions, adapter SHA, resource names and actual precheck RAM per scale.
+Imports must resolve into the chosen source checkout. Production sources are
+unchanged in the reference worktree. Narrow harness adaptations forward engine
+keyword options and route owned DB/FSM namespace cleanup; no pool override.
+Optional diagnostic task cProfile plus bot_for/close/limiter wall spans is
+separate from unprofiled measurements. This new adapter is prepared, not yet
+executed/validated; runtime/guard verification is a measurement prerequisite.
+
+Fresh small before command (only after actual3072MiB precheck permits):
+
+```powershell
+.\.venv\Scripts\python.exe scripts\cp25_load\reference_measure.py --source 'D:\Coding projects\gulbot-cp25-before' --phase before --scales 10,25,50 --output .cp22-stage/cp25/reference-small-before-v1
+```
+
+Separate diagnostic10-shop profile uses the same command with --scales10,
+--profile and a new output .cp22-stage/cp25/reference-profile-before-v1.
+It is excluded from baseline tables. Raw pressure observations are retained;
+100/500/1000 extrapolations withdrawn. Valid fresh tables/profiles pending RAM.
+The tonight runner must be wired to the same isolated adapter/resources and
+stop after measurements; remaining checks/gate follow in the requested order.
+
+Tonight is now wired to the isolated reference adapter: default command runs
+before100/500/1000 then after100/500/1000 and stops; --gate-only runs collection,
+full gate/both sweeps/secrets after the remaining work, without repeating
+already passed measurements. No private .env copy. New adapter/runner changes
+still require focused prerequisite verification before executing measurements.
+All old12 harness mutation proofs are retained; no new proof is claimed.
+Read-only preparation check3058MiB free, still below3072, no run started.
+
+Current measurements table:
+
+| Scale | Before code | Before status | After code | After status |
+|---|---|---|---|---|
+|10/25/50|f8f73b8405322ec99cb1e06305fc9f7330f31df0 clean reference|not measured; waiting for >=3072MiB|current branch + per-run production SHA256|not measured|
+|100/500/1000|same clean reference|not measured|current branch + per-run production SHA256|not measured|
+
+No new extrapolation or capacity claim is supported yet. Old pressure numeric
+observations remain in CHECKPOINTS but every row is explicitly invalidated.

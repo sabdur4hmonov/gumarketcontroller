@@ -1961,44 +1961,44 @@ results 10 and FSM 11. Earlier RAM-aborted gates are not passing evidence.
 CP25's capacity baseline and production reliability/performance changes follow
 this integration; no capacity claim is inferred from design tests.
 
-## CP25 low-RAM before measurements (2026-10-13)
+## CP25 pressure-run observations — NOT a baseline (2026-10-13)
 
-Phase A is complete at `0d5072a` (7706 tests, 32/32 mutations, shadows 0, configured-secret scan); CP24's worktree and test DB were removed and local dev is at single head a24d9e7b2c10. CP25 production code is still `0d5072a`, before any hot-path fix. The earlier 100-shop RAM abort is not a capacity result.
+Phase A is complete at `0d5072a` (7706 tests, 32/32 mutations, shadows 0, configured-secret scan); CP24's worktree and test DB were removed and local dev is at single head a24d9e7b2c10. These historical runs were recorded with declared HEAD `0d5072a` plus uncommitted harness additions later saved in `f8f73b8405322ec99cb1e06305fc9f7330f31df0`. The raw JSON was already committed in f8f73b8, whose src/ and migrations tree matches0d5072a; first production performance change is8291a3d. Runtime SHA/source hashes were not captured, so exact executed-tree provenance is not independently certified.309bfc0 and later changes did not enter the committed historical artifacts. The earlier 100-shop RAM abort is not a capacity result.
 
-All rows below are **measured** on this Windows laptop against the localhost fake API (5 ms RPC). Per shop: three /start waves ten seconds apart, one owner publish, one reminder and one order ping. Every delivery reconciled; zero uploads. STT/image generation, WAN, broker/prefork and idle-day traffic are excluded. Raw JSON: `docs/capacity/cp25-before-{10,25,50}.json`.
+All rows below are **measured under memory pressure, NOT a baseline** on this Windows laptop against the localhost fake API (5 ms RPC). Per shop: three /start waves ten seconds apart, one owner publish, one reminder and one order ping. Every delivery reconciled; zero uploads. STT/image generation, WAN, broker/prefork and idle-day traffic are excluded. Raw JSON: `docs/capacity/cp25-before-{10,25,50}.json`.
 
 | Shops | Kind | Reply p50/p95/p99 ms | Reminder/order tick s | Bot/worker DB peak connections | Bot/worker query count; total query ms | Redis ops |
 |---|---|---|---|---|---|---|
-| 10 | measured | 1638.66/3414.31/3513.39 | 9.71/10.84 | 15/1 | 291/101; 14462.00/370.91 | 140 |
-| 25 | measured | 1898.27/3235.33/3408.54 | 27.64/31.61 | 15/1 | 727/236; 27546.96/1182.81 | 350 |
-| 50 | measured | 4490.43/12605.36/13463.53 | 54.06/55.72 | 15/1 | 1453/461; 104018.03/2085.11 | 700 |
+| 10 | measured under memory pressure, NOT a baseline | 1638.66/3414.31/3513.39 | 9.71/10.84 | 15/1 | 291/101; 14462.00/370.91 | 140 |
+| 25 | measured under memory pressure, NOT a baseline | 1898.27/3235.33/3408.54 | 27.64/31.61 | 15/1 | 727/236; 27546.96/1182.81 | 350 |
+| 50 | measured under memory pressure, NOT a baseline | 4490.43/12605.36/13463.53 | 54.06/55.72 | 15/1 | 1453/461; 104018.03/2085.11 | 700 |
 
 CPU seconds cover this finite workload after role imports; CPU percentage uses one core and each process's own lifetime. RSS is kernel peak, including imports. Summed process peaks are a conservative bound, not a simultaneous peak. DB/Redis container samples include actual timestamps in the JSON.
 
-| Shops | Process | CPU seconds / one-core % | Peak RSS MiB | CPU seconds/shop | RSS MiB/shop (includes fixed cost) |
-|---|---|---|---|---|---|
-| 10 | bot | 12.078/21.74% | 252.61 | 1.2078 | 25.261 |
-| 10 | worker | 12.562/61.11% | 243.12 | 1.2562 | 24.312 |
-| 10 | api_process | 1.281/1.78% | 48.51 | 0.1281 | 4.851 |
-| 10 | coordinator_process | 4.719/5.49% | 103.45 | 0.4719 | 10.345 |
-| 25 | bot | 20.484/20.65% | 284.34 | 0.8194 | 11.374 |
-| 25 | worker | 34.078/57.51% | 253.04 | 1.3631 | 10.122 |
-| 25 | api_process | 1.906/1.63% | 54.70 | 0.0762 | 2.188 |
-| 25 | coordinator_process | 4.906/3.61% | 104.75 | 0.1962 | 4.190 |
-| 50 | bot | 45.969/22.95% | 336.75 | 0.9194 | 6.735 |
-| 50 | worker | 62.391/56.83% | 268.65 | 1.2478 | 5.373 |
-| 50 | api_process | 5.578/2.56% | 65.31 | 0.1116 | 1.306 |
-| 50 | coordinator_process | 6.812/2.95% | 107.54 | 0.1362 | 2.151 |
+| Shops | Kind | Process | CPU seconds / one-core % | Peak RSS MiB | CPU seconds/shop | RSS MiB/shop (includes fixed cost) |
+|---|---|---|---|---|---|---|
+| 10 | measured under memory pressure, NOT a baseline | bot | 12.078/21.74% | 252.61 | 1.2078 | 25.261 |
+| 10 | measured under memory pressure, NOT a baseline | worker | 12.562/61.11% | 243.12 | 1.2562 | 24.312 |
+| 10 | measured under memory pressure, NOT a baseline | api_process | 1.281/1.78% | 48.51 | 0.1281 | 4.851 |
+| 10 | measured under memory pressure, NOT a baseline | coordinator_process | 4.719/5.49% | 103.45 | 0.4719 | 10.345 |
+| 25 | measured under memory pressure, NOT a baseline | bot | 20.484/20.65% | 284.34 | 0.8194 | 11.374 |
+| 25 | measured under memory pressure, NOT a baseline | worker | 34.078/57.51% | 253.04 | 1.3631 | 10.122 |
+| 25 | measured under memory pressure, NOT a baseline | api_process | 1.906/1.63% | 54.70 | 0.0762 | 2.188 |
+| 25 | measured under memory pressure, NOT a baseline | coordinator_process | 4.906/3.61% | 104.75 | 0.1962 | 4.190 |
+| 50 | measured under memory pressure, NOT a baseline | bot | 45.969/22.95% | 336.75 | 0.9194 | 6.735 |
+| 50 | measured under memory pressure, NOT a baseline | worker | 62.391/56.83% | 268.65 | 1.2478 | 5.373 |
+| 50 | measured under memory pressure, NOT a baseline | api_process | 5.578/2.56% | 65.31 | 0.1116 | 1.306 |
+| 50 | measured under memory pressure, NOT a baseline | coordinator_process | 6.812/2.95% | 107.54 | 0.1362 | 2.151 |
 
-Two-point marginal slopes (25 to 50 shops), RSS MiB/additional shop: bot=2.0964, worker=0.6244, api_process=0.4244, coordinator_process=0.1116. CPU seconds/additional shop for this workload: bot=1.0194, worker=1.1325, api_process=0.1469, coordinator_process=0.0762. These are noisy estimates, not idle consumption or server limits.
+Two-point marginal slopes (25 to 50 shops), RSS MiB/additional shop: bot=2.0964, worker=0.6244, api_process=0.4244, coordinator_process=0.1116. CPU seconds/additional shop for this workload: bot=1.0194, worker=1.1325, api_process=0.1469, coordinator_process=0.0762. These pressure-run slopes are withdrawn for capacity use; they are historical arithmetic only.
 
 | Shops | Kind | Sum four-process RSS peaks MiB | Sum process CPU seconds | Reply quantiles |
 |---|---|---|---|---|
-| 100 | **extrapolated**, 25/50 slope | 941.1 | 239.5 | Not extrapolated; actual measurement queued |
-| 500 | **extrapolated**, 25/50 slope | 2243.8 | 1189.5 | Not extrapolated; actual measurement queued |
-| 1000 | **extrapolated**, 25/50 slope | 3872.2 | 2377.0 | Not extrapolated; actual measurement queued |
+| 100 | withdrawn extrapolation from pressure runs — NOT a baseline | 941.1 | 239.5 | Not extrapolated; actual measurement queued |
+| 500 | withdrawn extrapolation from pressure runs — NOT a baseline | 2243.8 | 1189.5 | Not extrapolated; actual measurement queued |
+| 1000 | withdrawn extrapolation from pressure runs — NOT a baseline | 3872.2 | 2377.0 | Not extrapolated; actual measurement queued |
 
-Extrapolations omit OS, Docker/VMM, DB growth, Caddy, web, STT and background applications. Actual RAM guards remain authoritative. Quantiles cannot be multiplied from a small fleet; larger fleets may be nonlinear. No 4/8/24 GB server capacity is certified. See CP25_STATUS.md for the frozen baseline and tonight command.
+The extrapolations above must not be used for capacity conclusions. They omit OS, Docker/VMM, DB growth, Caddy, web, STT and background applications. Actual RAM guards remain authoritative. Quantiles cannot be multiplied from a small fleet; larger fleets may be nonlinear. No 4/8/24 GB server capacity is certified. See CP25_STATUS.md for the frozen baseline and tonight command.
 
 CP25 D1 small-query measurements: actual application SELECTs were captured on
 the owned10-shop fixture. A rollback-only transaction added1000 sellable products
@@ -2007,13 +2007,13 @@ to shop1 for cursor tests. Before/after plans are committed under
 
 | Query | Kind | Before ms | After ms | Interpretation |
 |---|---|---|---|---|
-| Catalogue keyset | measured | 0.468 | 0.057 | Scan/top-N sort becomes reverse partial index scan |
-| Latest bouquet | measured | 0.479 | 0.070 | Same index, no preference tier in this fixture |
-| Shop customer list | measured | 0.212 | 0.211 | Small fixture only |
-| Shop order list | measured | 0.096 | 0.104 | No demonstrated missing-index bottleneck |
-| Admin shop summary | measured | 0.854 | 0.908 | Correlated aggregates remain; not a fleet claim |
-| Order card | measured | 0.075 | 0.073 | One joined snapshot query |
-| Reminder selection | measured | 0.107 | 0.104 | Sent outbox; loaded pending-group plans still queued |
+| Catalogue keyset | measured under memory pressure, NOT a baseline | 0.468 | 0.057 | Scan/top-N sort becomes reverse partial index scan |
+| Latest bouquet | measured under memory pressure, NOT a baseline | 0.479 | 0.070 | Same index, no preference tier in this fixture |
+| Shop customer list | measured under memory pressure, NOT a baseline | 0.212 | 0.211 | Small fixture only |
+| Shop order list | measured under memory pressure, NOT a baseline | 0.096 | 0.104 | No demonstrated missing-index bottleneck |
+| Admin shop summary | measured under memory pressure, NOT a baseline | 0.854 | 0.908 | Correlated aggregates remain; not a fleet claim |
+| Order card | measured under memory pressure, NOT a baseline | 0.075 | 0.073 | One joined snapshot query |
+| Reminder selection | measured under memory pressure, NOT a baseline | 0.107 | 0.104 | Sent outbox; loaded pending-group plans still queued |
 
 Revision `a25f2c7d9e10` adds only `(shop_id,indexed_at,id)` for active,
 not-deleted, finalized products, built concurrently. Fresh additive roundtrip
@@ -2025,3 +2025,5 @@ customer captions stay separate and a new tick sees catalogue changes.
 Focused data/index/attachment/DB tests35 passed, plan admission2 and real worker
 cache binding1 passed; new assertion mutations13/13. Full loaded interaction
 and real100/500/1000 before/after remain queued; these timings do not certify capacity.
+
+Validity correction: observed free-RAM minima for the historical10/25/50 runs were739.20/1116.62/599.65MiB. The525MiB figure was a later denied job precheck, not the measured run start. No swap telemetry was captured. All historical rows remain invalid for capacity conclusions regardless. A fresh >=3072MiB precheck and isolated pre-change rerun are required; new before/after tables are pending.
