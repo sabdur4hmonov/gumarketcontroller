@@ -6,7 +6,10 @@
 # that page's secret, and every admin login path is a one-time secret.
 
 pages.example.uz {
-	encode gzip
+	# Stock Caddy encodes gzip/zstd. Brotli .br sidecars are negotiated by
+	# aiohttp's static FileResponse upstream and forwarded without recompression.
+	# Build them with scripts/compress_static.py before restarting the web app.
+	encode zstd gzip
 
 	# Optional, recommended: only your own addresses may even reach the panel.
 	# Uncomment and list them; everyone else gets 404 before the app is asked.

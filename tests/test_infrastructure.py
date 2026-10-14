@@ -34,13 +34,15 @@ def test_compose_project_name_is_gulbot(compose: dict) -> None:
     [("postgres", "5433:5432"), ("redis", "6380:6379")],
 )
 def test_compose_publishes_non_default_ports(compose: dict, service: str, expected: str) -> None:
-    assert compose["services"][service]["ports"] == [expected]
+    bindings = compose["services"][service]["ports"]
+    assert len(bindings) == 1
+    assert ":".join(bindings[0].rsplit(":", 2)[-2:]) == expected
 
 
 def test_settings_defaults_match_compose(settings: Settings, compose: dict) -> None:
     """Config and compose must not drift apart."""
-    pg_host_port = int(compose["services"]["postgres"]["ports"][0].split(":")[0])
-    redis_host_port = int(compose["services"]["redis"]["ports"][0].split(":")[0])
+    pg_host_port = int(compose["services"]["postgres"]["ports"][0].rsplit(":", 2)[-2])
+    redis_host_port = int(compose["services"]["redis"]["ports"][0].rsplit(":", 2)[-2])
     assert settings.postgres_port == pg_host_port
     assert settings.redis_port == redis_host_port
 

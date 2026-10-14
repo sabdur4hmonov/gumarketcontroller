@@ -86,7 +86,7 @@ async def shop_gate(request: web.Request, handler: Handler) -> web.StreamRespons
         owner = await shop_auth.load_session(session, request.cookies.get(COOKIE))
         if owner is None:
             if request.method == "GET":
-                return _html(render.render("shop/denied.html", {}), status=401)
+                return _html(await render.render_async("shop/denied.html", {}), status=401)
             raise web.HTTPForbidden(text="Forbidden")
         if request.method != "GET":
             form = await request.post()
@@ -115,8 +115,8 @@ async def login_page(request: web.Request) -> web.Response:
     limit(request, "shop_login")
     token = request.match_info["token"]
     if not shop_auth.TOKEN_RE.match(token):
-        return _html(render.render("shop/denied.html", {}), status=401)
-    return _html(render.render("shop/login.html", {"token": token}))
+        return _html(await render.render_async("shop/denied.html", {}), status=401)
+    return _html(await render.render_async("shop/login.html", {"token": token}))
 
 
 async def login(request: web.Request) -> web.Response:
@@ -126,12 +126,12 @@ async def login(request: web.Request) -> web.Response:
     form = await request.post()
     token = form.get("token")
     if not isinstance(token, str) or not shop_auth.TOKEN_RE.match(token):
-        return _html(render.render("shop/denied.html", {}), status=401)
+        return _html(await render.render_async("shop/denied.html", {}), status=401)
     async with request.app[KEY_SHOP_SESSIONS]() as session:
         opened = await shop_auth.consume_login_link(session, token, ip=_ip(request))
         await session.commit()
     if opened is None:
-        return _html(render.render("shop/denied.html", {}), status=401)
+        return _html(await render.render_async("shop/denied.html", {}), status=401)
     response = web.HTTPSeeOther(PREFIX)
     response.set_cookie(
         COOKIE,
@@ -149,7 +149,7 @@ async def logout(request: web.Request) -> web.Response:
     async with request.app[KEY_SHOP_SESSIONS]() as session:
         await shop_auth.end_session(session, request[KEY_OWNER], ip=_ip(request))
         await session.commit()
-    response = _html(render.render("shop/bye.html", {}))
+    response = _html(await render.render_async("shop/bye.html", {}))
     response.del_cookie(COOKIE, path=PREFIX)
     return response
 
@@ -187,7 +187,7 @@ async def customers_screen(request: web.Request) -> web.Response:
     async with request.app[KEY_SHOP_SESSIONS]() as session:
         found = await shop_crm.customers(session, shop_id=shop_id, page=_page_number(request))
         view = await _view(request, session, "customers", page=found)
-    return _html(render.render("shop/customers.html", view))
+    return _html(await render.render_async("shop/customers.html", view))
 
 
 async def dates_screen(request: web.Request) -> web.Response:
@@ -198,7 +198,7 @@ async def dates_screen(request: web.Request) -> web.Response:
         view = await _view(
             request, session, "dates", dates=found, days=shop_crm.UPCOMING_DAYS, today=today
         )
-    return _html(render.render("shop/dates.html", view))
+    return _html(await render.render_async("shop/dates.html", view))
 
 
 async def orders_screen(request: web.Request) -> web.Response:
@@ -216,7 +216,7 @@ async def orders_screen(request: web.Request) -> web.Response:
             counts=counts,
             query=request.query_string,
         )
-    return _html(render.render("shop/orders.html", view))
+    return _html(await render.render_async("shop/orders.html", view))
 
 
 def _csv_response(body: str, name: str) -> web.Response:
@@ -286,7 +286,7 @@ async def holidays_screen(request: web.Request) -> web.Response:
             listeners=listeners,
             notice=request.query.get("done", ""),
         )
-    return _html(render.render("shop/holidays.html", view))
+    return _html(await render.render_async("shop/holidays.html", view))
 
 
 async def switch_holiday(request: web.Request) -> web.Response:
@@ -349,7 +349,7 @@ async def instagram_screen(request: web.Request) -> web.Response:
             upload_labels=UPLOAD_LABELS,
             notice=request.query.get("done", ""),
         )
-    return _html(render.render("shop/instagram.html", view))
+    return _html(await render.render_async("shop/instagram.html", view))
 
 
 async def instagram_connect(request: web.Request) -> web.Response:
@@ -372,7 +372,7 @@ async def instagram_connect(request: web.Request) -> web.Response:
         )
         view = await _view(request, session, "instagram", link=link)
         await session.commit()
-    return _html(render.render("shop/instagram_go.html", view))
+    return _html(await render.render_async("shop/instagram_go.html", view))
 
 
 async def instagram_disconnect(request: web.Request) -> web.Response:

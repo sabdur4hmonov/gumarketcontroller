@@ -348,7 +348,7 @@ async def test_every_design_renders_in_every_language(world: World, theme: str) 
 
 
 async def test_static_files_are_cached_and_never_listed(world: World) -> None:
-    css = await world.client.get("/static/css/base.css")
+    css = await world.client.get(web_app.render.static_url("css/base.css"))
     assert css.status == 200 and "immutable" in css.headers["Cache-Control"]
     assert (await world.client.get("/static/")).status in (403, 404)
     assert (await world.client.get("/static/../app.py")).status in (403, 404)

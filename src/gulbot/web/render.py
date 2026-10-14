@@ -23,6 +23,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 
 from gulbot.brand import brand_name
 from gulbot.models.share_page import PageKind, SharePage
+from gulbot.services.offload import run_cpu
 from gulbot.web import sections, strings
 from gulbot.web.designs_cp24 import CP24_DESIGNS, PHOTO_FIRST
 
@@ -112,6 +113,11 @@ def environment() -> Environment:
 
 def render(template: str, v: dict[str, Any]) -> str:
     return environment().get_template(template).render(v=v)
+
+
+async def render_async(template: str, v: dict[str, Any]) -> str:
+    """Only prepared template data crosses threads; no session/ORM access."""
+    return await run_cpu(render, template, v)
 
 
 def _initial(name: str) -> str:
@@ -341,7 +347,7 @@ def gallery_view(kind: str, lang: str) -> dict[str, Any]:
     return v
 
 
-def page_html(
+def page_view(
     page: SharePage,
     branding: Branding,
     *,
@@ -350,7 +356,7 @@ def page_html(
     plan: Plan | None = None,
     photos: list[PhotoLink] | None = None,
     wishes: list[Any] | None = None,
-) -> str:
+) -> tuple[str, dict[str, Any]]:
     """The live page. `base` is "/p/<token>", the root of its own endpoints."""
     if page.kind in (PageKind.YESNO, PageKind.APOLOGY):
         view = yesno_view(
@@ -370,7 +376,7 @@ def page_html(
         if page.template in CP24_DESIGNS and page.show_gallery:
             view["gallery"] = photos[1:] if page.template in PHOTO_FIRST else photos
         view["music"] = page.music
-        return render("yesno.html", view)
+        return "yesno.html", view
     view = invite_view(
         page, branding, tz_name=tz_name, rsvp_url=f"{base}/rsvp", ics_url=f"{base}/event.ics"
     )
@@ -388,7 +394,41 @@ def page_html(
     view["wishes_on"] = page.wishes_enabled
     view["wishes"] = wishes or []
     view["wish_url"] = f"{base}/wish"
-    return render("invite.html", view)
+    return "invite.html", view
+
+
+def page_html(
+    page: SharePage,
+    branding: Branding,
+    *,
+    tz_name: str,
+    base: str,
+    plan: Plan | None = None,
+    photos: list[PhotoLink] | None = None,
+    wishes: list[Any] | None = None,
+) -> str:
+    return render(
+        *page_view(
+            page, branding, tz_name=tz_name, base=base, plan=plan, photos=photos, wishes=wishes
+        )
+    )
+
+
+async def page_html_async(
+    page: SharePage,
+    branding: Branding,
+    *,
+    tz_name: str,
+    base: str,
+    plan: Plan | None = None,
+    photos: list[PhotoLink] | None = None,
+    wishes: list[Any] | None = None,
+) -> str:
+    # Read loaded ORM fields on the caller's loop, then offload Jinja/file I/O.
+    template, view = page_view(
+        page, branding, tz_name=tz_name, base=base, plan=plan, photos=photos, wishes=wishes
+    )
+    return await render_async(template, view)
 
 
 # --- calendar file ------------------------------------------------------------

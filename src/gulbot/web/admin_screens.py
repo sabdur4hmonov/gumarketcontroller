@@ -80,7 +80,7 @@ async def overview(request: web.Request) -> web.Response:
         key=lambda s: (s.health != "bad", s.name),
     )[:10]
     return _html(
-        render.render(
+        await render.render_async(
             "admin/overview.html",
             _view(request, "shops", shops=shops, tiles=tiles, attention=attention, now=now),
         )
@@ -105,7 +105,7 @@ async def shop(request: web.Request) -> web.Response:
         metrics = await admin_panel.shop_metrics(session, shop_id=shop_id, days=days, now=now)
         activity = await admin_panel.audit_entries(session, shop_id=shop_id, limit=30)
     return _html(
-        render.render(
+        await render.render_async(
             "admin/shop.html",
             _view(
                 request,
@@ -208,7 +208,9 @@ async def alerts(request: web.Request) -> web.Response:
     for alert in found:
         counts[alert.kind] = counts.get(alert.kind, 0) + 1
     return _html(
-        render.render("admin/alerts.html", _view(request, "alerts", alerts=found, counts=counts))
+        await render.render_async(
+            "admin/alerts.html", _view(request, "alerts", alerts=found, counts=counts)
+        )
     )
 
 
@@ -221,7 +223,7 @@ async def pages(request: web.Request) -> web.Response:
         summary = await admin_panel.pages_summary(session, shop_id=shop_id)
         rows = await admin_panel.recent_pages(session, shop_id=shop_id)
     return _html(
-        render.render(
+        await render.render_async(
             "admin/pages.html", _view(request, "pages", summary=summary, rows=rows, shop_id=shop_id)
         )
     )
@@ -235,7 +237,7 @@ async def page(request: web.Request) -> web.Response:
             raise web.HTTPNotFound()
         wishes = await admin_panel.page_wishes(session, page_id=page_id)
     return _html(
-        render.render(
+        await render.render_async(
             "admin/page.html",
             _view(request, "pages", p=row, wishes=wishes, notice=request.query.get("done", "")),
         )
@@ -294,7 +296,9 @@ async def audit_log(request: web.Request) -> web.Response:
     async with _sessions(request)() as session:
         entries = await admin_panel.audit_entries(session, shop_id=shop_id)
     return _html(
-        render.render("admin/audit.html", _view(request, "audit", entries=entries, shop_id=shop_id))
+        await render.render_async(
+            "admin/audit.html", _view(request, "audit", entries=entries, shop_id=shop_id)
+        )
     )
 
 
@@ -304,7 +308,7 @@ async def holidays(request: web.Request) -> web.Response:
         dates = await holiday_campaigns.lunar_dates(session)
     lunar = [BY_KEY[key] for key in LUNAR_KEYS]
     return _html(
-        render.render(
+        await render.render_async(
             "admin/holidays.html",
             _view(
                 request,

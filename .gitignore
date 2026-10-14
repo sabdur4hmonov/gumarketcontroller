@@ -27,3 +27,7 @@ deploy/rehearsal/out/
 # Isolated CP24 local tooling/logs.
 .cp24-stage/
 cp24-install.log
+
+# Rebuilt on deploy from the tracked CSS/JS/SVG, never customer photos.
+src/gulbot/web/static/**/*.br
+src/gulbot/web/static/**/*.gz

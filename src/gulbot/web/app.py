@@ -28,6 +28,7 @@ shops.owner_phone, and `tests/test_web_pages.py` greps the rendered HTML.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import re
@@ -50,6 +51,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.services import share_page_photos, share_page_wishes, share_pages
+from gulbot.services.offload import run_cpu
 from gulbot.web import admin, render, shop_panel, strings
 
 log = logging.getLogger("gulbot.web")
@@ -119,6 +121,7 @@ class WebSettings:
 
 KEY_LIMITER: Final[web.AppKey[dict[str, RateLimiter]]] = web.AppKey("limiter")
 KEY_SETTINGS: Final[web.AppKey[WebSettings]] = web.AppKey("web_settings")
+KEY_STATIC_VERSION: Final[web.RequestKey[bool]] = web.RequestKey("static_version")
 
 
 @web.middleware
@@ -133,8 +136,26 @@ async def secure_headers(
     except Exception:
         log.exception("unhandled error on %s", request.method)
         response = web.Response(status=500, text="Server error")
+    if request.path.startswith("/static/") and response.status < 400:
+        relative = request.path.removeprefix("/static/")
+        if (
+            request.query.get("v")
+            and all(p not in (".", "..") for p in relative.split("/"))
+            and "\\" not in relative
+        ):
+            try:
+                version = await run_cpu(render._static_version, relative)
+                request[KEY_STATIC_VERSION] = request.query["v"] == version
+            except (OSError, ValueError):
+                pass
     _harden(request, response)
     return response
+
+
+async def prepared_headers(request: web.Request, response: web.StreamResponse) -> None:
+    # FileResponse determines missing/conditional status during prepare, after
+    # middleware has returned; harden again using the final status.
+    _harden(request, response)
 
 
 def _harden(request: web.Request, response: web.StreamResponse) -> None:
@@ -154,7 +175,15 @@ def _harden(request: web.Request, response: web.StreamResponse) -> None:
     if settings.secure:
         headers["Strict-Transport-Security"] = "max-age=31536000"
     if request.path.startswith("/static/"):
-        headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        headers["Vary"] = "Accept-Encoding"
+        if response.status >= 400:
+            headers["Cache-Control"] = "no-store"
+        else:
+            headers["Cache-Control"] = (
+                "public, max-age=31536000, immutable"
+                if request.get(KEY_STATIC_VERSION, False)
+                else "public, max-age=0, must-revalidate"
+            )
     else:
         headers.setdefault("Cache-Control", "no-store")
 
@@ -189,13 +218,13 @@ def _html(body: str, status: int = 200) -> web.Response:
     return web.Response(status=status, text=body, content_type="text/html", charset="utf-8")
 
 
-def _gone(
+async def _gone(
     theme: str = "minimal", lang: str = "uz", shop: str | None = None, status: int = 410
 ) -> web.Response:
     """No shop to name (an unknown or malformed link): the product's name."""
     branding = render.Branding(shop_name=shop or brand_name(), cta_url=None)
     view = render.gone_view(theme, lang, branding)
-    return _html(render.render("gone.html", view), status=status)
+    return _html(await render.render_async("gone.html", view), status=status)
 
 
 def _check_post(request: web.Request) -> None:
@@ -220,15 +249,15 @@ def _own_origin(request: web.Request) -> str:
 async def page(request: web.Request) -> web.Response:
     token = request.match_info["token"]
     if not TOKEN_RE.match(token):
-        return _gone(status=404)
+        return await _gone(status=404)
     sessions = request.app[KEY_SESSIONS]
     async with sessions() as session:
         found = await share_pages.load_public_page(session, token)
         if found is None:
-            return _gone(status=404)
+            return await _gone(status=404)
         p = found.page
         if not found.live:
-            return _gone(p.template, p.lang, found.shop_name)
+            return await _gone(p.template, p.lang, found.shop_name)
         # Telegram's link-preview fetcher reads the page to draw the preview in
         # the chat; that is not a person opening it.
         if "TelegramBot" not in request.headers.get("User-Agent", ""):
@@ -250,7 +279,7 @@ async def page(request: web.Request) -> web.Response:
             render.PhotoLink(f"/p/{token}/photo/{ref.id}.jpg", ref.width, ref.height)
             for ref in await share_page_photos.photos_of(session, page_id=p.id)
         ]
-        body = render.page_html(
+        body = await render.page_html_async(
             p,
             render.Branding(shop_name=found.shop_name, cta_url=cta),
             tz_name=found.shop_timezone,
@@ -452,12 +481,19 @@ async def photo(request: web.Request) -> web.Response:
         )
     if found is None or found.data is None:
         raise web.HTTPNotFound()
-    # Every photo has its own id, so a replaced photo is a new URL; this
-    # one may be kept by the browser, but only privately.
+    # Liveness/tenancy above run before every conditional response, including *.
+    digest = await run_cpu(lambda data: hashlib.sha256(data).hexdigest(), found.data)
+    etag = '"' + digest + '"'
+    headers = {"Cache-Control": "private, max-age=0, must-revalidate", "ETag": etag}
+    validators = [
+        v.strip().removeprefix("W/") for v in request.headers.get("If-None-Match", "").split(",")
+    ]
+    if etag in validators or "*" in validators:
+        return web.Response(status=304, headers=headers)
     return web.Response(
         body=found.data,
         content_type="image/jpeg",
-        headers={"Cache-Control": "private, max-age=86400"},
+        headers=headers,
     )
 
 
@@ -498,7 +534,9 @@ async def demo_page(request: web.Request) -> web.Response:
     plan = render.sample_plan(lang) if request.query.get("plan") == "1" else None
     # The sample's own endpoints do not exist; pressing Ha only celebrates.
     return _html(
-        render.page_html(sample, branding, tz_name="Asia/Tashkent", base="/demo/none", plan=plan)
+        await render.page_html_async(
+            sample, branding, tz_name="Asia/Tashkent", base="/demo/none", plan=plan
+        )
     )
 
 
@@ -508,7 +546,7 @@ async def demo_index(request: web.Request) -> web.Response:
         raise web.HTTPNotFound()
     lang = _demo_lang(request)
     view = render.gallery_view(kind, lang)
-    return _html(render.render("gallery.html", view))
+    return _html(await render.render_async("gallery.html", view))
 
 
 async def robots(_request: web.Request) -> web.Response:
@@ -559,7 +597,8 @@ async def instagram_callback(request: web.Request) -> web.Response:
     if not (0 < len(state) <= 100 and 0 < len(code) <= 2048):
         view = {"ok": False, "reason": "Instagram ruxsat bermadi yoki havola buzilgan."}
         return web.Response(
-            text=render.render("shop/instagram_done.html", view), content_type="text/html"
+            text=await render.render_async("shop/instagram_done.html", view),
+            content_type="text/html",
         )
     async with aiohttp.ClientSession() as http, request.app[KEY_SESSIONS]() as session:
         try:
@@ -582,7 +621,7 @@ async def instagram_callback(request: web.Request) -> web.Response:
             await session.commit()
             view = {"ok": True, "username": connection.username}
     return web.Response(
-        text=render.render("shop/instagram_done.html", view), content_type="text/html"
+        text=await render.render_async("shop/instagram_done.html", view), content_type="text/html"
     )
 
 
@@ -624,6 +663,7 @@ def build_app(
         middlewares=[secure_headers, admin.admin_gate, shop_panel.shop_gate],
         client_max_size=4096,
     )
+    app.on_response_prepare.append(prepared_headers)
     app[KEY_SESSIONS] = session_factory
     app[KEY_NOTIFY] = notify
     app[KEY_SETTINGS] = WebSettings(public_base_url=public_base_url, trust_proxy=trust_proxy)

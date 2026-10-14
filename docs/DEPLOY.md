@@ -549,3 +549,96 @@ Meta retires versions about two years after release -- raise it then.
 server that answers the documented endpoints; no real Meta call was made
 from this project. The first real connection (step 7) is also the first
 check of the live API.
+
+## CP25 connection and asset budgets (capacity measurements pending)
+
+Each long-lived bot/web process defaults to `POSTGRES_POOL_SIZE=5` plus
+`POSTGRES_POOL_OVERFLOW=10`. Each sequential Celery task defaults to
+`POSTGRES_TASK_POOL_SIZE=1`, zero overflow, and disposes its engine on completion.
+Multiply those maxima by deployed process counts when reserving Postgres
+connections; these are connection budgets, not certified shop capacities.
+Pool checkout waits at most5s; asyncpg connect at most10s; statements retain30s.
+Do not shrink the bot pool based on the single-connection worker measurement.
+
+After `pip install -e '.[dev]'` (or the normal application install), build public
+text compression sidecars before restarting the web process:
+
+```bash
+cd /opt/gulbot
+.venv/bin/python -m scripts.compress_static
+sudo systemctl restart gulbot-web
+sudo caddy validate --config /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+```
+
+The builder processes only public CSS/JS/SVG, limits each input to1MiB, refuses
+symlink outputs, and replaces sidecars atomically. It does not process photos,
+private HTML, tokens or fonts already compressed as WOFF2. Rebuild sidecars on
+every asset release; do not retain stale sidecars. The script requires768MiB
+actual free RAM and refuses once if unavailable. Generated files are ignored
+by Git and rebuilt from tracked originals.
+
+Stock [Caddy encode](https://caddyserver.com/docs/caddyfile/directives/encode)
+supports gzip/zstd; the shipped proxy uses both. Brotli is built once using the
+[Google Brotli codec](https://github.com/google/brotli), negotiated by aiohttp
+FileResponse `.br` sidecars upstream, then forwarded through Caddy. This avoids
+installing a custom Caddy encoder. Validate the deployed proxy and verify
+`Content-Encoding: br` with `curl -H 'Accept-Encoding: br' -I` on a fingerprinted
+static URL, and gzip with the equivalent header. A real proxy rehearsal is
+still pending; local tests prove actual Brotli/gzip bytes and upstream HTTP.
+Keep access logging disabled: private page/login paths contain secrets.
+
+Only a static URL with the exact current content hash gets a year of immutable
+caching; unversioned/stale URLs revalidate. Static ETags are provided by
+FileResponse, with `Vary: Accept-Encoding`. Customer photos use private
+`max-age=0, must-revalidate` and a SHA256 ETag; conditional requests still query
+page liveness, moderation and ownership before returning304. Private HTML
+remains no-store with the strict CSP.
+
+The4/8/24GB guide and polling-to-webhook threshold await actual100/500/1000
+before/after measurements. See CHECKPOINTS and CP25_STATUS; extrapolated values
+are not deployment guarantees.
+
+## CP25 capacity guide — pending measured runs
+
+No server shop count is established yet. Historical pressure runs are NOT a
+baseline; refused runs have no timing/RSS/CPU capacity result. Configuration
+pool/timeout values above are actual settings, not capacity estimates.
+
+|Server RAM|Polling shops|Bot RSS/shop|CPU/shop|Worker layout|Reply p95/p99|Tick budget|
+|---|---|---|---|---|---|---|
+|4 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
+|8 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
+|24 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
+
+Reserve measured infrastructure/fixed-process memory separately before deriving
+shops from a per-shop slope. An amortized RSS/shop observation includes fixed
+overhead and is not that slope. Document measured scale, source commit/hash,
+host RAM/CPU, free-RAM minimum, process layout, workload and safety margin for
+every eventual estimate; label estimates as extrapolated, never measured.
+
+### Polling versus webhook threshold
+
+Switch threshold: **TBD: pending measured run**. Polling remains the default.
+Compare healthy-shop latency under one failed shop, reply deadline failures,
+poller restarts, DB pool waits and measured memory/CPU at each scale. If valid
+measurements show polling fails below1000 shops, implement/test webhook mode
+behind a configuration flag before recommending that capacity. Until then,
+neither a webhook capacity number nor a polling fleet guarantee is supported.
+
+### Harness limits and tonight admission
+
+The fake Bot API adds5ms per RPC; customers send0.1 messages/s/shop, plus one
+owner announcement per shop. Reminder/order task bodies run sequentially in
+100-shop batches with fresh asyncio loops. Broker/prefork scheduling, sustained
+production demand, real Telegram/network jitter and a distributed worker fleet
+are NOT measured. Tick totals are single-process upper bounds, not measured
+production Celery fleet throughput. Real fleet verification remains required.
+
+Prepare Docker/WSL, Postgres and Redis BEFORE admitting the benchmark; record
+free RAM and the top five working sets at each setup boundary. No RAM polling,
+automatic retry or heartbeat restart in the daytime pass. For100+ shops the
+startup floor remains3072MiB. For10/25/50, use that floor until a valid same-scale
+measured process/infrastructure peak is available, then peak+1024MiB. Preserve
+the512MiB runtime abort floor. Never infer a small-scale peak from2 shops or use
+invalid pressure timing rows as capacity evidence.
