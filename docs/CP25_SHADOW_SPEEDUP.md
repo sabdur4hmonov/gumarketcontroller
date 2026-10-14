@@ -26,6 +26,6 @@ Both full production shop/platform sweeps and elapsed-time comparison are
 queued until actual free RAM >=3072MiB. Do not describe the speedup as measured
 until those run. Source-location caching is now implemented; tiny RED then
 GREEN proved unchanged exact duplicate/filter counts and fresh metadata across
-two invocations. Full sweeps have NOT run. New assertion mutation proof follows
-in the daytime pass. The deprecated tonight queue must not be used to bypass
+two invocations. Full sweeps have NOT run. All three new assertion mutations
+were caught in the daytime pass. The deprecated tonight queue must not be used to bypass
 the25-shop attribution review before AFTER; see current CP25_STATUS command.

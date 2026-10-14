@@ -1,4 +1,4 @@
-"""One-shot before/after fleets and full gate. Refuse low RAM; never retry."""
+"""One-shot isolated before/after fleets; gate separately after remaining work."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import subprocess
 import sys
 import time
 import uuid
-import zipfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -27,6 +26,7 @@ def note(message: str) -> None:
 
 def precheck(label: str) -> None:
     free = available_mib()
+    note(f"{label}: actual precheck free RAM {free:.2f} MiB.")
     if free < 3072:
         message = f"{label}: precheck refused at {free:.0f} MiB (<3072); no retry."
         note(message)
@@ -90,9 +90,15 @@ def job(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--before-ref", default=None)
+    gate_options = parser.add_mutually_exclusive_group()
+    gate_options.add_argument("--gate-only", action="store_true")
+    gate_options.add_argument("--include-gate", action="store_true")
     args = parser.parse_args()
     precheck("tonight bootstrap")
-    ref = args.before_ref or (ROOT / "docs" / "CP25_BEFORE_REF.txt").read_text().strip()
+    ref = (
+        args.before_ref
+        or (ROOT / "docs" / "CP25_BEFORE_REF.txt").read_text(encoding="utf-8").strip()
+    )
     commit = subprocess.run(
         ["git", "rev-parse", "--verify", ref + "^{commit}"],
         cwd=ROOT,
@@ -105,21 +111,12 @@ def main() -> None:
         raise ValueError("Invalid frozen baseline commit")
     output = ROOT / ".cp22-stage" / "cp25" / ("tonight-" + uuid.uuid4().hex)
     output.mkdir(parents=True)
-    frozen = output / "before-source"
-    archive = output / "before.zip"
-    subprocess.run(
-        ["git", "archive", "--format=zip", "--output", str(archive), commit],
-        cwd=ROOT,
-        check=True,
-        timeout=60,
-    )
-    with zipfile.ZipFile(archive) as bundle:
-        for name in bundle.namelist():
-            if not (frozen / name).resolve().is_relative_to(frozen.resolve()):
-                raise ValueError("Archive path escapes the frozen source")
-        bundle.extractall(frozen)
-    private_env = frozen / ".env"
-    private_env.write_bytes((ROOT / ".env").read_bytes())
+    from .reference_measure import BEFORE, REFERENCE, provenance
+
+    if commit != BEFORE:
+        raise ValueError("Use the reviewed immediate pre-change commit f8f73b8")
+    if not args.gate_only:
+        provenance(REFERENCE, "before")  # exact ref + clean production paths
     base_env = {
         **os.environ,
         "PYTHONUTF8": "1",
@@ -130,26 +127,43 @@ def main() -> None:
         "REDIS_DB_FSM": "15",
     }
     try:
-        for phase, cwd in (("before", frozen), ("after", ROOT)):
-            environment = {**base_env, "PYTHONPATH": str(cwd / "src") + os.pathsep + str(cwd)}
-            for scale in (100, 500, 1000):
-                label = f"{phase}-{scale}"
-                job(
-                    label,
-                    [
-                        sys.executable,
-                        "-u",
-                        "-m",
-                        "scripts.cp25_load.capacity",
-                        "--scales",
-                        str(scale),
-                        "--output",
-                        str(output / label),
-                    ],
-                    cwd=cwd,
-                    output=output,
-                    environment=environment,
+        if not args.gate_only:
+            for phase, source in (("before", REFERENCE), ("after", ROOT)):
+                environment = {
+                    **base_env,
+                    "PYTHONPATH": str(source / "src") + os.pathsep + str(source),
+                }
+                for scale in (100, 500, 1000):
+                    label = f"{phase}-{scale}"
+                    job(
+                        label,
+                        [
+                            sys.executable,
+                            "-u",
+                            str(ROOT / "scripts/cp25_load/reference_measure.py"),
+                            "--source",
+                            str(source),
+                            "--phase",
+                            phase,
+                            "--scales",
+                            str(scale),
+                            "--output",
+                            str(output / label),
+                        ],
+                        cwd=source,
+                        output=output,
+                        environment=environment,
+                    )
+            note(
+                f"Before/after measurements complete in {output.relative_to(ROOT)}; "
+                "assess validity before using the tables."
+            )
+            if not args.include_gate:
+                note(
+                    "Measurement queue stops here. Finish remaining focused checks/shadow "
+                    "implementation, then use tonight --gate-only. No push."
                 )
+                return
         environment = {
             **base_env,
             "PYTHONPATH": str(ROOT / "src") + os.pathsep + str(ROOT),
@@ -202,7 +216,8 @@ def main() -> None:
                         timeout=15,
                     ).stdout.strip(),
                     "tests": int(count[1]),
-                    "status": "measurements and gate complete; review capacity guide before push",
+                    "status": "full gate complete; measurement validity and capacity "
+                    "review are separate; no push",
                 },
                 indent=2,
             ),
@@ -213,7 +228,8 @@ def main() -> None:
             "no automatic push or merge."
         )
     finally:
-        private_env.unlink(missing_ok=True)
+        # No private environment file is copied into the reference checkout.
+        pass
 
 
 if __name__ == "__main__":

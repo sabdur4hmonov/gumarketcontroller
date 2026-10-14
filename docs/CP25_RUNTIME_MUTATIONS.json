@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 36,
-  "total": 36,
+  "caught": 102,
+  "total": 102,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -222,10 +222,419 @@
       "test": "tests/test_cp25_data_efficiency.py::test_worker_shares_lookup_inside_tick_and_rebuilds_it_next_tick",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "web rendering blocks loop",
+      "test": "tests/test_cp25_web_cache.py::test_cold_template_and_static_hash_reads_are_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "public page skips async renderer",
+      "test": "tests/test_cp25_web_cache.py::test_cold_template_and_static_hash_reads_are_off_loop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "stale static fingerprint immutable",
+      "test": "tests/test_cp25_web_cache.py::test_only_current_fingerprinted_assets_are_immutable",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static error headers skipped",
+      "test": "tests/test_cp25_web_cache.py::test_only_current_fingerprinted_assets_are_immutable",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "photo conditional never hits",
+      "test": "tests/test_cp25_web_cache.py::test_photo_etag_never_bypasses_tenancy_or_hidden_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "photo conditional bypasses moderation",
+      "test": "tests/test_cp25_web_cache.py::test_photo_etag_never_bypasses_tenancy_or_hidden_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "photo conditional loses tenancy",
+      "test": "tests/test_cp25_web_cache.py::test_photo_etag_never_bypasses_tenancy_or_hidden_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static builder compresses private image",
+      "test": "tests/test_cp25_compression.py::test_static_brotli_gzip_roundtrip_and_content_negotiation",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static builder accepts large input",
+      "test": "tests/test_cp25_compression.py::test_compression_rejects_large_inputs_before_creating_sidecars",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static builder overwrites symlink",
+      "test": "tests/test_cp25_compression.py::test_compression_will_not_follow_a_sidecar_symlink",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight bounded deadline",
+      "test": "tests/test_cp25_ram_wait.py::test_last_sleep_is_clipped_to_remaining_budget",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight clipped sleep",
+      "test": "tests/test_cp25_ram_wait.py::test_last_sleep_is_clipped_to_remaining_budget",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue ready state",
+      "test": "tests/test_cp25_overnight_queue.py::test_queue_prerequisites_fail_closed",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue two readings",
+      "test": "tests/test_cp25_overnight_queue.py::test_queue_prerequisites_fail_closed",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue tooling prerequisite",
+      "test": "tests/test_cp25_overnight_queue.py::test_queue_prerequisites_fail_closed",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue profile review prerequisite",
+      "test": "tests/test_cp25_overnight_queue.py::test_queue_prerequisites_fail_closed",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight ram floor",
+      "test": "tests/test_cp25_ram_wait.py::test_budget_expiry_never_lowers_floor_or_sleeps_past_deadline",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight consecutive readings",
+      "test": "tests/test_cp25_ram_wait.py::test_two_consecutive_high_readings_and_five_minute_sleeps",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight low reading reset",
+      "test": "tests/test_cp25_ram_wait.py::test_two_consecutive_high_readings_and_five_minute_sleeps",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "overnight sparse sleep",
+      "test": "tests/test_cp25_ram_wait.py::test_two_consecutive_high_readings_and_five_minute_sleeps",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference clean checkout",
+      "test": "tests/test_cp25_reference_tooling.py::test_dirty_before_harness_cannot_be_certified",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference full status",
+      "test": "tests/test_cp25_reference_tooling.py::test_certificate_contains_status_and_hashes_source_and_harness",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference harness hashing",
+      "test": "tests/test_cp25_reference_tooling.py::test_certificate_contains_status_and_hashes_source_and_harness",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference actual schema",
+      "test": "tests/test_cp25_reference_tooling.py::test_actual_database_revision_must_match_one_source_head",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference single head",
+      "test": "tests/test_cp25_reference_tooling.py::test_actual_database_revision_must_match_one_source_head",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference dict certificate",
+      "test": "tests/test_cp25_reference_tooling.py::test_every_result_payload_keeps_the_runtime_certificate",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference list certificate",
+      "test": "tests/test_cp25_reference_tooling.py::test_every_result_payload_keeps_the_runtime_certificate",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "reference redis isolation",
+      "test": "tests/test_cp25_reference_tooling.py::test_before_after_resources_are_disjoint",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue scale ram floor",
+      "test": "tests/test_cp25_overnight_queue.py::test_before_profile_after_order_and_ram_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue profile order",
+      "test": "tests/test_cp25_overnight_queue.py::test_before_profile_after_order_and_ram_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue source verification",
+      "test": "tests/test_cp25_overnight_queue.py::test_uncertified_wrong_source_or_incomplete_delivery_is_rejected",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue database verification",
+      "test": "tests/test_cp25_overnight_queue.py::test_uncertified_wrong_source_or_incomplete_delivery_is_rejected",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue reminder delivery",
+      "test": "tests/test_cp25_overnight_queue.py::test_uncertified_wrong_source_or_incomplete_delivery_is_rejected",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue order delivery",
+      "test": "tests/test_cp25_overnight_queue.py::test_uncertified_wrong_source_or_incomplete_delivery_is_rejected",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "queue file id reuse",
+      "test": "tests/test_cp25_overnight_queue.py::test_uncertified_wrong_source_or_incomplete_delivery_is_rejected",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening skips infrastructure",
+      "test": "tests/test_cp25_evening.py::test_evening_prepares_infrastructure_before_fresh_admission",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "evening skips post-infrastructure floor",
+      "test": "tests/test_cp25_evening.py::test_evening_prepares_infrastructure_before_fresh_admission",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "evening bypasses review barrier",
+      "test": "tests/test_cp25_evening.py::test_evening_main_never_starts_after_without_actual_profile_review",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "small scale guesses unknown peak",
+      "test": "tests/test_cp25_evening.py::test_small_peak_margin_never_lowers_large_scale_floor",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate permits closed reuse",
+      "test": "tests/test_cp25_batch_client.py::test_batch_has_one_client_different_tokens_and_separate_task_loops",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate loses API timeout",
+      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate loses token identity",
+      "test": "tests/test_cp25_batch_client.py::test_batch_has_one_client_different_tokens_and_separate_task_loops",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate caches client across tasks",
+      "test": "tests/test_cp25_batch_client.py::test_batch_has_one_client_different_tokens_and_separate_task_loops",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate omits closure",
+      "test": "tests/test_cp25_batch_client.py::test_batch_has_one_client_different_tokens_and_separate_task_loops",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate closes shared client twice",
+      "test": "tests/test_cp25_batch_client.py::test_batch_has_one_client_different_tokens_and_separate_task_loops",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate omits exception cleanup",
+      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate accepts another loop",
+      "test": "tests/test_cp25_batch_client.py::test_open_batch_rejects_another_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate closes from another loop",
+      "test": "tests/test_cp25_batch_client.py::test_open_batch_rejects_another_loop",
+      "assertion_caught": true,
+      "exit_code": 1,
+      "proof_capture": "runner emitted assertion caught before640MiB RAM stop; source restored"
+    },
+    {
+      "guard": "candidate omits reply pacing",
+      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "candidate loses HTML default",
+      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "shadow bypasses source cache",
+      "test": "tests/test_cp25_shadow_cache.py::test_sweep_caches_source_metadata_but_evaluates_every_filter",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "shadow skips real filters",
+      "test": "tests/test_cp25_shadow_cache.py::test_sweep_caches_source_metadata_but_evaluates_every_filter",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "shadow cache leaks between sweeps",
+      "test": "tests/test_cp25_shadow_cache.py::test_sweep_caches_source_metadata_but_evaluates_every_filter",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "small peak lowers heavy floor",
+      "test": "tests/test_cp25_evening.py::test_small_peak_margin_never_lowers_large_scale_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "small peak loses GiB margin",
+      "test": "tests/test_cp25_evening.py::test_small_peak_margin_never_lowers_large_scale_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "small peak accepts negative value",
+      "test": "tests/test_cp25_evening.py::test_small_peak_margin_never_lowers_large_scale_floor",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "startup seed accepts large scale",
+      "test": "tests/test_cp25_evening.py::test_startup_seed_never_runs_a_capacity_scale",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "startup bypasses RAM admission",
+      "test": "tests/test_cp25_evening.py::test_startup_refusal_never_launches_a_process",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening bypasses large RAM gate",
+      "test": "tests/test_cp25_evening.py::test_evening_large_scale_admission_cannot_use_small_peak",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening accepts stale profile",
+      "test": "tests/test_cp25_evening.py::test_after_requires_review_of_this_profile_and_current_source",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening accepts stale after source",
+      "test": "tests/test_cp25_evening.py::test_after_requires_review_of_this_profile_and_current_source",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening accepts pending review",
+      "test": "tests/test_cp25_evening.py::test_after_requires_review_of_this_profile_and_current_source",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "evening omits attribution evidence",
+      "test": "tests/test_cp25_evening.py::test_after_requires_review_of_this_profile_and_current_source",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static builder ignores resolved root",
+      "test": "tests/test_cp25_compression.py::test_compression_checks_resolved_root_before_reading_input",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "static builder writes temporary symlink",
+      "test": "tests/test_cp25_compression.py::test_compression_refuses_a_symlink_temporary_output",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "engine meter drops task pool option",
+      "test": "tests/test_cp25_reference_tooling.py::test_worker_meter_preserves_task_pool_options",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "worker loses tick-owned lookup"
+    "engine meter drops task pool option"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

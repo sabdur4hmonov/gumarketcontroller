@@ -146,8 +146,8 @@ async def worker_role(api: str, output: Path, shops: int) -> None:
     original_engine = session_module.build_engine
     original_datetime = tasks.datetime
 
-    def measured_engine(database: str | None = None) -> AsyncEngine:
-        engine = original_engine(DATABASE)
+    def measured_engine(database: str | None = None, *, task: bool = False) -> AsyncEngine:
+        engine = original_engine(DATABASE, task=task)
         meters.append(DbMeter(engine))
         return engine
 

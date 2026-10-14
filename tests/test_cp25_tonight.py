@@ -18,7 +18,8 @@ def test_tonight_precheck_records_refusal_without_launch(monkeypatch, tmp_path) 
         tonight.job("baseline", ["python"], cwd=tmp_path, output=tmp_path, environment={})
     except RuntimeError:
         refused = True
-    assert refused and len(notes) == 1, "Reject once and record; never retry"
+    assert refused and len(notes) == 2, "Record actual RAM and one refusal; never retry"
+    assert "actual precheck free RAM" in notes[0] and "precheck refused" in notes[1]
     launch.assert_not_called()
 
 
@@ -49,5 +50,6 @@ def test_runtime_floor_stops_only_the_returned_child(monkeypatch, tmp_path) -> N
         tonight.job("runtime", ["fake"], cwd=tmp_path, output=tmp_path, environment={})
     except RuntimeError:
         refused = True
-    assert refused and len(notes) == 1, "A RAM-aborted job must not return success"
+    assert refused and len(notes) == 2, "Actual startup RAM plus one runtime-abort record"
+    assert "actual precheck free RAM" in notes[0] and "runtime RAM floor" in notes[1]
     assert stop.call_args_list and all(call.args == (child,) for call in stop.call_args_list)

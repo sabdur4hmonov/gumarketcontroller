@@ -2027,3 +2027,57 @@ cache binding1 passed; new assertion mutations13/13. Full loaded interaction
 and real100/500/1000 before/after remain queued; these timings do not certify capacity.
 
 Validity correction: observed free-RAM minima for the historical10/25/50 runs were739.20/1116.62/599.65MiB. The525MiB figure was a later denied job precheck, not the measured run start. No swap telemetry was captured. All historical rows remain invalid for capacity conclusions regardless. A fresh >=3072MiB precheck and isolated pre-change rerun are required; new before/after tables are pending.
+
+
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 3072 MiB at every scale; two consecutive five-minute
+readings before queue admission. Runtime floor remains 512 MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|not run: RAM (precheck <3072MiB)|—|2047.59375 / —|—|—|—|—|
+|25|not run: RAM (precheck <3072MiB)|—|2045.140625 / —|—|—|—|—|
+|50|not run: RAM (precheck <3072MiB)|—|2044.30859375 / —|—|—|—|—|
+|100|not run: RAM (precheck <3072MiB)|—|2043.8046875 / —|—|—|—|—|
+|500|not run: RAM (precheck <3072MiB)|—|2041.7578125 / —|—|—|—|—|
+|1000|not run: RAM (precheck <3072MiB)|—|2040.80078125 / —|—|—|—|—|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|25|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|50|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|100|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|500|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|1000|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+
+Overnight closeout: bounded RAM gate passed at22:51UTC (3302.91 then3261.95MiB),
+but actual admission at00:20UTC Oct14 was1947.29MiB. Scale-specific BEFORE
+checks were2047.59/2045.14/2044.31/2043.80/2041.76/2040.80MiB; diagnostic25
+precheck2038.83MiB. ALL were refused once. No capacity role was launched.
+AFTER was not attempted because required BEFORE/profile work was refused.
+No latency/tick/CPU-per-shop comparison or new extrapolation exists; profile
+attribution/fix/full gate/secrets/push remain waiting for RAM. No client fix
+was made. Two earlier NEW2-shop prerequisite runs remain diagnostics only.
+<!-- CP25 CERTIFIED TABLES END -->
