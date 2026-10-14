@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 129,
-  "total": 129,
+  "caught": 135,
+  "total": 135,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -52,12 +52,6 @@
     {
       "guard": "factory crash stops fleet",
       "test": "tests/test_cp25_poll_isolation.py::test_unexpected_factory_error_is_isolated",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
-      "guard": "handler deadline bypassed",
-      "test": "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
       "assertion_caught": true,
       "exit_code": 1
     },
@@ -793,11 +787,58 @@
       "test": "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[False]",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "welcome reply retains DB connection",
+      "test": "tests/test_cp25_reply_transactions.py::test_slow_reply_releases_pool_connection_before_network[welcome]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "published reply retains DB connection",
+      "test": "tests/test_cp25_reply_transactions.py::test_slow_reply_releases_pool_connection_before_network[published]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "handler loses qualified error attribution",
+      "test": "tests/test_cp25_reliability.py::test_handler_error_logs_distinguish_pool_request_and_deadline_timeouts",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "request timeout counted as handler deadline",
+      "test": "tests/test_cp25_reliability.py::test_handler_error_logs_distinguish_pool_request_and_deadline_timeouts",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "failed progress loses raw delivery evidence",
+      "test": "tests/test_cp25_progress.py::test_failed_progress_preserves_role_records_and_actual_idle_age",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "failed progress replaces measured idle age",
+      "test": "tests/test_cp25_progress.py::test_failed_progress_preserves_role_records_and_actual_idle_age",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "handler deadline bypassed",
+      "test": "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "production loses five second watchdog",
-    "constructor loses timeout"
+    "welcome reply retains DB connection",
+    "published reply retains DB connection",
+    "handler loses qualified error attribution",
+    "request timeout counted as handler deadline",
+    "failed progress loses raw delivery evidence",
+    "failed progress replaces measured idle age",
+    "handler deadline bypassed"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

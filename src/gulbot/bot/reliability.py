@@ -84,14 +84,23 @@ class HandlerDeadline(BaseMiddleware):
     ) -> Any:
         started = time.monotonic()
         outcome = "ok"
+        error_module = ""
+        deadline = asyncio.timeout(self.seconds)
         try:
-            return await asyncio.wait_for(handler(event, data), timeout=self.seconds)
-        except TimeoutError:
-            outcome = "timeout"
-            self.timeouts += 1
+            async with deadline:
+                return await handler(event, data)
+        except TimeoutError as error:
+            error_module = type(error).__module__
+            if deadline.expired():
+                outcome = "timeout"
+                self.timeouts += 1
+            else:
+                outcome = type(error).__name__
+                self.errors += 1
             return None
         except Exception as error:
             outcome = type(error).__name__
+            error_module = type(error).__module__
             self.errors += 1
             return None
         except asyncio.CancelledError:
@@ -106,6 +115,7 @@ class HandlerDeadline(BaseMiddleware):
                 "shop_id": self.shop_id,
                 "latency_ms": round(elapsed, 2),
                 "outcome": outcome,
+                "error_module": error_module,
             }
             if outcome != "ok" or elapsed > 250:
                 log.warning(json.dumps(payload))

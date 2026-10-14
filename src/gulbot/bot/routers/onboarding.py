@@ -56,6 +56,9 @@ async def start(
 ) -> None:
     await state.clear()
     from_page = await _came_from_page(session, customer, command)
+    # Registration/referral is idempotent and ready to persist. Release the
+    # pooled connection before Telegram; browsing opens its own next transaction.
+    await session.commit()
     if customer_created:
         await state.set_state(Onboarding.choosing_language)
         await message.answer(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -114,3 +115,22 @@ def test_handler_p95_uses_the_same_interpolated_quantile_as_capacity() -> None:
     deadline = HandlerDeadline(17)
     deadline.samples.extend(range(1, 21))
     assert deadline.snapshot()["p95_ms"] == pytest.approx(19.05)
+
+
+async def test_handler_error_logs_distinguish_pool_request_and_deadline_timeouts(caplog):
+    from sqlalchemy.exc import TimeoutError as PoolTimeout
+
+    for error in [
+        PoolTimeout("secret must not be logged"),
+        TimeoutError("secret must not be logged"),
+    ]:
+        deadline = HandlerDeadline(17)
+
+        async def failed(event, data, raised=error):
+            raise raised
+
+        await deadline(failed, None, {})
+        payload = json.loads(caplog.records[-1].message)
+        assert payload.get("error_module") == type(error).__module__
+        assert deadline.errors == 1 and deadline.timeouts == 0
+        assert "secret must not be logged" not in payload.values()

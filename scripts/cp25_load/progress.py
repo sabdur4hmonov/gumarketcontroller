@@ -42,10 +42,16 @@ def inspect_stall(directory: Path, shops: int, started_ns: int) -> dict[str, Any
     if count is None:
         return None
     worker = json.loads(worker_file.read_text(encoding="utf-8"))
+    last = max(
+        (int(r["received_ns"]) for r in stats["replies"] if r["role"] in {"customer", "owner"}),
+        default=started_ns,
+    )
     return {
         "kind": "failed incomplete workload; no capacity quantiles certified",
         "successful_replies": count,
         "expected_replies": expected,
         "no_progress_seconds": STALL_SECONDS,
+        "actual_no_progress_seconds": (time.perf_counter_ns() - last) / 1_000_000_000,
+        "api_stats": stats,
         "runtime_provenance": worker["runtime_provenance"],
     }

@@ -690,6 +690,9 @@ async def action(
                 draft_id=cb.draft,
                 revision=cb.revision,
             )
+            # Delivery receipts were committed by publish; finish indexing
+            # before the confirmation reply can wait on Telegram or pacing.
+            await session.commit()
             await message.answer(
                 f"Joylandi: {link}",
                 reply_markup=InlineKeyboardMarkup(

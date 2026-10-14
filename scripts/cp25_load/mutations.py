@@ -39,6 +39,50 @@ def mutations() -> list[Mutation]:
     upgrade = migration[migration.index("def upgrade()") : migration.index("def downgrade()")]
     return [
         Mutation(
+            "welcome reply retains DB connection",
+            "src/gulbot/bot/routers/onboarding.py",
+            "    await session.commit()",
+            "    pass",
+            "tests/test_cp25_reply_transactions.py::test_slow_reply_releases_pool_connection_before_network[welcome]",
+        ),
+        Mutation(
+            "published reply retains DB connection",
+            "src/gulbot/bot/routers/announcements.py",
+            "            await session.commit()\n            await message.answer(\n"
+            '                f"Joylandi: {link}"',
+            "            pass\n            await message.answer(\n"
+            '                f"Joylandi: {link}"',
+            "tests/test_cp25_reply_transactions.py::test_slow_reply_releases_pool_connection_before_network[published]",
+        ),
+        Mutation(
+            "handler loses qualified error attribution",
+            "src/gulbot/bot/reliability.py",
+            '"error_module": error_module,',
+            '"error_module": "",',
+            "tests/test_cp25_reliability.py::test_handler_error_logs_distinguish_pool_request_and_deadline_timeouts",
+        ),
+        Mutation(
+            "request timeout counted as handler deadline",
+            "src/gulbot/bot/reliability.py",
+            "if deadline.expired():",
+            "if True:",
+            "tests/test_cp25_reliability.py::test_handler_error_logs_distinguish_pool_request_and_deadline_timeouts",
+        ),
+        Mutation(
+            "failed progress loses raw delivery evidence",
+            "progress.py",
+            '"api_stats": stats,',
+            '"api_stats": {},',
+            "tests/test_cp25_progress.py::test_failed_progress_preserves_role_records_and_actual_idle_age",
+        ),
+        Mutation(
+            "failed progress replaces measured idle age",
+            "progress.py",
+            "(time.perf_counter_ns() - last) / 1_000_000_000",
+            "STALL_SECONDS",
+            "tests/test_cp25_progress.py::test_failed_progress_preserves_role_records_and_actual_idle_age",
+        ),
+        Mutation(
             "production loses five second watchdog",
             "src/gulbot/bot/run.py",
             "await asyncio.sleep(5)",
@@ -808,8 +852,8 @@ def mutations() -> list[Mutation]:
         Mutation(
             "handler deadline bypassed",
             "src/gulbot/bot/reliability.py",
-            "return await asyncio.wait_for(handler(event, data), timeout=self.seconds)",
-            "return await handler(event, data)",
+            "deadline = asyncio.timeout(self.seconds)",
+            "deadline = asyncio.timeout(None)",
             "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
         ),
         Mutation(

@@ -112,3 +112,28 @@ def test_progress_observer_is_local_and_has_a_bounded_request(monkeypatch, tmp_p
     api.write_text(json.dumps({"url": "http://127.0.0.1:1234"}), encoding="utf-8")
     assert progress.inspect_stall(tmp_path, 1, 0)["successful_replies"] == 0
     assert calls == [("http://127.0.0.1:1234/control/stats", {"timeout": 1})]
+
+
+def test_failed_progress_preserves_role_records_and_actual_idle_age(monkeypatch, tmp_path):
+    import io
+    import json
+
+    from scripts.cp25_load import progress
+
+    stats = {
+        "replies": [{"bot_id": 1, "chat_id": 3, "role": "customer", "received_ns": 1_000_000_000}],
+        "calls": {"sendMessage": 1},
+        "polled_shops": 1,
+    }
+    (tmp_path / "worker-metrics.json").write_text(
+        json.dumps({"runtime_provenance": {"commit": "fixture"}})
+    )
+    (tmp_path / "api-ready.json").write_text(json.dumps({"url": "http://127.0.0.1:1234"}))
+    monkeypatch.setattr(progress, "urlopen", lambda *a, **kw: io.StringIO(json.dumps(stats)))
+    monkeypatch.setattr(progress.time, "perf_counter_ns", lambda: 201_000_000_000)
+    record = progress.inspect_stall(tmp_path, 1, 0)
+    assert record.get("api_stats") == stats, (
+        "Keep the real role/delivery evidence before stopping API"
+    )
+    assert record.get("actual_no_progress_seconds") == 200
+    assert record.get("runtime_provenance") == {"commit": "fixture"}
