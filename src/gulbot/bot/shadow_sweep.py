@@ -109,6 +109,15 @@ def _location(callback: object) -> str:
     return f"{tail}:{line}"
 
 
+def _handler_location(callback: object, locations: dict[int, str] | None) -> str:
+    if locations is None:
+        return _location(callback)
+    identity = id(callback)
+    if identity not in locations:
+        locations[identity] = _location(callback)
+    return locations[identity]
+
+
 async def _filters_pass(filters: object, event: TelegramObject, raw_state: str | None) -> bool:
     """Evaluate a filter chain exactly the way the dispatcher would."""
     if not filters:
@@ -152,7 +161,12 @@ def make_callback(data: str) -> CallbackQuery:
 
 
 async def matching_handlers(
-    dispatcher: Dispatcher, event: TelegramObject, raw_state: str | None, event_type: str
+    dispatcher: Dispatcher,
+    event: TelegramObject,
+    raw_state: str | None,
+    event_type: str,
+    *,
+    locations: dict[int, str] | None = None,
 ) -> list[HandlerId]:
     matched: list[HandlerId] = []
     for router in walk_routers(dispatcher):
@@ -170,7 +184,7 @@ async def matching_handlers(
                     HandlerId(
                         router=router.name,
                         name=getattr(handler.callback, "__name__", repr(handler.callback)),
-                        location=_location(handler.callback),
+                        location=_handler_location(handler.callback, locations),
                         is_catch_all=bool(handler.flags.get("catch_all", False)),
                     )
                 )
@@ -198,10 +212,13 @@ def probes() -> list[tuple[str, str, TelegramObject]]:
 async def sweep(dispatcher: Dispatcher) -> list[Violation]:
     violations: list[Violation] = []
     all_probes = probes()
+    locations: dict[int, str] = {}
 
     for raw_state in declared_states():
         for event_type, trigger, event in all_probes:
-            matched = await matching_handlers(dispatcher, event, raw_state, event_type)
+            matched = await matching_handlers(
+                dispatcher, event, raw_state, event_type, locations=locations
+            )
             if len(matched) < 2:
                 continue
 
