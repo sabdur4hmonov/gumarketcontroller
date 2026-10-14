@@ -1,7 +1,7 @@
-"""Experimental task-owned HTTP batch; NOT wired to worker send paths.
+"""Task-owned HTTP batch, activated after CP25's clean25-shop attribution.
 
-Activate only after a clean25-shop attribution profile and real two-loop I/O
-proof. Bot identity/pacing remain per token; only the HTTP session is shared.
+Real two-loop worker HTTP guards pin the lifetime. Bot identity/pacing remain
+per token; only the HTTP session is shared within one task.
 """
 
 from __future__ import annotations
@@ -11,15 +11,12 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 
 from aiogram import Bot
-from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.session.base import BaseSession
-from aiogram.enums import ParseMode
 
 from gulbot.bot.factory import TELEGRAM_REQUEST_TIMEOUT
 from gulbot.bot.registry import BotRegistry, TokenResolver
 from gulbot.bot.reliability import ReplyPolicy
-from gulbot.config import get_settings
 
 SessionFactory = Callable[[], BaseSession]
 SessionBotFactory = Callable[[str | None, BaseSession], Bot]
@@ -32,11 +29,9 @@ def batch_session() -> BaseSession:
 
 
 def bound_bot(token: str | None, session: BaseSession) -> Bot:
-    return Bot(
-        token=token if token is not None else get_settings().bot_token.get_secret_value(),
-        session=session,
-        default=DefaultBotProperties(parse_mode=ParseMode.HTML),
-    )
+    from gulbot.bot import factory
+
+    return factory.build_bot(token, session=session)
 
 
 class TaskBotBatch:

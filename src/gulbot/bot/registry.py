@@ -27,6 +27,7 @@ aiohttp session.
 
 from __future__ import annotations
 
+import inspect
 import logging
 from collections.abc import Callable, Collection, Mapping
 from types import TracebackType
@@ -117,6 +118,23 @@ class BotRegistry:
         self._bot_factory = bot_factory
         self._by_shop: dict[int, Bot] = {}
         self._by_token: dict[str | None, Bot] = {}
+
+    def task_batch_tokens(self) -> TokenResolver | None:
+        """Normal worker factory supports binding a task-owned HTTP client.
+
+        An injected registry/factory retains its explicit client ownership.
+        Legacy zero-argument factory wrappers remain a supported test seam.
+        """
+        from gulbot.bot import factory
+
+        if self._bot_factory is not build_bot_for:
+            return None
+        parameters = inspect.signature(factory.build_bot).parameters
+        if "session" not in parameters and not any(
+            p.kind is inspect.Parameter.VAR_KEYWORD for p in parameters.values()
+        ):
+            return None
+        return self._token_for
 
     def bot_for(self, shop_id: int) -> Bot:
         """This shop's Bot, or ShopBotUnavailable. Failures are not cached:

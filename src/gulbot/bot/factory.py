@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Final
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.session.base import BaseSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.base import BaseStorage, DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
@@ -65,14 +66,15 @@ ALLOWED_UPDATES: Final = [
 TELEGRAM_REQUEST_TIMEOUT = 15
 
 
-def build_bot(token: str | None = None) -> Bot:
+def build_bot(token: str | None = None, *, session: BaseSession | None = None) -> Bot:
     """A new Bot. `token` None means the process's BOT_TOKEN.
 
     Uncached on purpose; see worker/tasks.py. A token is passed only by
     `gulbot.bot.registry`, which picks one per shop.
     """
-    session = AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT)
-    session.middleware.register(ReplyPolicy())
+    if session is None:
+        session = AiohttpSession(timeout=TELEGRAM_REQUEST_TIMEOUT)
+        session.middleware.register(ReplyPolicy())
     return Bot(
         token=token if token is not None else get_settings().bot_token.get_secret_value(),
         session=session,

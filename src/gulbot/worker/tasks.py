@@ -8,7 +8,9 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot.bot.batch_client import TaskBotBatch
 from gulbot.bot.registry import BotRegistry, registry_for
 from gulbot.db.session import task_session_factory
 from gulbot.models.shop import Shop
@@ -46,12 +48,25 @@ if TYPE_CHECKING:
 log = logging.getLogger("gulbot.worker")
 
 
-def _transports(registry: BotRegistry) -> TransportFor:
+def _transports(registry: BotRegistry | TaskBotBatch) -> TransportFor:
     """shop_id -> a transport over that shop's bot. C1/C2 of the audit: the
     outbox spans every shop, so the worker must never hand a tick one bot."""
     from gulbot.sending.telegram import TelegramTransport
 
     return lambda shop_id: TelegramTransport(registry.bot_for(shop_id))
+
+
+async def _worker_registry(session: AsyncSession) -> BotRegistry | TaskBotBatch:
+    from gulbot.bot import batch_client
+
+    registry = await registry_for(session)
+    tokens = registry.task_batch_tokens() if isinstance(registry, BotRegistry) else None
+    if tokens is None:
+        return registry
+    # SSL certificate construction is pure CPU work. Network connections open
+    # later on THIS task's loop; its existing finally closes the batch once.
+    http = await asyncio.to_thread(batch_client.batch_session)
+    return TaskBotBatch(tokens, http, batch_client.bound_bot)
 
 
 async def _send_due_reminders() -> dict[str, int]:
@@ -65,7 +80,7 @@ async def _send_due_reminders() -> dict[str, int]:
         # Each shop's own stored token (or the logged legacy fallback), loaded
         # once per call. Closed in the `finally`, exactly as the single bot
         # was: the registry caches bots for THIS call only.
-        registry = await registry_for(session)
+        registry = await _worker_registry(session)
         try:
             result = await run_tick(
                 session,
@@ -106,7 +121,7 @@ async def _send_order_pings() -> dict[str, int]:
     from gulbot.sending.order_pings import run_order_ping_tick
 
     async with task_session_factory() as factory, factory() as session:
-        registry = await registry_for(session)
+        registry = await _worker_registry(session)
         try:
             result = await run_order_ping_tick(
                 session, transport_for=_transports(registry), now_utc=datetime.now(UTC)
@@ -140,7 +155,7 @@ async def _for_every_shop(job: Job) -> dict[str, int]:
 
     now = datetime.now(UTC)
     async with task_session_factory() as factory, factory() as session:
-        registry = await registry_for(session)
+        registry = await _worker_registry(session)
         try:
             counts = await alerts.announce_for_every_shop(
                 session, job=job, transport_for=_transports(registry), now_utc=now
