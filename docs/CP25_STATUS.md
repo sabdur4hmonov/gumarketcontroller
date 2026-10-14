@@ -2,7 +2,99 @@
 
 ## CURRENT RESUME POINT — read this before chronological history
 
-**LATEST STOP: 2026-10-14T05:58:23Z.** Owner-authorized measurement command
+**LATEST RESUME, 2026-10-14T08:03Z — supersedes old PIDs/commands below.**
+No benchmark/test process is currently owned. Old controller7292/session57629
+closed after owner requested faster completion; never restart either.
+Unprofiled BEFORE10/25/50/100/500 valid cleanf8;1000 FAILED/stalled (not RAM),
+3701/4000 successful replies, last progress51minutes old, only owned child
+tree stopped. Full fake API evidence retained privately in current run dir;
+partial worker1000 successes do not certify a complete capacity row.
+
+The NEVER-ATTEMPTED diagnostic25 was then completed once, using existing
+run_one at6454.32MiB (same-scale peak+1024 gate2117), minimum5524.09MiB.
+Actual profile confirms SSL construction5.368s and serial closure6.514s of
+13.786s reminder tick; SQL0.381s, limiter0. See CP25_TICK_PROFILE.md/raw JSON.
+Worker batch HTTP reuse ACTIVATED in local commit2721eb9. Normal factory,
+real localhost I/O, two separate asyncio.run lifetimes, reminder/order normal
+and exception paths tested. One client closed per task, separate Bot identities;
+legacy/custom factory seams preserved.9/9 dedicated worker assertion mutations.
+Touched-source strict mypy4 and neighbours green; peak focused250.90MiB.
+
+Faster supervision now FAILS (never passes) an incomplete workload after worker
+completion +120s without successful delivery progress, inspected every15s via
+owned localhost API with1s timeout. Preserves missing-count semantics and RAM
+guards. Failed rows and actual admission remain in the ledger. RED2 then
+GREEN4 progress/controller cases +7 direct controller neighbours; strict mypy3
+green. NEW18 worker/progress guards + relocated HTML recheck; runtime120/120
+plus retained harness12/12. Before1000 not rerun. No full gate/push/merge.
+
+AFTER NOT STARTED. Native continuation resumes after this turn; remaining
+test-first platform/onboarding TLS offloads, platform handler deadline and
+stale admin runtime snapshots must be completed BEFORE AFTER. Then write
+PROFILE_REVIEWED.json with actual profile SHA and CURRENT after executed-tree
+SHA, and run ONLY this prepared command (not old evening/overnight drivers):
+
+```powershell
+.\.venv\Scripts\python.exe -u .cp22-stage\cp25\after_only.py
+```
+
+It reuses certified stage/guards/peaks, refuses missing/stale profile review
+or existing after-ledger, runs10/25/50/100/500/1000 sequentially with fail-fast
+stalled tails and3072MiB for100+. Guard helper/progress file hash is included
+in the executed harness tree for AFTER. Inspect current stage ledgers/active
+PID before any job. Native deadline remains10:30UTC; no new waiting loop.
+AFTER failure requires actual cause investigation; do not restart attempted
+scales automatically, mislabel failures RAM, or claim webhooks fix DB/CPU.
+Pending after tables: loaded query plans, Caddy rehearsal, migrations/head,
+tenancy/headless, both full sweeps, full gate and configured-secret scan,
+capacity guidance, webhook decision. Push CP25 branch only after fresh green
+gate/scan; never merge. Unrelated Compose edits/backup/designer preserved.
+
+**LATEST OWNER STEERING: MAKE IT FASTER, 2026-10-14T07:22Z.** BEFORE1000
+was stalled:3701/4000 successful replies, last success3079.6s ago; worker
+finished at06:47Z with1000 reminder and1000 order sends. Owner-requested
+acceleration ended ONLY verified owned child18184/tree, preserving live
+API statistics/source certificate in before-1000-stalled-evidence.json.
+This row is FAILED/stalled, NOT RAM and NOT a completed capacity measurement.
+The old controller7292/session57629 exited; never restart it or passed scales.
+BEFORE10/25/50/100/500 remain certified. Native heartbeat temporarily PAUSED
+while this active turn advances ONLY the never-attempted diagnostic25 using
+existing certified evening.run_one, measured25 peak1092.459MiB +1024 margin,
+same reference/source/resources. Actual free RAM after stop6506.98MiB.
+Exact diagnostic command: .venv/Scripts/python.exe -u .cp22-stage/cp25/profile_only.py
+It records the failed1000 row and publishes tables, then stops for agent
+profile review (no AFTER/full gate/push). Runtime102/102 + harness12/12.
+Existing records below are historical; do not assume their PIDs are alive.
+
+**ACTIVE OWNER-AUTHORIZED RUN, 2026-10-14T06:03Z:** Docker running,
+actual RAM3915.12MiB initially, post-infrastructure3896.30MiB. Evening
+controller PID7292, interactive exec session57629, directory
+.cp22-stage/cp25/evening-20261014-823d3129. Consult active.json and
+before-ledger.json there before any action. DO NOT launch another job,
+rerun passed scales or mutate src/scripts while the controller/child is alive.
+BEFORE10/25/50/100/500 certified cleanf8 and measured;1000 is active at this
+update (childPID18184; precheck4381.62MiB). Next diagnostic25 profile, stdin evidence barrier, reviewed
+fix/tests if justified, AFTER. Driver appends timestamped tables/steps below
+after each row; these supersede earlier refusal history. No full gate/push yet.
+Heartbeat stays paused while this turn is active; owner-confirmed RAM condition
+now passed, so the existing unattended continuation resumes AFTER this turn,
+quiet on unchanged owned jobs, with an absolute stop2026-10-14T10:30Z. It must
+never start a duplicate controller/child or extend the historical RAM watcher.
+Source1GiB-budget checks already green; runtime102/102
++ harness12/12. Last completed reminder ticks10/25/50/100:
+5.4315 /13.4855 /27.2149 /53.1747 seconds. Original pressure timings differ
+materially (10/25/50:9.71/27.64/54.06), remain NOT a baseline. No cause guessed.
+
+Certified500: precheck4521.94MiB, min free2143.19MiB, aggregate conservative
+peak2281.473MiB; reply p50/p95/p99=7357.153/23700.012/28167.341ms;
+sequential reminder/order batch totals286.4759/296.9443s. Poller startup
+116.168s. Harness startup deadline scales with shop count (max120,2*shops),
+so no fixed120s fleet cap. The BEFORE latency is poor and must be compared
+honestly with AFTER; its25s handler timeout may expose overloaded queues.
+Static pending review: platform Bot TLS constructors/onboarding, platform
+handler deadline, stale runtime updated_at. No source changes during job.
+
+**EARLIER STOP: 2026-10-14T05:58:23Z.** Owner-authorized measurement command
 completed infrastructure/imports/private seed, then stopped ONCE at actual
 2756.38MiB, below3072MiB. No capacity child or profile started. Preserve
 .cp22-stage/cp25/evening-20261014-d113f94c; admission.json and startup/ contain
@@ -1390,3 +1482,697 @@ Remaining evening command preflight now selects only unproven NEW guard names an
 2026-10-14T05:58:14.140420+00:00 — before 10,25,50: precheck actual free RAM 2710.27MiB.
 
 2026-10-14T05:58:23.644498+00:00 — Evening AFTER infrastructure: actual free RAM 2756.38MiB; floor3072.
+
+2026-10-14T06:03:15.731547+00:00 — Startup docker-wsl-start: actual precheck 3892.33MiB.
+
+2026-10-14T06:03:18.371591+00:00 — Startup docker-wsl: actual precheck 3873.95MiB.
+
+2026-10-14T06:03:21.123864+00:00 — Startup postgres: actual precheck 3908.38MiB.
+
+2026-10-14T06:03:24.139305+00:00 — Startup redis: actual precheck 3919.68MiB.
+
+2026-10-14T06:03:27.362981+00:00 — Startup venv-imports: actual precheck 3871.07MiB.
+
+2026-10-14T06:03:34.904891+00:00 — Startup reference-db-seed: actual precheck 3913.55MiB.
+
+2026-10-14T06:03:35.301794+00:00 — before 10,25,50: precheck actual free RAM 3847.03MiB.
+
+2026-10-14T06:03:44.566754+00:00 — Evening AFTER infrastructure: actual free RAM 3896.30MiB; floor3072.
+
+2026-10-14T06:03:44.633576+00:00 — Evening before-10: actual free 3892.20MiB; required3072MiB.
+
+2026-10-14T06:03:45.033545+00:00 — before 10: precheck actual free RAM 3880.80MiB.
+
+2026-10-14T06:03:50.966964+00:00 — before-10: actual free RAM before scale 3688.84MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:04:44.873994+00:00 — before-10: run completed; minimum sampled free RAM 2972.3MiB; validity not yet assessed.
+
+
+2026-10-14T06:04:45.779588+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T06:04:45.780146+00:00 — Evening before-25: actual free 3944.55MiB; required3072MiB.
+
+2026-10-14T06:04:46.288563+00:00 — before 25: precheck actual free RAM 3891.96MiB.
+
+2026-10-14T06:04:52.497902+00:00 — before-25: actual free RAM before scale 3706.28MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:05:57.857330+00:00 — before-25: run completed; minimum sampled free RAM 3004.32MiB; validity not yet assessed.
+
+
+2026-10-14T06:05:58.463758+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T06:05:58.464706+00:00 — Evening before-50: actual free 3968.95MiB; required3072MiB.
+
+2026-10-14T06:05:58.830215+00:00 — before 50: precheck actual free RAM 3950.13MiB.
+
+2026-10-14T06:06:04.834688+00:00 — before-50: actual free RAM before scale 3723.06MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:07:47.806921+00:00 — before-50: run completed; minimum sampled free RAM 2914.32MiB; validity not yet assessed.
+
+
+2026-10-14T06:07:48.727359+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T06:07:48.727359+00:00 — Evening before-100: actual free 4559.82MiB; required3072MiB.
+
+2026-10-14T06:07:49.164355+00:00 — before 100: precheck actual free RAM 4532.98MiB.
+
+2026-10-14T06:07:55.033833+00:00 — before-100: actual free RAM before scale 4308.21MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:10:57.009266+00:00 — before-100: run completed; minimum sampled free RAM 3363.8MiB; validity not yet assessed.
+
+
+2026-10-14T06:10:57.636913+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T06:10:57.641327+00:00 — Evening before-500: actual free 4521.94MiB; required3072MiB.
+
+2026-10-14T06:10:58.066652+00:00 — before 500: precheck actual free RAM 4524.52MiB.
+
+2026-10-14T06:11:03.904420+00:00 — before-500: actual free RAM before scale 4339.24MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:25:20.928199+00:00 — before-500: run completed; minimum sampled free RAM 2143.19MiB; validity not yet assessed.
+
+
+2026-10-14T06:25:22.042784+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|measured|f8f73b84 / eaad87551fdc|4521.94140625 / 2143.19|7357.153/23700.012/28167.341|286.476/296.944|15; 14510 / 175760.02; 1; 4555 / 10904.85|7000|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+|500|bot|1226.8|174.844|20.83|2.454|0.34969|
+|500|worker|309.63|283.344|48.57|0.619|0.56669|
+|500|API stub|369.11|43.875|5.19|0.738|0.08775|
+|500|coordinator|266.07|26.156|3.05|0.532|0.05231|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T06:25:22.042784+00:00 — Evening before-1000: actual free 4381.62MiB; required3072MiB.
+
+2026-10-14T06:25:22.525226+00:00 — before 1000: precheck actual free RAM 4352.92MiB.
+
+2026-10-14T06:25:29.066609+00:00 — before-1000: actual free RAM before scale 4121.64MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T06:55Z inspection: BEFORE1000 controller7292/reference18184 (actual19460) still alive; API15424 and bot18984 still owned. Worker metrics completed at06:47:33Z:1000 reminder sends and1000 order sends, sequential totals534.494/525.5077s, worker elapsed1060.01s. This is PARTIAL role evidence, not a completed capacity row: no result.json or stop-bots file yet; coordinator delivery reconciliation remains pending. No other job/source edit/retry; wait for the existing driver outcome and then its planned diagnostic25.
+
+2026-10-14T07:24:16.670741+00:00 — Evening before: failed; ledger .cp22-stage\cp25\evening-20261014-823d3129\before-ledger.json.
+
+
+2026-10-14T07:27:01.665602+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|measured|f8f73b84 / eaad87551fdc|4521.94140625 / 2143.19|7357.153/23700.012/28167.341|286.476/296.944|15; 14510 / 175760.02; 1; 4555 / 10904.85|7000|
+|1000|failed (stalled workload3701/4000; owner requested faster completion; manual stop, not RAM)|—|4381.62109375 / —|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+|500|bot|1226.8|174.844|20.83|2.454|0.34969|
+|500|worker|309.63|283.344|48.57|0.619|0.56669|
+|500|API stub|369.11|43.875|5.19|0.738|0.08775|
+|500|coordinator|266.07|26.156|3.05|0.532|0.05231|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T07:27:01.665602+00:00 — Evening before-25-profile: actual free 6454.32MiB; required2117MiB.
+
+2026-10-14T07:27:02.115647+00:00 — before 25: precheck actual free RAM 6458.85MiB.
+
+2026-10-14T07:27:08.160273+00:00 — before-25: actual free RAM before scale 6427.63MiB; source f8f73b8405322ec99cb1e06305fc9f7330f31df0.
+
+2026-10-14T07:28:14.234326+00:00 — before-25: run completed; minimum sampled free RAM 5524.09MiB; validity not yet assessed.
+
+
+2026-10-14T07:28:14.877625+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|measured|f8f73b84 / eaad87551fdc|4521.94140625 / 2143.19|7357.153/23700.012/28167.341|286.476/296.944|15; 14510 / 175760.02; 1; 4555 / 10904.85|7000|
+|1000|failed (stalled workload3701/4000; owner requested faster completion; manual stop, not RAM)|—|4381.62109375 / —|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+|500|bot|1226.8|174.844|20.83|2.454|0.34969|
+|500|worker|309.63|283.344|48.57|0.619|0.56669|
+|500|API stub|369.11|43.875|5.19|0.738|0.08775|
+|500|coordinator|266.07|26.156|3.05|0.532|0.05231|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T07:28:14.877625+00:00 — Owner-requested acceleration: diagnostic25 measured; failed1000 retained, no passed scale repeated. AFTER remains gated on profile review.
+
+2026-10-14T07:33:36.113895+00:00 — daytime worker-batch-red: free 6392.31MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:33:43.766892+00:00 — worker-batch-red: exit1; peak242.79MiB; after6176.95MiB.
+
+2026-10-14T07:34:44.377008+00:00 — daytime worker-batch-green: free 6388.57MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:35:02.703248+00:00 — worker-batch-green: exit1; peak250.90MiB; after6157.46MiB.
+
+2026-10-14T07:35:49.330643+00:00 — daytime worker-batch-client-green: free 6368.95MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:35:58.625556+00:00 — worker-batch-client-green: exit0; peak244.49MiB; after6179.18MiB.
+
+2026-10-14T07:38:27.057778+00:00 — daytime worker-batch-errors: free 6358.06MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:38:38.934950+00:00 — worker-batch-errors: exit0; peak244.99MiB; after6352.08MiB.
+
+2026-10-14T07:40:00.069076+00:00 — daytime worker-batch-strict: free 6500.17MiB; single measured-budget precheck512MiB.
+
+2026-10-14T07:40:02.110522+00:00 — worker-batch-strict: exit0; peak147.51MiB; after6343.14MiB.
+
+2026-10-14T07:43:29.690126+00:00 — Mutation worker reminder bypasses batch client: actual free RAM 6263.56MiB before focused test.
+
+2026-10-14T07:43:38.408053+00:00 — Mutation worker order bypasses batch client: actual free RAM 6280.95MiB before focused test.
+
+2026-10-14T07:43:47.280941+00:00 — Mutation worker factory drops provided session: actual free RAM 6273.48MiB before focused test.
+
+2026-10-14T07:43:56.533929+00:00 — Mutation worker bound factory loses token identity: actual free RAM 6274.31MiB before focused test.
+
+2026-10-14T07:44:05.192560+00:00 — Mutation worker reminder omits error cleanup: actual free RAM 6282.03MiB before focused test.
+
+2026-10-14T07:44:35.527128+00:00 — Mutation worker order omits error cleanup: actual free RAM 6281.59MiB before focused test.
+
+2026-10-14T07:45:05.211068+00:00 — Mutation worker batch overrides custom registry factory: actual free RAM 6271.43MiB before focused test.
+
+2026-10-14T07:45:33.954750+00:00 — Mutation candidate loses HTML default: actual free RAM 6227.54MiB before focused test.
+
+2026-10-14T07:46:38.949443+00:00 — daytime progress-red: free 6204.70MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:46:46.430553+00:00 — progress-red: exit1; peak93.49MiB; after6117.54MiB.
+
+2026-10-14T07:47:25.038897+00:00 — daytime failed-row-red: free 6210.01MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:47:32.190653+00:00 — failed-row-red: exit1; peak89.55MiB; after6106.93MiB.
+
+2026-10-14T07:49:45.130904+00:00 — daytime progress-green: free 6193.27MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:49:52.474965+00:00 — progress-green: exit0; peak90.41MiB; after6115.60MiB.
+
+2026-10-14T07:52:21.453010+00:00 — daytime progress-ledger-green: free 6167.14MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:52:28.005357+00:00 — progress-ledger-green: exit0; peak90.77MiB; after6122.80MiB.
+
+2026-10-14T07:54:52.818022+00:00 — daytime progress-wire: free 6151.13MiB; single measured-budget precheck768MiB.
+
+2026-10-14T07:54:59.795285+00:00 — progress-wire: exit0; peak89.33MiB; after6119.50MiB.
+
+2026-10-14T07:57:19.200772+00:00 — Mutation progress ignores worker completion: actual free RAM 6264.72MiB before focused test.
+
+2026-10-14T07:57:27.690929+00:00 — Mutation progress stops recent deliveries: actual free RAM 6242.59MiB before focused test.
+
+2026-10-14T07:57:36.206095+00:00 — Mutation progress treats duplicate replies as complete: actual free RAM 6230.98MiB before focused test.
+
+2026-10-14T07:57:44.516661+00:00 — Mutation progress counts noncustomer deliveries: actual free RAM 6198.21MiB before focused test.
+
+2026-10-14T07:57:52.785047+00:00 — Mutation progress loses initial grace: actual free RAM 6193.27MiB before focused test.
+
+2026-10-14T07:58:01.138195+00:00 — Mutation progress permits foreign API: actual free RAM 6197.42MiB before focused test.
+
+2026-10-14T07:58:09.521998+00:00 — Mutation progress loses request timeout: actual free RAM 6209.91MiB before focused test.
+
+2026-10-14T07:58:17.970829+00:00 — Mutation progress supervisor ignores stalled failure: actual free RAM 6198.36MiB before focused test.
+
+2026-10-14T07:58:26.384736+00:00 — Mutation progress stage loses failed status: actual free RAM 6196.86MiB before focused test.
+
+2026-10-14T07:58:34.791538+00:00 — Mutation progress stage loses admission evidence: actual free RAM 6185.46MiB before focused test.
+
+2026-10-14T07:58:43.522774+00:00 — Mutation worker batch overrides legacy zero-argument factory: actual free RAM 6158.83MiB before focused test.
+
+2026-10-14T08:03:44.210023+00:00 — daytime fast-supervision-strict: free 6151.45MiB; single measured-budget precheck512MiB.
+
+2026-10-14T08:03:50.453578+00:00 — fast-supervision-strict: exit0; peak160.30MiB; after5993.05MiB.
+
+
+2026-10-14T08:06:53.638054+00:00
+<!-- CP25 CERTIFIED TABLES START -->
+
+### CP25 certified overnight measurements
+
+Harness limits: **5 ms artificial delay per Bot API RPC; 0.1 customer
+messages/s/shop** (three customer updates plus one owner announcement).
+Reminder and order tasks run sequentially in **100-shop batches**, each
+with a fresh asyncio loop. Broker and prefork scheduling are excluded.
+Tick totals describe a single-process upper bound, not a production
+Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
+Results with sampled free RAM below 1024 MiB are excluded as pressure
+runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
+process RSS including fixed overhead, not an incremental memory slope.
+
+Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
+
+**BEFORE**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|measured|f8f73b84 / eaad87551fdc|4521.94140625 / 2143.19|7357.153/23700.012/28167.341|286.476/296.944|15; 14510 / 175760.02; 1; 4555 / 10904.85|7000|
+|1000|failed (stalled workload3701/4000; owner requested faster completion; manual stop, not RAM)|—|4381.62 / —|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+|500|bot|1226.8|174.844|20.83|2.454|0.34969|
+|500|worker|309.63|283.344|48.57|0.619|0.56669|
+|500|API stub|369.11|43.875|5.19|0.738|0.08775|
+|500|coordinator|266.07|26.156|3.05|0.532|0.05231|
+
+**AFTER**
+
+|Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
+|---|---|---|---|---|---|---|---|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
+
+Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
+
+<!-- CP25 CERTIFIED TABLES END -->

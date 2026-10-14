@@ -2039,11 +2039,11 @@ Reminder and order tasks run sequentially in **100-shop batches**, each
 with a fresh asyncio loop. Broker and prefork scheduling are excluded.
 Tick totals describe a single-process upper bound, not a production
 Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
-Current command prepares infrastructure FIRST, then observes actual3072MiB
-once; original bounded five-minute watcher is finished and heartbeat paused.
-Until a valid same-scale peak exists,10/25/50 require3072MiB; thereafter
-the conservative measured aggregate peak plus1024MiB margin applies.
-100+ always3072MiB. Runtime floor remains512MiB.
+Startup guard: 100+ stays3072MiB; small scales use a valid same-scale
+measured aggregate peak+1024MiB, otherwise3072MiB. Evening command
+checks fresh RAM after infrastructure; no renewed RAM polling.
+The original bounded two-reading wait is retained as history.
+Runtime floor remains512MiB.
 Results with sampled free RAM below 1024 MiB are excluded as pressure
 runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
 process RSS including fixed overhead, not an incremental memory slope.
@@ -2054,35 +2054,49 @@ Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
 
 |Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
 |---|---|---|---|---|---|---|---|
-|10|not run: RAM (precheck <3072MiB)|—|2047.59375 / —|—|—|—|—|
-|25|not run: RAM (precheck <3072MiB)|—|2045.140625 / —|—|—|—|—|
-|50|not run: RAM (precheck <3072MiB)|—|2044.30859375 / —|—|—|—|—|
-|100|not run: RAM (precheck <3072MiB)|—|2043.8046875 / —|—|—|—|—|
-|500|not run: RAM (precheck <3072MiB)|—|2041.7578125 / —|—|—|—|—|
-|1000|not run: RAM (precheck <3072MiB)|—|2040.80078125 / —|—|—|—|—|
+|10|measured|f8f73b84 / eaad87551fdc|3892.1953125 / 2972.3|454.575/1108.943/1112.486|5.431/5.357|15; 291 / 5271.67; 1; 101 / 306.83|140|
+|25|measured|f8f73b84 / eaad87551fdc|3944.5546875 / 3004.32|799.247/1666.144/1683.973|13.486/13.279|15; 726 / 12535.53; 1; 236 / 610.24|350|
+|50|measured|f8f73b84 / eaad87551fdc|3968.9453125 / 2914.32|902.851/2660.177/2704.841|27.215/25.645|15; 1452 / 21938.46; 1; 461 / 1079.43|700|
+|100|measured|f8f73b84 / eaad87551fdc|4559.81640625 / 3363.8|1218.813/4499.782/4668.162|53.175/52.185|15; 2902 / 39793.3; 1; 911 / 2080.19|1400|
+|500|measured|f8f73b84 / eaad87551fdc|4521.94140625 / 2143.19|7357.153/23700.012/28167.341|286.476/296.944|15; 14510 / 175760.02; 1; 4555 / 10904.85|7000|
+|1000|failed (stalled workload3701/4000; owner requested faster completion; manual stop, not RAM)|—|4381.62 / —|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.41|4.547|12.8|25.641|0.45470|
+|10|worker|247.75|4.594|42.58|24.775|0.45940|
+|10|API stub|233.83|0.469|1.12|23.383|0.04690|
+|10|coordinator|232.95|0.781|1.45|23.295|0.07810|
+|25|bot|286.86|9.375|20.05|11.474|0.37500|
+|25|worker|258.0|10.984|41.04|10.320|0.43936|
+|25|API stub|237.13|0.875|1.64|9.485|0.03500|
+|25|coordinator|233.71|1.125|1.72|9.348|0.04500|
+|50|bot|335.02|16.531|19.39|6.700|0.33062|
+|50|worker|276.16|22.484|42.54|5.523|0.44968|
+|50|API stub|245.71|1.578|1.72|4.914|0.03156|
+|50|coordinator|234.02|1.672|1.62|4.680|0.03344|
+|100|bot|433.86|31.922|19.56|4.339|0.31922|
+|100|worker|307.97|43.688|41.46|3.080|0.43688|
+|100|API stub|259.06|4.234|2.5|2.591|0.04234|
+|100|coordinator|238.59|2.953|1.62|2.386|0.02953|
+|500|bot|1226.8|174.844|20.83|2.454|0.34969|
+|500|worker|309.63|283.344|48.57|0.619|0.56669|
+|500|API stub|369.11|43.875|5.19|0.738|0.08775|
+|500|coordinator|266.07|26.156|3.05|0.532|0.05231|
 
 **AFTER**
 
 |Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
 |---|---|---|---|---|---|---|---|
-|10|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
-|25|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
-|50|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
-|100|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
-|500|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
-|1000|not run: RAM (BEFORE profile refused; AFTER not attempted)|—|—|—|—|—|—|
+|10|queued; RAM gate pending|—|—|—|—|—|—|
+|25|queued; RAM gate pending|—|—|—|—|—|—|
+|50|queued; RAM gate pending|—|—|—|—|—|—|
+|100|queued; RAM gate pending|—|—|—|—|—|—|
+|500|queued; RAM gate pending|—|—|—|—|—|—|
+|1000|queued; RAM gate pending|—|—|—|—|—|—|
 
 Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
 
-
-Overnight closeout: bounded RAM gate passed at22:51UTC (3302.91 then3261.95MiB),
-but actual admission at00:20UTC Oct14 was1947.29MiB. Scale-specific BEFORE
-checks were2047.59/2045.14/2044.31/2043.80/2041.76/2040.80MiB; diagnostic25
-precheck2038.83MiB. ALL were refused once. No capacity role was launched.
-AFTER was not attempted because required BEFORE/profile work was refused.
-No latency/tick/CPU-per-shop comparison or new extrapolation exists; profile
-attribution/fix/full gate/secrets/push remain waiting for RAM. No client fix
-was made. Two earlier NEW2-shop prerequisite runs remain diagnostics only.
 <!-- CP25 CERTIFIED TABLES END -->
 
 2026-10-14 owner-authorized attempt: Docker was initially off. Observed free

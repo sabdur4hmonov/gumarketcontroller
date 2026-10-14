@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 from . import overnight_queue as queue
+from .progress import inspect_stall
 from .reference_measure import ENTRY, REFERENCE, ROOT, provenance, scale_gate, write_certified
 from .resources import available_mib
 from .startup_audit import prepare
@@ -78,7 +79,12 @@ def measured_peak(result: dict[str, Any]) -> float:
 
 
 def run_one(
-    phase: str, scale: int, profile: bool, output: Path, peaks: dict[int, float]
+    phase: str,
+    scale: int,
+    profile: bool,
+    output: Path,
+    peaks: dict[int, float],
+    admission: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     label = f"{phase}-{scale}" + ("-profile" if profile else "")
     free = available_mib()  # one admission observation; no retry/wait
@@ -93,6 +99,8 @@ def run_one(
         "required_mib": floor,
         "measured_peak_basis_mib": peak,
     }
+    if admission is not None:
+        admission.update(row)
     note(f"Evening {label}: actual free {free:.2f}MiB; required{floor}MiB.")
     if free < floor:
         return {**row, "status": "not run: RAM", "reason": "one admission refused; no retry"}
@@ -129,6 +137,8 @@ def run_one(
         queue.save(output / "active.json", {"label": label, "pid": child.pid})
         deadline = time.monotonic() + 5400
         aborted = False
+        started_ns = time.perf_counter_ns()
+        next_progress = time.monotonic() + 15
         try:
             # Only supervise a live owned job, never wait for RAM admission.
             while child.poll() is None:
@@ -139,6 +149,19 @@ def run_one(
                 if time.monotonic() > deadline:
                     stop_owned(child)
                     raise TimeoutError("Owned scale exceeded its wall deadline")
+                if time.monotonic() >= next_progress:
+                    next_progress = time.monotonic() + 15
+                    try:
+                        stalled = inspect_stall(directory / str(scale), scale, started_ns)
+                    except (OSError, ValueError, KeyError):
+                        stalled = None  # Transient inspection failure cannot grade a run.
+                    if stalled is not None:
+                        queue.save(output / (label + "-stalled.json"), stalled)
+                        stop_owned(child)
+                        raise RuntimeError(
+                            f"{label}: incomplete {stalled['successful_replies']}/{scale * 4}; "
+                            "worker finished and no delivery progress120s; FAILED, no retry"
+                        )
                 time.sleep(0.5)
         finally:
             stop_owned(child)
@@ -195,7 +218,25 @@ def run_stage(stage: str, output: Path, peaks: dict[int, float]) -> dict[str, An
     queue.save(ledger_path, ledger)
     try:
         for phase, scale, profile in queue.plan(stage):
-            ledger["rows"].append(run_one(phase, scale, profile, output, peaks))
+            ledger["rows"].append(
+                {
+                    "label": f"{phase}-{scale}" + ("-profile" if profile else ""),
+                    "shops": scale,
+                    "profile": profile,
+                    "status": "running",
+                    "precheck_free_mib": None,
+                }
+            )
+            queue.save(ledger_path, ledger)
+            try:
+                ledger["rows"][-1] = run_one(
+                    phase, scale, profile, output, peaks, ledger["rows"][-1]
+                )
+            except BaseException as error:
+                ledger["rows"][-1].update(status="failed", reason=type(error).__name__)
+                queue.save(ledger_path, ledger)
+                queue.publish_tables()
+                raise
             queue.save(ledger_path, ledger)
             queue.save(output / "measured-peaks.json", {str(k): v for k, v in peaks.items()})
             queue.publish_tables()

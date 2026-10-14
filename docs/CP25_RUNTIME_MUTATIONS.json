@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 102,
-  "total": 102,
+  "caught": 120,
+  "total": 120,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -531,12 +531,6 @@
       "exit_code": 1
     },
     {
-      "guard": "candidate loses HTML default",
-      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
       "guard": "shadow bypasses source cache",
       "test": "tests/test_cp25_shadow_cache.py::test_sweep_caches_source_metadata_but_evaluates_every_filter",
       "assertion_caught": true,
@@ -631,10 +625,134 @@
       "test": "tests/test_cp25_reference_tooling.py::test_worker_meter_preserves_task_pool_options",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "worker reminder bypasses batch client",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[False-reminder]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker order bypasses batch client",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[False-order]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker factory drops provided session",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[False-reminder]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker bound factory loses token identity",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[False-reminder]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker reminder omits error cleanup",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[True-reminder]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker order omits error cleanup",
+      "test": "tests/test_cp25_worker_batch.py::test_worker_reuses_one_http_client_inside_each_real_task_loop[True-order]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker batch overrides custom registry factory",
+      "test": "tests/test_cp25_worker_batch.py::test_batch_preserves_injected_and_legacy_factory_seams",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "candidate loses HTML default",
+      "test": "tests/test_cp25_batch_client.py::test_batch_closes_client_on_exception_and_keeps_request_policy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress ignores worker completion",
+      "test": "tests/test_cp25_progress.py::test_stall_requires_finished_worker_missing_unique_replies_and_no_recent_progress",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress stops recent deliveries",
+      "test": "tests/test_cp25_progress.py::test_stall_requires_finished_worker_missing_unique_replies_and_no_recent_progress",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress treats duplicate replies as complete",
+      "test": "tests/test_cp25_progress.py::test_stall_requires_finished_worker_missing_unique_replies_and_no_recent_progress",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress counts noncustomer deliveries",
+      "test": "tests/test_cp25_progress.py::test_stall_requires_finished_worker_missing_unique_replies_and_no_recent_progress",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress loses initial grace",
+      "test": "tests/test_cp25_progress.py::test_stall_requires_finished_worker_missing_unique_replies_and_no_recent_progress",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress permits foreign API",
+      "test": "tests/test_cp25_progress.py::test_progress_observer_is_local_and_has_a_bounded_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress loses request timeout",
+      "test": "tests/test_cp25_progress.py::test_progress_observer_is_local_and_has_a_bounded_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress supervisor ignores stalled failure",
+      "test": "tests/test_cp25_progress.py::test_supervisor_stops_stalled_child_as_failure",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress stage loses failed status",
+      "test": "tests/test_cp25_progress.py::test_stage_records_failed_row_before_leaving_the_controller",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "progress stage loses admission evidence",
+      "test": "tests/test_cp25_progress.py::test_stage_records_failed_row_before_leaving_the_controller",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "worker batch overrides legacy zero-argument factory",
+      "test": "tests/test_cp25_worker_batch.py::test_batch_preserves_injected_and_legacy_factory_seams",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "engine meter drops task pool option"
+    "progress ignores worker completion",
+    "progress stops recent deliveries",
+    "progress treats duplicate replies as complete",
+    "progress counts noncustomer deliveries",
+    "progress loses initial grace",
+    "progress permits foreign API",
+    "progress loses request timeout",
+    "progress supervisor ignores stalled failure",
+    "progress stage loses failed status",
+    "progress stage loses admission evidence",
+    "worker batch overrides legacy zero-argument factory"
   ],
   "report_scope": "Accumulated per-guard proof"
 }
