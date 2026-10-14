@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.models.runtime import ShopRuntimeState
@@ -39,5 +39,18 @@ async def test_runtime_store_is_shop_scoped_and_admin_reports_backoff(db) -> Non
         assert any(r.shop_id == a.id and r.kind == "bot" for r in alerts)
         await store_states(session, {a.id: {"status": "running", "errors": 3}})
         assert (await session.get(ShopRuntimeState, b.id)).state["errors"] == 0
+        now = datetime.now(UTC)
+        await session.execute(
+            update(ShopRuntimeState)
+            .where(ShopRuntimeState.shop_id == a.id)
+            .values(updated_at=now - timedelta(seconds=121))
+        )
+        rows = {r.id: r for r in await admin_panel.shops_overview(session, now=now)}
+        assert rows[a.id].health_reason == "poller snapshot stale"
+        assert rows[b.id].health != "bad", "Fresh other tenant must retain its own health"
+        assert any(
+            r.shop_id == a.id and r.detail == "poller snapshot stale"
+            for r in await admin_panel.alerts(session, now=now)
+        )
     finally:
         await session.close()

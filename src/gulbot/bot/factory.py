@@ -207,6 +207,9 @@ def build_platform_dispatcher(
         if storage is not None
         else Dispatcher(fsm_strategy=FSMStrategy.USER_IN_CHAT)
     )
+    deadline = HandlerDeadline(0)
+    dispatcher["handler_deadline"] = deadline
+    dispatcher.update.outer_middleware(deadline)
     dispatcher.update.outer_middleware(PrivateOnlyMiddleware())
     dispatcher.update.outer_middleware(DbSessionMiddleware(session_factory))
     dispatcher.update.outer_middleware(OwnerLanguageMiddleware())

@@ -20,6 +20,7 @@ import asyncio
 import functools
 import json
 import logging
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
 
@@ -290,8 +291,20 @@ async def test_the_real_long_poll_delivers_to_the_right_shop(
 
     # Updates handled inline rather than as tasks, so that the SECOND getUpdates
     # proves the first update was handled completely, commit included.
+    # This fixture deliberately owns ONE asyncpg connection. Production uses
+    # separate checked-out connections for runtime persistence and handlers.
+    # Serialize fixture sessions to preserve valid savepoint nesting while
+    # keeping the real persistence, dispatcher and customer-write assertions.
+    sessions = bound_session_factory(db)
+    session_gate = asyncio.Lock()
+
+    @asynccontextmanager
+    async def serial_session():
+        async with session_gate, sessions() as session:
+            yield session
+
     subject = ShopPollers(
-        bound_session_factory(db),
+        serial_session,  # type: ignore[arg-type]
         storage=MemoryStorage(),
         bot_factory=factory,
         poll=functools.partial(poll_forever, handle_as_tasks=False),

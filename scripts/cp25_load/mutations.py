@@ -39,6 +39,69 @@ def mutations() -> list[Mutation]:
     upgrade = migration[migration.index("def upgrade()") : migration.index("def downgrade()")]
     return [
         Mutation(
+            "production loses five second watchdog",
+            "src/gulbot/bot/run.py",
+            "await asyncio.sleep(5)",
+            "await asyncio.sleep(60)",
+            "tests/test_cp25_platform_runtime.py::test_production_watchdog_runs_every_five_seconds_and_stops_cleanly",
+        ),
+        Mutation(
+            "platform TLS blocks loop",
+            "src/gulbot/bot/run.py",
+            "bot = await create_bot(bot_factory, token)",
+            "bot = bot_factory(token)",
+            "tests/test_cp25_platform_runtime.py::test_tls_factory_runs_offloop_and_client_closes_on_owner_loop[platform]",
+        ),
+        Mutation(
+            "onboarding TLS blocks loop",
+            "src/gulbot/bot/routers/shop_onboarding.py",
+            "shop_bot = await create_bot(shop_bot_factory, await _shop_token(state))",
+            "shop_bot = shop_bot_factory(await _shop_token(state))",
+            "tests/test_cp25_platform_runtime.py::test_tls_factory_runs_offloop_and_client_closes_on_owner_loop[onboarding]",
+        ),
+        Mutation(
+            "platform loses deadline",
+            "src/gulbot/bot/factory.py",
+            "deadline = HandlerDeadline(0)",
+            "deadline = PrivateOnlyMiddleware()",
+            "tests/test_cp25_platform_runtime.py::test_platform_deadline_is_first_and_cancels_stuck_update",
+        ),
+        Mutation(
+            "admin ignores stale runtime",
+            "src/gulbot/services/admin_panel.py",
+            "if runtime and (updated is None or updated < now - RUNTIME_MAX_AGE):",
+            "if False:",
+            "tests/test_cp25_platform_runtime.py::test_runtime_freshness_does_not_report_a_dead_process_as_healthy",
+        ),
+        Mutation(
+            "admin loses runtime timestamp join",
+            "src/gulbot/services/admin_panel.py",
+            "rt.updated_at AS runtime_updated_at",
+            "now() AS runtime_updated_at",
+            "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+        ),
+        Mutation(
+            "constructor loses timeout",
+            "src/gulbot/bot/client_lifetime.py",
+            "timeout=seconds)",
+            "timeout=None)",
+            "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[False]",
+        ),
+        Mutation(
+            "constructor loses late cleanup",
+            "src/gulbot/bot/client_lifetime.py",
+            "construction.add_done_callback(discard)",
+            "pass",
+            "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[True]",
+        ),
+        Mutation(
+            "constructor loses shield",
+            "src/gulbot/bot/client_lifetime.py",
+            "asyncio.shield(construction)",
+            "construction",
+            "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[True]",
+        ),
+        Mutation(
             "progress ignores worker completion",
             "progress.py",
             "if not worker_finished or delivered >= expected:",
@@ -843,9 +906,7 @@ def mutations() -> list[Mutation]:
         Mutation(
             "TLS constructor blocks loop",
             "src/gulbot/bot/run.py",
-            "bot = await asyncio.wait_for(\n"
-            "                    run_cpu(self._bot_factory, token_for(shop_id)), timeout=20\n"
-            "                )",
+            "bot = await create_bot(self._bot_factory, token_for(shop_id))",
             "bot = self._bot_factory(token_for(shop_id))",
             "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
         ),

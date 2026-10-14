@@ -42,6 +42,7 @@ from aiogram.fsm.storage.base import BaseStorage
 from aiogram.utils.token import TokenValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot.bot.client_lifetime import close_bot, create_bot
 from gulbot.bot.factory import (
     ALLOWED_UPDATES,
     build_dispatcher,
@@ -54,7 +55,6 @@ from gulbot.bot.reliability import PollObserver, PollProgress
 from gulbot.config import get_settings
 from gulbot.db.session import build_session_factory
 from gulbot.sending.transport import ShopBotUnavailable
-from gulbot.services.offload import run_cpu
 from gulbot.services.runtime_state import store_states
 from gulbot.services.shop_tokens import TokenCipherError, cipher_ready, load_bot_credentials
 
@@ -177,9 +177,7 @@ class ShopPollers:
                 del self.running[shop_id]
 
             try:
-                bot = await asyncio.wait_for(
-                    run_cpu(self._bot_factory, token_for(shop_id)), timeout=20
-                )
+                bot = await create_bot(self._bot_factory, token_for(shop_id))
             except ShopBotUnavailable as missing:
                 self._report(shop_id, str(missing))
                 continue
@@ -302,7 +300,7 @@ class PlatformPoller:
 
     async def stop(self) -> None:
         await _stop_poll(self.dispatcher, self.task)
-        await self.bot.session.close()
+        await close_bot(self.bot)
 
 
 async def start_platform(
@@ -325,10 +323,10 @@ async def start_platform(
     except TokenCipherError as unusable:
         raise SystemExit(f"REFUSING TO START: PLATFORM_BOT_TOKEN is set, but {unusable}") from None
 
-    bot = bot_factory(token)
+    bot = await create_bot(bot_factory, token)
     clash = next((p.shop_id for p in pollers.running.values() if p.bot.id == bot.id), None)
     if clash is not None:
-        await bot.session.close()
+        await close_bot(bot)
         raise SystemExit(
             f"REFUSING TO START: PLATFORM_BOT_TOKEN is shop {clash}'s bot; "
             "the platform needs a bot of its own"

@@ -2,6 +2,36 @@
 
 ## CURRENT RESUME POINT — read this before chronological history
 
+**LATEST RESUME 2026-10-14T08:39:11.055069+00:00 — platform/runtime fixes complete.**
+AFTER has not yet started. New four assertion failures reproduced the platform
+TLS, onboarding TLS, missing platform deadline and stale runtime defects.
+Fixed pure TLS offloads with20s admission, shielded late-result cleanup on the
+owner loop, bounded5s closure, platform HandlerDeadline25s (shop_id0), and
+120s runtime freshness with tenant-scoped updated_at from the real DB join.
+Focused neighbours71/71 pass; final guards/watchdog10/10 pass. Strict mypy
+six changed source files and changed-file Ruff/format GREEN. Maximum focused
+RSS261.79MiB. Runtime mutations129/129 plus retained
+harness12/12; only new/affected guards executed. Timeout mutation initially
+failed via pytest DID NOT RAISE (not accepted); corrected to an explicit
+bounded-outcome assertion, then proved. Retained mutation scopes unchanged.
+
+One real-long-poll fixture failed with concurrent savepoint/DBAPIError and
+PendingRollbackError, then passed in isolation. Its bound_session_factory
+shares ONE connection between runtime persistence and customer handling;
+serialize fixture session lifetimes to preserve valid savepoint nesting.
+Real persistence, dispatcher and right-tenant customer assertion all retained.
+Production sessions still use separate pool checkouts; no production lock added.
+
+Production main watchdog cadence5s/clean cancellation now directly tested and
+mutation-proven. Harness still refreshes60s; capacity rows do NOT exercise the
+production5s watchdog. Normal snapshots persist at60s sync, faults immediately;
+120s stale grace intentionally exceeds that, and old snapshots alert.
+Profile confirmed TLS/closure bottleneck, worker batch fix2721eb9 unchanged.
+Next: commit this atomic platform fix, write PROFILE_REVIEWED.json with actual
+profile SHA/current after tree hash, actual RAM precheck, launch ONCE:
+`.\.venv\Scripts\python.exe -u .cp22-stage\cp25\after_only.py`.
+No old driver/watcher/PID restart. No push/merge/full gate yet.
+
 **LATEST RESUME, 2026-10-14T08:03Z — supersedes old PIDs/commands below.**
 No benchmark/test process is currently owned. Old controller7292/session57629
 closed after owner requested faster completion; never restart either.
@@ -2178,3 +2208,55 @@ Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
 Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
 
 <!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14T08:27:35.323360+00:00 — daytime platform-runtime-red: free 4700.90MiB; single measured-budget precheck768MiB.
+
+2026-10-14T08:27:46.178348+00:00 — platform-runtime-red: exit1; peak235.86MiB; after4597.51MiB.
+
+2026-10-14T08:29:18.155666+00:00 — daytime platform-runtime-green: free 4819.03MiB; single measured-budget precheck768MiB.
+
+2026-10-14T08:30:10.561026+00:00 — platform-runtime-green: exit1; peak261.78MiB; after4934.89MiB.
+
+2026-10-14T08:31:26.309896+00:00 — daytime poller-diagnostic: free 5098.46MiB; single measured-budget precheck768MiB.
+
+2026-10-14T08:31:50.091200+00:00 — poller-diagnostic: exit0; peak240.79MiB; after4942.27MiB.
+
+2026-10-14T08:32:29.616102+00:00 — daytime platform-runtime-neighbours: free 5153.48MiB; single measured-budget precheck768MiB.
+
+2026-10-14T08:32:52.094662+00:00 — platform-runtime-neighbours: exit0; peak257.09MiB; after4926.27MiB.
+
+2026-10-14T08:33:07.078820+00:00 — Mutation platform TLS blocks loop: actual free RAM 5119.00MiB before focused test.
+
+2026-10-14T08:33:18.296358+00:00 — Mutation onboarding TLS blocks loop: actual free RAM 5127.43MiB before focused test.
+
+2026-10-14T08:33:29.144840+00:00 — Mutation platform loses deadline: actual free RAM 5129.29MiB before focused test.
+
+2026-10-14T08:33:41.490546+00:00 — Mutation admin ignores stale runtime: actual free RAM 5113.02MiB before focused test.
+
+2026-10-14T08:33:53.871981+00:00 — Mutation admin loses runtime timestamp join: actual free RAM 5105.11MiB before focused test.
+
+2026-10-14T08:33:58.093539+00:00 — Mutation constructor loses timeout: actual free RAM 5130.29MiB before focused test.
+
+2026-10-14T08:34:11.900665+00:00 — Mutation constructor loses late cleanup: actual free RAM 5137.95MiB before focused test.
+
+2026-10-14T08:34:25.162417+00:00 — Mutation constructor loses shield: actual free RAM 5088.56MiB before focused test.
+
+2026-10-14T08:34:38.506535+00:00 — Mutation TLS constructor blocks loop: actual free RAM 5125.92MiB before focused test.
+
+2026-10-14T08:35:36.047810+00:00 — daytime platform-final-guards: free 5098.59MiB; single measured-budget precheck768MiB.
+
+2026-10-14T08:35:45.784218+00:00 — platform-final-guards: exit0; peak240.79MiB; after4894.21MiB.
+
+2026-10-14T08:36:02.204644+00:00 — Mutation production loses five second watchdog: actual free RAM 5045.00MiB before focused test.
+
+2026-10-14T08:36:14.898854+00:00 — Mutation constructor loses timeout: actual free RAM 4955.81MiB before focused test.
+
+2026-10-14T08:36:51.903698+00:00 — daytime platform-runtime-strict: free 4942.75MiB; single measured-budget precheck512MiB.
+
+2026-10-14T08:36:58.119174+00:00 — platform-runtime-strict: exit1; peak160.61MiB; after4865.43MiB.
+
+2026-10-14T08:37:23.543711+00:00 — daytime platform-runtime-strict-final: free 4997.82MiB; single measured-budget precheck512MiB.
+
+2026-10-14T08:37:28.955504+00:00 — platform-runtime-strict-final: exit0; peak150.82MiB; after4813.08MiB.
+
+2026-10-14T08:38:07.2054888Z — final touched-file lint/format: actual free RAM 4882.76MiB.

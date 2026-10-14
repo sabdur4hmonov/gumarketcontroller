@@ -59,6 +59,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from gulbot.bot.callbacks import OnboardBrandingCB
 from gulbot.bot.chat_checks import ChatCheck, Problem, check_channel, check_group
+from gulbot.bot.client_lifetime import close_bot, create_bot
 from gulbot.bot.keyboards import (
     OWNER_GROUP_REQUEST_ID,
     branding_keyboard,
@@ -267,11 +268,11 @@ async def _checked_with_the_shop_bot(
     check: Callable[[Bot], Awaitable[ChatCheck]],
 ) -> ChatCheck:
     """Build the shop's bot from its token, ask, and close it again."""
-    shop_bot = shop_bot_factory(await _shop_token(state))
+    shop_bot = await create_bot(shop_bot_factory, await _shop_token(state))
     try:
         return await check(shop_bot)
     finally:
-        await shop_bot.session.close()
+        await close_bot(shop_bot)
 
 
 async def _verify_channel(

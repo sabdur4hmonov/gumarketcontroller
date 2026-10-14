@@ -26,6 +26,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 STALE_CATALOGUE = timedelta(days=14)
 #: An order nobody confirmed or rejected for this long is an alert.
 UNANSWERED_ORDER = timedelta(minutes=30)
+# Credential refresh persists at least once a minute; faults persist immediately.
+# Allow refresh jitter, then alert instead of trusting an abandoned running row.
+RUNTIME_MAX_AGE = timedelta(seconds=120)
 
 
 def mask_phone(phone: str | None) -> str:
@@ -78,6 +81,7 @@ _SHOPS = text(
            s.gift_premium_after_order, s.group_chat_id, s.channel_id,
            h.bot_username, h.token_valid, h.channel_ok, h.group_ok, h.checked_at,
            h.detail ? 'bot' AS no_bot, rt.state AS runtime,
+           rt.updated_at AS runtime_updated_at,
            (SELECT max(p.indexed_at) FROM products p
              WHERE p.shop_id = s.id AND p.finalized_at IS NOT NULL) AS last_indexed_at,
            (SELECT count(*) FROM products p
@@ -104,6 +108,9 @@ _SHOPS = text(
 def _health(row: Any, now: datetime) -> tuple[str, str, bool]:
     stale = row.last_indexed_at is None or row.last_indexed_at < now - STALE_CATALOGUE
     runtime = getattr(row, "runtime", None) or {}
+    updated = getattr(row, "runtime_updated_at", None)
+    if runtime and (updated is None or updated < now - RUNTIME_MAX_AGE):
+        return "bad", "poller snapshot stale", stale
     if runtime.get("status") in {"backoff", "stalled", "crashed", "start_error"}:
         return "bad", "poller " + runtime["status"], stale
     if row.checked_at is None:

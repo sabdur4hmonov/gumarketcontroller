@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 120,
-  "total": 120,
+  "caught": 129,
+  "total": 129,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -52,12 +52,6 @@
     {
       "guard": "factory crash stops fleet",
       "test": "tests/test_cp25_poll_isolation.py::test_unexpected_factory_error_is_isolated",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
-      "guard": "TLS constructor blocks loop",
-      "test": "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
       "assertion_caught": true,
       "exit_code": 1
     },
@@ -739,20 +733,71 @@
       "test": "tests/test_cp25_worker_batch.py::test_batch_preserves_injected_and_legacy_factory_seams",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "platform TLS blocks loop",
+      "test": "tests/test_cp25_platform_runtime.py::test_tls_factory_runs_offloop_and_client_closes_on_owner_loop[platform]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "onboarding TLS blocks loop",
+      "test": "tests/test_cp25_platform_runtime.py::test_tls_factory_runs_offloop_and_client_closes_on_owner_loop[onboarding]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "platform loses deadline",
+      "test": "tests/test_cp25_platform_runtime.py::test_platform_deadline_is_first_and_cancels_stuck_update",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin ignores stale runtime",
+      "test": "tests/test_cp25_platform_runtime.py::test_runtime_freshness_does_not_report_a_dead_process_as_healthy",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin loses runtime timestamp join",
+      "test": "tests/test_cp25_runtime_view.py::test_runtime_store_is_shop_scoped_and_admin_reports_backoff",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "constructor loses late cleanup",
+      "test": "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[True]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "constructor loses shield",
+      "test": "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[True]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "TLS constructor blocks loop",
+      "test": "tests/test_cp25_poll_isolation.py::test_bot_constructor_cannot_block_the_polling_loop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "production loses five second watchdog",
+      "test": "tests/test_cp25_platform_runtime.py::test_production_watchdog_runs_every_five_seconds_and_stops_cleanly",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "constructor loses timeout",
+      "test": "tests/test_cp25_platform_runtime.py::test_abandoned_constructor_closes_late_result_on_owner_loop[False]",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "progress ignores worker completion",
-    "progress stops recent deliveries",
-    "progress treats duplicate replies as complete",
-    "progress counts noncustomer deliveries",
-    "progress loses initial grace",
-    "progress permits foreign API",
-    "progress loses request timeout",
-    "progress supervisor ignores stalled failure",
-    "progress stage loses failed status",
-    "progress stage loses admission evidence",
-    "worker batch overrides legacy zero-argument factory"
+    "production loses five second watchdog",
+    "constructor loses timeout"
   ],
   "report_scope": "Accumulated per-guard proof"
 }
