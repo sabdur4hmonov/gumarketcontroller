@@ -82,17 +82,27 @@ _SHOPS = text(
            h.bot_username, h.token_valid, h.channel_ok, h.group_ok, h.checked_at,
            h.detail ? 'bot' AS no_bot, rt.state AS runtime,
            rt.updated_at AS runtime_updated_at,
-           (SELECT max(p.indexed_at) FROM products p
-             WHERE p.shop_id = s.id AND p.finalized_at IS NOT NULL) AS last_indexed_at,
-           (SELECT count(*) FROM products p
-             WHERE p.shop_id = s.id AND p.finalized_at IS NOT NULL
-               AND p.active AND p.deleted_at IS NULL) AS bouquets,
-           (SELECT count(*) FROM customers c WHERE c.shop_id = s.id) AS customers,
-           (SELECT count(*) FROM orders o
-             WHERE o.shop_id = s.id AND o.created_at > :since30) AS orders_30d,
-           (SELECT coalesce(sum(ph.size_bytes), 0) FROM share_page_photos ph
-             WHERE ph.shop_id = s.id AND ph.data IS NOT NULL) AS photo_bytes
+           pstats.last_indexed_at, coalesce(pstats.bouquets, 0) AS bouquets,
+           coalesce(cstats.customers, 0) AS customers,
+           coalesce(ostats.orders_30d, 0) AS orders_30d,
+           coalesce(phstats.photo_bytes, 0) AS photo_bytes
       FROM shops s
+      LEFT JOIN (
+          SELECT p.shop_id, max(p.indexed_at) AS last_indexed_at,
+                 count(*) FILTER (WHERE p.active AND p.deleted_at IS NULL) AS bouquets
+            FROM products p WHERE p.finalized_at IS NOT NULL GROUP BY p.shop_id
+      ) pstats ON pstats.shop_id = s.id
+      LEFT JOIN (
+          SELECT shop_id, count(*) AS customers FROM customers GROUP BY shop_id
+      ) cstats ON cstats.shop_id = s.id
+      LEFT JOIN (
+          SELECT shop_id, count(*) AS orders_30d FROM orders
+           WHERE created_at > :since30 GROUP BY shop_id
+      ) ostats ON ostats.shop_id = s.id
+      LEFT JOIN (
+          SELECT shop_id, sum(size_bytes) AS photo_bytes FROM share_page_photos
+           WHERE data IS NOT NULL GROUP BY shop_id
+      ) phstats ON phstats.shop_id = s.id
       LEFT JOIN shop_runtime_states rt ON rt.shop_id = s.id
       LEFT JOIN LATERAL (
             SELECT bot_username, token_valid, channel_ok, group_ok, checked_at, detail

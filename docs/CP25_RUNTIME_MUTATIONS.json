@@ -1,7 +1,7 @@
 {
   "scope": "CP25 assertion guards (scope defined by each file/test)",
-  "caught": 135,
-  "total": 135,
+  "caught": 138,
+  "total": 138,
   "results": [
     {
       "guard": "photo cleaning on loop",
@@ -829,16 +829,30 @@
       "test": "tests/test_cp25_reliability.py::test_stuck_handler_is_bounded_and_session_rolls_back",
       "assertion_caught": true,
       "exit_code": 1
+    },
+    {
+      "guard": "admin repeats per shop product scan",
+      "test": "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin product aggregates cross tenant",
+      "test": "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "admin counts inactive bouquets",
+      "test": "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+      "assertion_caught": true,
+      "exit_code": 1
     }
   ],
   "last_rechecked_guards": [
-    "welcome reply retains DB connection",
-    "published reply retains DB connection",
-    "handler loses qualified error attribution",
-    "request timeout counted as handler deadline",
-    "failed progress loses raw delivery evidence",
-    "failed progress replaces measured idle age",
-    "handler deadline bypassed"
+    "admin repeats per shop product scan",
+    "admin product aggregates cross tenant",
+    "admin counts inactive bouquets"
   ],
   "report_scope": "Accumulated per-guard proof"
 }

@@ -39,6 +39,28 @@ def mutations() -> list[Mutation]:
     upgrade = migration[migration.index("def upgrade()") : migration.index("def downgrade()")]
     return [
         Mutation(
+            "admin repeats per shop product scan",
+            "src/gulbot/services/admin_panel.py",
+            "max(p.indexed_at) AS last_indexed_at",
+            "(SELECT max(p2.indexed_at) FROM products p2 "
+            "WHERE p2.shop_id=p.shop_id AND p2.finalized_at IS NOT NULL) AS last_indexed_at",
+            "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+        ),
+        Mutation(
+            "admin product aggregates cross tenant",
+            "src/gulbot/services/admin_panel.py",
+            "pstats.shop_id = s.id",
+            "pstats.shop_id = (SELECT min(id) FROM shops)",
+            "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+        ),
+        Mutation(
+            "admin counts inactive bouquets",
+            "src/gulbot/services/admin_panel.py",
+            "count(*) FILTER (WHERE p.active AND p.deleted_at IS NULL) AS bouquets",
+            "count(*) FILTER (WHERE p.deleted_at IS NULL) AS bouquets",
+            "tests/test_cp25_admin_query.py::test_admin_totals_do_not_rescan_products_for_every_shop",
+        ),
+        Mutation(
             "welcome reply retains DB connection",
             "src/gulbot/bot/routers/onboarding.py",
             "    await session.commit()",
