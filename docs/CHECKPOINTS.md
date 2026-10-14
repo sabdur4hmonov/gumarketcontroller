@@ -2039,8 +2039,11 @@ Reminder and order tasks run sequentially in **100-shop batches**, each
 with a fresh asyncio loop. Broker and prefork scheduling are excluded.
 Tick totals describe a single-process upper bound, not a production
 Celery fleet figure. These runs cannot certify 4/8/24 GB fleet capacity.
-Startup guard: 3072 MiB at every scale; two consecutive five-minute
-readings before queue admission. Runtime floor remains 512 MiB.
+Current command prepares infrastructure FIRST, then observes actual3072MiB
+once; original bounded five-minute watcher is finished and heartbeat paused.
+Until a valid same-scale peak exists,10/25/50 require3072MiB; thereafter
+the conservative measured aggregate peak plus1024MiB margin applies.
+100+ always3072MiB. Runtime floor remains512MiB.
 Results with sampled free RAM below 1024 MiB are excluded as pressure
 runs. No unmeasured row is extrapolated. RSS/shop is amortized measured
 process RSS including fixed overhead, not an incremental memory slope.
@@ -2081,3 +2084,16 @@ No latency/tick/CPU-per-shop comparison or new extrapolation exists; profile
 attribution/fix/full gate/secrets/push remain waiting for RAM. No client fix
 was made. Two earlier NEW2-shop prerequisite runs remain diagnostics only.
 <!-- CP25 CERTIFIED TABLES END -->
+
+2026-10-14 owner-authorized attempt: Docker was initially off. Observed free
+RAM5530.55MiB before cold start,2938.15MiB during (vmmemWSL1863.51MiB),
+1956.72MiB immediately afterward; concurrent processes preclude assigning
+the entire3573.83MiB change to Docker. Once infrastructure/imports/private
+reference seed were ready, the certified evening controller admitted once
+at2756.38MiB and refused the3072MiB floor. No benchmark/profile child started.
+All BEFORE/AFTER rows above remain not run: RAM; their timestamps describe
+the preserved earlier attempt, not this new startup refusal. No latency,
+CPU/RAM-per-shop or capacity conclusion can be drawn. Timestamped top5/RAM
+and executed-tree provenance: capacity/cp25-startup-evening-20261014.json.
+No client fix activated, no full gate/push/merge. Runtime assertion proofs
+now102/102 plus retained harness12/12; touched-file Ruff and strict mypy green.

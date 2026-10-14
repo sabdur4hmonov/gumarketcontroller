@@ -2,6 +2,20 @@
 
 ## CURRENT RESUME POINT — read this before chronological history
 
+**LATEST STOP: 2026-10-14T05:58:23Z.** Owner-authorized measurement command
+completed infrastructure/imports/private seed, then stopped ONCE at actual
+2756.38MiB, below3072MiB. No capacity child or profile started. Preserve
+.cp22-stage/cp25/evening-20261014-d113f94c; admission.json and startup/ contain
+timestamped actual RAM/top5/source hashes. Public startup evidence:
+capacity/cp25-startup-evening-20261014.json. No automatic retry, waiting loop
+or heartbeat. BEFORE/AFTER10/25/50/100/500/1000 all remain **not run: RAM**.
+No proven tick attribution or activated batch fix. Next owner-required step:
+free RAM WITH Docker/WSL running (minimum3072MiB; preferably~4GiB).
+Then the same one command below creates a new certified run directory.
+Reference f8 remains clean, other processes/Compose edits/backup preserved.
+Local tooling commit8da8498; current runtime102/102 + harness12/12.
+Full sweeps/headless/full gate/secrets/push remain pending; never merge.
+
 Owner authorized all remaining work on 2026-10-14. Actual free RAM initially
 5310.04MiB, then5476.48MiB. The5-minute heartbeat remains **PAUSED**;
 original RAM watcher has finished. No RAM waiting/retry loop. Infrastructure
@@ -1360,3 +1374,19 @@ Remaining evening command preflight now selects only unproven NEW guard names an
 2026-10-14T05:57:10.033111+00:00 — daytime tooling-config-fixed: free 2727.75MiB; single measured-budget precheck512MiB.
 
 2026-10-14T05:57:12.339288+00:00 — tooling-config-fixed: exit0; peak157.66MiB; after2572.50MiB.
+
+2026-10-14T05:57:54.482738+00:00 — Startup docker-wsl-start: actual precheck 2783.83MiB.
+
+2026-10-14T05:57:57.060810+00:00 — Startup docker-wsl: actual precheck 2727.23MiB.
+
+2026-10-14T05:57:59.807502+00:00 — Startup postgres: actual precheck 2759.47MiB.
+
+2026-10-14T05:58:02.992978+00:00 — Startup redis: actual precheck 2755.8MiB.
+
+2026-10-14T05:58:06.215463+00:00 — Startup venv-imports: actual precheck 2707.93MiB.
+
+2026-10-14T05:58:13.692767+00:00 — Startup reference-db-seed: actual precheck 2749.0MiB.
+
+2026-10-14T05:58:14.140420+00:00 — before 10,25,50: precheck actual free RAM 2710.27MiB.
+
+2026-10-14T05:58:23.644498+00:00 — Evening AFTER infrastructure: actual free RAM 2756.38MiB; floor3072.
