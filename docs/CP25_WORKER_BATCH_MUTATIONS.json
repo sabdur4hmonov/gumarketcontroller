@@ -76,7 +76,8 @@
       "exit_code": 1
     }
   ],
-  "runtime_provenance": {
+  "test_sha256": "d6275cb5d9c876a68105d5e64d0405a9082dd1ece547b287e354a70abe79d7de",
+  "source_snapshot_at_export": {
     "production_commit": "0e8add83c8c41fe44310c0fe67e018a471ec8386",
     "production_dirty": true,
     "production_tree_sha256": "d7e44bab7cae697221205bee05224f41c8059aa7c354604bf1e8f787bb0134b9",
@@ -978,5 +979,11 @@
       "REDIS_DB_TEST": "8"
     }
   },
-  "test_sha256": "d6275cb5d9c876a68105d5e64d0405a9082dd1ece547b287e354a70abe79d7de"
+  "provenance_scope": "Current source snapshot at export, not retroactive certification of retained guard executions",
+  "retained_guards": [
+    "worker pool enlarged",
+    "worker overflow enabled",
+    "worker loses tick-owned lookup"
+  ],
+  "new_or_rechecked_guard_count": 9
 }

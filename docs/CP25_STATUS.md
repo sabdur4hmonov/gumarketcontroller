@@ -17,7 +17,9 @@ Actual profile confirms SSL construction5.368s and serial closure6.514s of
 Worker batch HTTP reuse ACTIVATED in local commit2721eb9. Normal factory,
 real localhost I/O, two separate asyncio.run lifetimes, reminder/order normal
 and exception paths tested. One client closed per task, separate Bot identities;
-legacy/custom factory seams preserved.9/9 dedicated worker assertion mutations.
+legacy/custom factory seams preserved. Worker subset12/12:9 new/rechecked
+batch guards and3 retained pool/cache proofs, explicitly distinguished in
+CP25_WORKER_BATCH_MUTATIONS.json (export snapshot, no retroactive certification).
 Touched-source strict mypy4 and neighbours green; peak focused250.90MiB.
 
 Faster supervision now FAILS (never passes) an incomplete workload after worker
