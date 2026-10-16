@@ -266,3 +266,67 @@ async def test_the_studio_at_360px_end_to_end(
     assert watch.failed == [], watch.failed
     assert watch.errors == [], watch.errors
     assert watch.dialogs == [], "typed markup ran as script"
+
+
+async def test_yesno_apology_and_photos_at_360px(
+    world: dict[str, Any],  # noqa: F811
+    chrome: Browser,
+) -> None:
+    """CP27.2: the other two kinds, music and a real photo upload, at 360 px."""
+    from tests.test_share_page_photos import phone_photo
+    from tests.test_studio_kinds import gift
+
+    db: AsyncConnection = world["db"]
+    await gift(db, world["a"], world["ca"])
+    server = TestServer(app_for(db))
+    await server.start_server()
+    origin = str(server.make_url("")).rstrip("/")
+    watch = Watch(origin)
+    context = await chrome.new_context(
+        viewport={"width": 360, "height": 780},
+        device_scale_factor=2,
+        is_mobile=True,
+        has_touch=True,
+    )
+    await context.add_init_script(CSP_LISTENER)
+    watch.watch_context(context)
+    photo = SHOTS / "upload.jpg"
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    photo.write_bytes(phone_photo(1600, 1200))
+    try:
+        page = await context.new_page()
+        watch.attach(page)
+        raw = await mint(db, world["a"], world["ca"])
+        await page.goto(f"{origin}/studio/enter/{raw}")
+        await page.get_by_role("button", name="Kirish").click()
+        await page.wait_for_url(f"{origin}/studio")
+
+        await page.get_by_role("link", name="Ha / Yo‘q").click()
+        await page.wait_for_url(f"{origin}/studio?kind=yesno")
+        await page.locator('input[name="question_preset"][value="custom"]').check()
+        await page.fill('input[name="question"]', (HOSTILE + LONG_CYRL)[:140])
+        await page.select_option('select[name="music"]', "bahor")
+        await audit(page, "11-yesno-form")
+        await page.get_by_role("button", name="Yaratish").last.click()
+        await page.wait_for_url(f"{origin}/studio/done/*")
+        await audit(page, "12-yesno-done")
+        await page.set_input_files('input[name="photo"]', str(photo))
+        await page.get_by_role("button", name="Yuklash").click()
+        await page.wait_for_url(f"{origin}/studio/done/*")
+        await page.get_by_text("(1/1)").wait_for()
+        await audit(page, "13-yesno-photo")
+
+        await page.goto(f"{origin}/studio?kind=apology")
+        await page.fill('textarea[name="letter"]', (HOSTILE + LONG_CYRL * 6)[:400])
+        await audit(page, "14-apology-form")
+        await page.get_by_role("button", name="Yaratish").last.click()
+        await page.wait_for_url(f"{origin}/studio/done/*")
+        await audit(page, "15-apology-done")
+    finally:
+        await context.close()
+        await server.close()
+        photo.unlink(missing_ok=True)
+    assert watch.foreign == [], watch.foreign
+    assert watch.failed == [], watch.failed
+    assert watch.errors == [], watch.errors
+    assert watch.dialogs == [], "typed markup ran as script"

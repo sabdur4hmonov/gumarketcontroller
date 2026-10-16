@@ -1,10 +1,13 @@
 {% extends "studio/_layout.html" %}
 {% block main %}
 <section class="panel narrow">
-  <h1>Taklifnoma tayyor</h1>
-  <p>Havolani nusxalang va mehmonlarga yuboring.</p>
+  <h1>{{ v.kind }} tayyor</h1>
+  {%- if v.problem is defined and v.problem %}
+  <p class="problem" role="alert">{{ v.problem }}</p>
+  {%- endif %}
+  <p>Havolani nusxalang va yuboring.</p>
   <label class="field">
-    <span class="label">Taklifnoma havolasi</span>
+    <span class="label">Sahifa havolasi</span>
     <input id="page-url" type="text" value="{{ v.url }}" readonly>
   </label>
   <div class="row">
@@ -12,6 +15,30 @@
     <a class="secondary" href="{{ v.url }}" target="_blank" rel="noopener">Ochib ko‘rish</a>
   </div>
   <p class="hint">Botda yuboring: havolani do‘stlaringizga Telegram orqali ulashing — sahifa o‘sha yerda ochiladi.</p>
+</section>
+
+<section class="panel narrow" aria-labelledby="s-photos">
+  <h2 id="s-photos">Suratlar ⭐ <span class="opt">({{ v.photos }}/{{ v.photo_limit }})</span></h2>
+  {%- if not v.premium_open %}
+  <p class="hint locked-hint">🔒 {{ v.locked_text }}</p>
+  {%- else %}
+  {%- if v.photos < v.photo_limit or v.photo_limit == 1 %}
+  <form method="post" enctype="multipart/form-data" action="/studio/page/{{ v.page_id }}/photo?csrf={{ v.csrf }}" class="upload">
+    <label class="field">
+      <span class="label">{% if v.photo_limit == 1 %}Surat (yangisi eskisining o‘rniga){% else %}Surat qo‘shish{% endif %} <span class="opt">({{ v.max_mb }} MB gacha)</span></span>
+      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <button type="submit" class="secondary">Yuklash</button>
+  </form>
+  {%- endif %}
+  {%- if v.photos %}
+  <form method="post" action="/studio/page/{{ v.page_id }}/photos/clear">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link danger">Barcha suratlarni o‘chirish</button>
+  </form>
+  {%- endif %}
+  <p class="hint">Surat qayta ishlanadi: joylashuv va boshqa yashirin ma’lumotlar olib tashlanadi.</p>
+  {%- endif %}
   <p><a href="/studio">Yana bitta yaratish</a></p>
 </section>
 {% endblock %}

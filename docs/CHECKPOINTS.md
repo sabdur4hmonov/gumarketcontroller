@@ -2070,3 +2070,32 @@ is at most 2,600); the picker is a separate 4,619 px screen with all forty, or
 shorter when filtered. Picker tests 7; the studio's browser run now goes
 form → picker → filter → choose → form. Mutations 7/7 (29/29 in total).
 CSP unchanged. The router walk covers the new route.
+
+## CP27.2 — Ha/Yo'q and Uzrnoma in the studio; photos and music (premium)
+
+- **Three kinds, one form.** Tabs are plain links (`/studio?kind=invite|yesno|apology`;
+  anything else is the invitation). Ha/Yo'q: a ready question or one's own,
+  "notify me", and an optional date plan of up to three places and three
+  times (the service allows five; three keeps the form short). Uzrnoma: the
+  letter and "notify me". The form logic moved to `web/studio_form.py`; the
+  picker and preview carry every kind's fields.
+- **The same rules.** Every draft now carries `music`. `share_pages.checked_draft`
+  refuses a track that is not one of `MUSIC_TRACKS`; `create_page` puts music
+  behind the CP18 premium wall like a premium design. The bot builds the same
+  drafts (music stays an edit there), so nothing changed for it.
+- **Photos** are added after creation, on the result screen (a file input
+  cannot survive the form's round trips without JavaScript). They go through
+  `share_page_photos.store_photo`, so the existing rules hold: premium,
+  re-encoded with no EXIF/GPS, six on an invitation, one on a Ha/Yo'q page.
+  The size is checked BEFORE reading: Content-Length above 10 MB + 64 KB is
+  413 with nothing read, and the read stops at 10 MB. The upload is the one
+  multipart POST: the gate cannot read its body (the app caps bodies at 4 KB),
+  so its CSRF token is in the query string of the form's own same-origin
+  action (never sent as a Referer: Referrer-Policy is no-referrer).
+
+Evidence: 14 tests in `tests/test_studio_kinds.py` (kinds, mistakes, previews,
+music with and without the gift, photo premium, cleaning, gallery and Ha/Yo'q
+limits, oversize unread, upload CSRF and cross-customer), a second 360 px
+browser run (Ha/Yo'q with a hostile custom question and music, a real photo
+upload, Uzrnoma with a 400-character unbroken letter). Mutations 9/9 for this
+checkpoint (38/38 in total). 332 tests across studio and share-page suites pass.

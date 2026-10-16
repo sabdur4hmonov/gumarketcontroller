@@ -25,6 +25,7 @@ WEB = "tests/test_studio_web.py::"
 AUTH = "tests/test_studio_auth.py::"
 VENUES = "tests/test_share_page_venues.py::"
 PICKER = "tests/test_studio_picker.py::"
+KINDS = "tests/test_studio_kinds.py::"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -265,6 +266,71 @@ def mutants() -> list[Mutant]:
             "    {%- set d = v.chosen %}{% for x in ['atlas', 'oltin'] %}"
             '<i data-design="{{ x }}"></i>{% endfor %}',
             PICKER + "test_the_form_shows_one_chosen_design_not_forty",
+        ),
+        # --- CP27.2: Ha/Yo'q, Uzrnoma, photos, music -----------------------------------
+        Mutant(
+            "2: music is premium on create",
+            SHARE,
+            "    if premium.is_premium_template(draft.template) or draft.music is not None:",
+            "    if premium.is_premium_template(draft.template):",
+            KINDS + "test_music_is_premium_and_nothing_is_made_without_the_gift",
+        ),
+        Mutant(
+            "2: only our own tracks (shared rules)",
+            SHARE,
+            "    if draft.music is not None and draft.music not in MUSIC_TRACKS:",
+            "    if False:",
+            KINDS + "test_the_shared_rules_refuse_a_track_that_is_not_ours",
+        ),
+        Mutant(
+            "2: upload size from Content-Length, before reading",
+            STUDIO_WEB,
+            "        if length is None or length > UPLOAD_MAX_BYTES:",
+            "        if False:",
+            KINDS + "test_an_oversize_upload_is_refused_before_it_is_read",
+        ),
+        Mutant(
+            "2: the upload read stops at the cap",
+            STUDIO_WEB,
+            "            if total > share_page_photos.MAX_INPUT_BYTES:",
+            "            if False:",
+            KINDS + "test_an_oversize_upload_is_refused_before_it_is_read",
+        ),
+        Mutant(
+            "2: an upload needs the session's CSRF token",
+            STUDIO_WEB,
+            '        if request.method != "GET" and not studio.csrf_ok(',
+            '        if request.method != "GET" and _route_key(request) not in UPLOAD_ROUTES '
+            "and not studio.csrf_ok(",
+            KINDS + "test_an_upload_needs_the_sessions_token_and_its_own_page",
+        ),
+        Mutant(
+            "2: clearing photos only on one's own page",
+            STUDIO_WEB,
+            "        if not cleared:",
+            "        if False:",
+            KINDS + "test_an_upload_needs_the_sessions_token_and_its_own_page",
+        ),
+        Mutant(
+            "2: a date plan needs a place and a time",
+            "src/gulbot/web/studio_form.py",
+            "    if bool(places) != bool(slots):",
+            "    if False:",
+            KINDS + "test_a_custom_question_and_its_mistakes",
+        ),
+        Mutant(
+            "2: an unknown kind falls back to the invitation",
+            "src/gulbot/web/studio_form.py",
+            "    return FormState(kind=kind if kind in KINDS else PageKind.INVITE.value)",
+            "    return FormState(kind=kind)",
+            KINDS + "test_the_tabs_switch_the_form",
+        ),
+        Mutant(
+            "2: a photo is premium (shared service)",
+            "src/gulbot/services/share_page_photos.py",
+            "    await premium.require(session, shop_id=shop_id, customer_id=customer_id)",
+            "    pass",
+            KINDS + "test_a_photo_is_premium",
         ),
     ]
 

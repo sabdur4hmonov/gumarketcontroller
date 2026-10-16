@@ -1,6 +1,6 @@
 {
-  "caught": 29,
-  "total": 29,
+  "caught": 38,
+  "total": 38,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -202,6 +202,69 @@
       "guard": "1b: the form carries one design card",
       "file": "src/gulbot/web/templates/studio/form.html",
       "test": "tests/test_studio_picker.py::test_the_form_shows_one_chosen_design_not_forty",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: music is premium on create",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_kinds.py::test_music_is_premium_and_nothing_is_made_without_the_gift",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: only our own tracks (shared rules)",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_kinds.py::test_the_shared_rules_refuse_a_track_that_is_not_ours",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: upload size from Content-Length, before reading",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: the upload read stops at the cap",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: an upload needs the session's CSRF token",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: a date plan needs a place and a time",
+      "file": "src/gulbot/web/studio_form.py",
+      "test": "tests/test_studio_kinds.py::test_a_custom_question_and_its_mistakes",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: an unknown kind falls back to the invitation",
+      "file": "src/gulbot/web/studio_form.py",
+      "test": "tests/test_studio_kinds.py::test_the_tabs_switch_the_form",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: a photo is premium (shared service)",
+      "file": "src/gulbot/services/share_page_photos.py",
+      "test": "tests/test_studio_kinds.py::test_a_photo_is_premium",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: clearing photos only on one's own page",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
       "assertion_caught": true,
       "exit_code": 1
     }

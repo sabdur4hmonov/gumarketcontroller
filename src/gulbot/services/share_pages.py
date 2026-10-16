@@ -143,6 +143,8 @@ class YesNoDraft:
     #: CP17: the optional date plan. Both empty, or 1-5 of each.
     places: tuple[str, ...] = ()
     slots: tuple[datetime, ...] = ()
+    #: CP27.2: one of MUSIC_TRACKS, premium (services/premium.py); None for none.
+    music: str | None = None
 
 
 @dataclass(frozen=True)
@@ -153,6 +155,8 @@ class ApologyDraft:
     lang: str
     text: str
     notify_creator: bool
+    #: CP27.2: one of MUSIC_TRACKS, premium; None for none.
+    music: str | None = None
 
 
 @dataclass(frozen=True)
@@ -184,6 +188,8 @@ class InviteDraft:
     #: CP27: up to VENUES_MAX places. Venue 1 also fills `venue` (when that is
     #: empty) and `location` (when that is None and its map link has a point).
     venues: tuple[VenueDraft, ...] = ()
+    #: CP27.2: one of MUSIC_TRACKS, premium; None for none.
+    music: str | None = None
 
 
 def clean_monogram(value: object) -> str | None:
@@ -409,6 +415,8 @@ async def checked_draft(
     """THE rules for a new page, shared by the bot and the studio (CP27).
     Raises InvalidDraft. The premium wall and the limits are create_page's."""
     _check_common(draft.template, draft.lang)
+    if draft.music is not None and draft.music not in MUSIC_TRACKS:
+        raise InvalidDraft(f"unknown track {draft.music!r}")
     plan: tuple[list[str], list[datetime]] = ([], [])
     venues: list[dict[str, object]] = []
     values: dict[str, object] = {
@@ -419,6 +427,7 @@ async def checked_draft(
         "bot_username": bot_username,
         # The same clock the limit is checked against, not the server's.
         "created_at": now,
+        "music": draft.music,
     }
     if isinstance(draft, YesNoDraft):
         if draft.question_preset not in QUESTION_PRESETS:
@@ -501,9 +510,10 @@ async def create_page(
     """
     now = now or datetime.now(UTC)
     _check_common(draft.template, draft.lang)
-    if premium.is_premium_template(draft.template):
+    if premium.is_premium_template(draft.template) or draft.music is not None:
         # Raises PremiumLocked: the bot offers these only once unlocked, and
-        # this is the wall behind that offer (CP18, the gift rule).
+        # this is the wall behind that offer (CP18, the gift rule). Music is
+        # premium too (premium.PREMIUM_FIELDS).
         await premium.require(session, shop_id=shop_id, customer_id=customer_id)
     checked = await checked_draft(
         session,

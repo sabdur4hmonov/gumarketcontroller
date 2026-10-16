@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** CP27.2 (Ha/Yo'q and Uzrnoma kinds, photos, music). CP27.1b is committed.
+**Now:** CP27.3 ("Mening taklifnomalarim": list, edit, delete, counts). CP27.2 is committed.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -25,6 +25,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 |---|---|---|
 | CP27.1 link, session, one-form creator (invite) | a67ca49, f600118, 107ba0c, 7770af6 | green; 22/22 mutations |
 | CP27.1b design picker on its own screen | 46d3349 | green; mutations 29/29 |
+| CP27.2 Ha/Yo'q, Uzrnoma, photos, music | (this commit) | green; mutations 38/38 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -41,6 +42,9 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 
 - Picker categories (to'y / tug'ilgan kun / boshqa) per design are my grouping in `web/studio_designs.py`; edit that dict to regroup.
 - The picker opens on the category of the form's event type; change `category_for_event`.
+- Photos are added on the result screen after creation, not in the form (no JS round trips); move later if wanted.
+- Upload CSRF token travels in the query string (multipart body unreadable by the gate); a JS fetch with a header is the alternative.
+- Ha/Yo'q date plan shows 3 places and 3 times (service allows 5); raise PLAN_ROWS in web/studio_form.py.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open
