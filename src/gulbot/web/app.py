@@ -257,6 +257,11 @@ async def page(request: web.Request) -> web.Response:
             base=f"/p/{token}",
             plan=plan,
             photos=photos,
+            venues=(
+                render.venue_lines(await share_pages.venues_of(session, page_id=p.id), p.lang)
+                if p.kind == PageKind.INVITE
+                else None
+            ),
             wishes=(
                 await share_page_wishes.visible_wishes(session, page_id=p.id)
                 if p.wishes_enabled

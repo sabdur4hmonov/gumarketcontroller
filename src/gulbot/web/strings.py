@@ -163,6 +163,8 @@ _TEXT: Final[dict[str, dict[str, str]]] = {
     "minutes": {"uz": "daqiqa", "ru": "минут", "en": "min"},
     "seconds": {"uz": "soniya", "ru": "секунд", "en": "sec"},
     "venue": {"uz": "Manzil", "ru": "Место", "en": "Venue"},
+    "venues": {"uz": "Manzillar", "ru": "Места", "en": "Venues"},
+    "map": {"uz": "Xarita", "ru": "Карта", "en": "Map"},
     "dress_code": {"uz": "Kiyinish uslubi", "ru": "Дресс-код", "en": "Dress code"},
     "program": {"uz": "Dastur", "ru": "Программа", "en": "Programme"},
     "contact": {"uz": "Aloqa uchun", "ru": "Контакт", "en": "Contact"},
@@ -455,6 +457,16 @@ EVENT_LABELS: Final[dict[str, dict[str, str]]] = {
     "other": {"uz": "Bayram", "ru": "Праздник", "en": "Celebration"},
 }
 
+#: CP27: the kinds of place a taklifnoma lists (share_page_venues.kind).
+VENUE_LABELS: Final[dict[str, dict[str, str]]] = {
+    "toyxona": {"uz": "To'yxona", "ru": "Банкетный зал", "en": "Wedding hall"},
+    "restoran": {"uz": "Restoran", "ru": "Ресторан", "en": "Restaurant"},
+    "kafe": {"uz": "Kafe", "ru": "Кафе", "en": "Café"},
+    "bog": {"uz": "Bog'", "ru": "Сад", "en": "Garden"},
+    "uy": {"uz": "Uy", "ru": "Дом", "en": "Home"},
+    "boshqa": {"uz": "Boshqa joy", "ru": "Другое место", "en": "Other place"},
+}
+
 #: What an invitation says when its author wrote no message of their own.
 EVENT_MESSAGES: Final[dict[str, dict[str, str]]] = {
     "wedding": {
@@ -569,6 +581,10 @@ def celebration(preset: str, lang: str) -> str:
 
 def event_label(event_type: str, lang: str) -> str:
     return _pick(EVENT_LABELS[event_type], lang)
+
+
+def venue_label(kind: str, lang: str) -> str:
+    return _pick(VENUE_LABELS[kind], lang)
 
 
 def event_message(event_type: str, lang: str) -> str:

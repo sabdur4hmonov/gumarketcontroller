@@ -154,6 +154,14 @@ MONOGRAM_MAX = 5
 PLACE_MAX = 80
 PLAN_MAX = 5
 OPTION_KINDS: Final = ("place", "slot")
+#: CP27: a taklifnoma's places -- the hall, the restaurant, the home -- each with
+#: its own kind, name, address, map link and time. Venue 1 is mirrored into
+#: share_pages.venue / location_*, so every design and the bot keep working.
+VENUES_MAX = 5
+VENUE_KINDS: Final = ("toyxona", "restoran", "kafe", "bog", "uy", "boshqa")
+VENUE_NAME_MAX = 80
+VENUE_ADDRESS_MAX = 160
+MAP_URL_MAX = 300
 #: secrets.token_urlsafe(16) is 22 characters; the column allows some room.
 TOKEN_PATTERN = "^[A-Za-z0-9_-]{20,32}$"
 MAX_GUESTS = 10
@@ -360,6 +368,38 @@ class SharePageOption(Base):
             "OR (kind = 'slot' AND slot_at IS NOT NULL AND place IS NULL)",
             name="one_value",
         ),
+    )
+
+
+class SharePageVenue(Base):
+    """One of a taklifnoma's places (CP27), in the creator's order.
+
+    Typed data only: a kind from a fixed list, a name, an address, a map link
+    whose host was checked (services/share_pages.clean_map_url) and an optional
+    time. Scrubbed with the page: deletion and expiry remove these rows."""
+
+    __tablename__ = "share_page_venues"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    shop_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    page_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    position: Mapped[int] = mapped_column(SmallInteger, nullable=False)
+    kind: Mapped[str] = mapped_column(String(16), nullable=False)
+    name: Mapped[str] = mapped_column(String(VENUE_NAME_MAX), nullable=False)
+    address: Mapped[str | None] = mapped_column(String(VENUE_ADDRESS_MAX), nullable=True)
+    map_url: Mapped[str | None] = mapped_column(String(MAP_URL_MAX), nullable=True)
+    starts_at: Mapped[time | None] = mapped_column(Time, nullable=True)
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["page_id", "shop_id"],
+            ["share_pages.id", "share_pages.shop_id"],
+            ondelete="CASCADE",
+        ),
+        UniqueConstraint("page_id", "position"),
+        CheckConstraint(f"kind IN ({_sql_list(VENUE_KINDS)})", name="kind_known"),
+        CheckConstraint(f"position BETWEEN 1 AND {VENUES_MAX}", name="position_range"),
+        CheckConstraint("map_url IS NULL OR left(map_url, 8) = 'https://'", name="map_url_https"),
     )
 
 

@@ -36,11 +36,13 @@ from gulbot.models.share_page import (
     SharePagePhoto,
     SharePageReferral,
     SharePageRsvp,
+    SharePageVenue,
     SharePageWish,
 )
 from gulbot.models.shop import Shop
 from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
+from gulbot.models.studio import StudioAuditEntry, StudioLink, StudioSession
 
 __all__ = [
     "AnnouncementCorrection",
@@ -89,8 +91,12 @@ __all__ = [
     "SharePageWish",
     "SharePageReferral",
     "SharePageRsvp",
+    "SharePageVenue",
     "Shop",
     "ShopHealthSnapshot",
     "ShopStaff",
+    "StudioAuditEntry",
+    "StudioLink",
+    "StudioSession",
     "SubscriptionPayment",
 ]

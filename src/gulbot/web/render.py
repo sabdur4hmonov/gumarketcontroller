@@ -165,6 +165,35 @@ class PhotoLink:
 
 
 @dataclass(frozen=True)
+class VenueLine:
+    """One of a taklifnoma's places (CP27), ready to render."""
+
+    label: str
+    name: str
+    address: str | None
+    time: str | None
+    map_url: str | None
+
+
+def venue_lines(venues: list[Any], lang: str) -> list[VenueLine]:
+    """share_page_venues rows (or the studio preview's dicts) as page lines."""
+    lines = []
+    for venue in venues:
+        get = venue.get if isinstance(venue, dict) else lambda key, v=venue: getattr(v, key)
+        starts = get("starts_at")
+        lines.append(
+            VenueLine(
+                label=strings.venue_label(str(get("kind")), lang),
+                name=str(get("name")),
+                address=get("address"),
+                time=starts.strftime("%H:%M") if starts is not None else None,
+                map_url=get("map_url"),
+            )
+        )
+    return lines
+
+
+@dataclass(frozen=True)
 class Plan:
     """A Ha/Yo'q page's date plan, ready to render: (id, label) pairs."""
 
@@ -350,8 +379,11 @@ def page_html(
     plan: Plan | None = None,
     photos: list[PhotoLink] | None = None,
     wishes: list[Any] | None = None,
+    venues: list[VenueLine] | None = None,
 ) -> str:
-    """The live page. `base` is "/p/<token>", the root of its own endpoints."""
+    """The live page. `base` is "/p/<token>", the root of its own endpoints.
+    `venues` (CP27) replaces the single venue block when the creator listed
+    places; a page without any renders exactly as before."""
     if page.kind in (PageKind.YESNO, PageKind.APOLOGY):
         view = yesno_view(
             page,
@@ -385,6 +417,7 @@ def page_html(
     view["photo_url"] = photos[0].url if framed else None
     view["gallery"] = (photos[1:] if framed else photos) if page.show_gallery else []
     view["music"] = page.music
+    view["venues"] = venues or []
     view["wishes_on"] = page.wishes_enabled
     view["wishes"] = wishes or []
     view["wish_url"] = f"{base}/wish"

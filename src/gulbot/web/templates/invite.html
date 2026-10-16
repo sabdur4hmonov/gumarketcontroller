@@ -32,6 +32,32 @@
 
   <div class="divider" aria-hidden="true"><span></span></div>
 
+  {%- if v.venues %}
+  <section class="venue venues" aria-labelledby="venues-title">
+    <h2 id="venues-title" class="venue-label">{{ v.s.venues if v.venues|length > 1 else v.s.venue }}</h2>
+    <ol class="venue-list">
+      {%- for place in v.venues %}
+      <li class="venue-item">
+        <span class="venue-kind">{{ place.label }}{% if place.time %} · {{ place.time }}{% endif %}</span>
+        <span class="venue-text">{{ place.name }}</span>
+        {%- if place.address %}
+        <span class="venue-address">{{ place.address }}</span>
+        {%- endif %}
+        {%- if place.map_url %}
+        <a class="chip" href="{{ place.map_url }}" target="_blank" rel="noopener noreferrer">{{ icon("pin") }}{{ v.s.map }}</a>
+        {%- endif %}
+      </li>
+      {%- endfor %}
+    </ol>
+    <div class="links">
+      {%- if v.map %}
+      <a class="chip" href="{{ v.map.google }}" target="_blank" rel="noopener noreferrer">{{ icon("pin") }}Google Maps</a>
+      <a class="chip" href="{{ v.map.yandex }}" target="_blank" rel="noopener noreferrer">{{ icon("pin") }}Yandex</a>
+      {%- endif %}
+      <a class="chip" href="{{ v.ics_url }}">{{ icon("calendar") }}{{ v.s.calendar }}</a>
+    </div>
+  </section>
+  {%- else %}
   <div class="venue">
     <span class="venue-label">{{ v.s.venue }}</span>
     <span class="venue-text">{{ v.venue }}</span>
@@ -43,6 +69,7 @@
       <a class="chip" href="{{ v.ics_url }}">{{ icon("calendar") }}{{ v.s.calendar }}</a>
     </div>
   </div>
+  {%- endif %}
 
   {%- if v.program %}
   <div class="divider" aria-hidden="true"><span></span></div>
