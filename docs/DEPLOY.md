@@ -584,8 +584,12 @@ supports gzip/zstd; the shipped proxy uses both. Brotli is built once using the
 FileResponse `.br` sidecars upstream, then forwarded through Caddy. This avoids
 installing a custom Caddy encoder. Validate the deployed proxy and verify
 `Content-Encoding: br` with `curl -H 'Accept-Encoding: br' -I` on a fingerprinted
-static URL, and gzip with the equivalent header. A real proxy rehearsal is
-still pending; local tests prove actual Brotli/gzip bytes and upstream HTTP.
+static URL, and gzip with the equivalent header. The real Caddy2.11.7 rehearsal
+passed against the current aiohttp app, with Brotli/gzip/identity bodies,
+conditional304s, strict CSP/no-store HTML and private-photo ownership/moderation.
+Base CSS:23342 raw /6028 gzip /5672 Brotli bytes. This is a localhost synthetic
+rehearsal; verify the deployed hostname separately. Certified raw evidence:
+[cp25-caddy-rehearsal.json](capacity/cp25-caddy-rehearsal.json).
 Keep access logging disabled: private page/login paths contain secrets.
 
 Only a static URL with the exact current content hash gets a year of immutable
@@ -599,17 +603,29 @@ The4/8/24GB guide and polling-to-webhook threshold await actual100/500/1000
 before/after measurements. See CHECKPOINTS and CP25_STATUS; extrapolated values
 are not deployment guarantees.
 
-## CP25 capacity guide — pending measured runs
+## CP25 capacity guide — measured laptop runs, server limits pending
 
-No server shop count is established yet. Historical pressure runs are NOT a
-baseline; refused runs have no timing/RSS/CPU capacity result. Configuration
-pool/timeout values above are actual settings, not capacity estimates.
+No server shop count is established yet. Clean BEFORE10/25/50/100/500 onf8f73b8
+and AFTER10/25/50/100 on2a3358b are measured in CHECKPOINTS, with source hashes,
+RAM admissions, process RSS/CPU, DB and Redis counters. BEFORE1000 stalled;
+AFTER500 failed1044/2000 successful replies and AFTER1000 was not attempted.
+Historical pressure rows are NOT a baseline. These failed/incomplete rows do
+not establish hardware capacity and have no certified complete latency quantiles.
+
+At100 shops, measured AFTER reply p50/p95/p99 was1.826/5.782/6.058 seconds,
+reminder/order ticks5.773/4.359 seconds, bot peak434.04MiB and worker243.42MiB.
+The corresponding BEFORE ticks were53.175/52.185 seconds. This proves the
+task-owned batch-client improvement at that workload. Interactive p95 increased
+from4.500 to5.782 seconds; there is no interactive speedup claim.
+Later connection-release and admin aggregation fixes are NOT represented by
+these historical AFTER numbers. Their post-fix capacity needs a new measured
+attempt; the failed stage is never restarted automatically.
 
 |Server RAM|Polling shops|Bot RSS/shop|CPU/shop|Worker layout|Reply p95/p99|Tick budget|
 |---|---|---|---|---|---|---|
-|4 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
-|8 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
-|24 GB|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|TBD: pending measured run|
+|4 GB|TBD: post-fix run and server measurement|Laptop100:434.04MiB total, not a slope|TBD: target CPU|TBD: OS/DB/web/STT headroom|Laptop100:5.782/6.058s, not a server guarantee|Laptop100:5.773/4.359s, single process|
+|8 GB|TBD: post-fix run and server measurement|TBD: measured incremental slope|TBD: target CPU|TBD: OS/DB/web/STT headroom|TBD: target-host run|TBD: deployed worker fleet|
+|24 GB|TBD: post-fix run and server measurement|TBD: measured incremental slope|TBD: target CPU|TBD: OS/DB/web/STT headroom|TBD: target-host run|TBD: deployed worker fleet|
 
 Reserve measured infrastructure/fixed-process memory separately before deriving
 shops from a per-shop slope. An amortized RSS/shop observation includes fixed
@@ -619,21 +635,34 @@ every eventual estimate; label estimates as extrapolated, never measured.
 
 ### Polling versus webhook threshold
 
-Switch threshold: **TBD: pending measured run**. Polling remains the default.
+Switch threshold: **TBD: post-fix measured run**. Polling remains the default.
 Compare healthy-shop latency under one failed shop, reply deadline failures,
 poller restarts, DB pool waits and measured memory/CPU at each scale. If valid
 measurements show polling fails below1000 shops, implement/test webhook mode
 behind a configuration flag before recommending that capacity. Until then,
 neither a webhook capacity number nor a polling fleet guarantee is supported.
+The500-shop failure had956 handler errors and zero25-second handler deadlines
+in the stored runtime snapshots; old logs report TimeoutError near5 seconds.
+New real-PG tests reproduce retained DB connections across blocked welcome
+and publication replies. Those paths now release their transaction before
+the final reply. Error logs distinguish qualified pool/request errors from
+handler deadlines. This identifies a concrete application problem, while
+exclusive attribution of every failed reply still needs diagnostic evidence.
+A webhook mode would retain these handler/DB constraints, so transport capacity
+must be isolated in the post-fix run before selecting a switch threshold.
 
 ### Harness limits and tonight admission
 
 The fake Bot API adds5ms per RPC; customers send0.1 messages/s/shop, plus one
-owner announcement per shop. Reminder/order task bodies run sequentially in
+owner announcement per shop, delivered as three synchronized customer waves
+ten seconds apart. Reminder/order task bodies run sequentially in
 100-shop batches with fresh asyncio loops. Broker/prefork scheduling, sustained
 production demand, real Telegram/network jitter and a distributed worker fleet
 are NOT measured. Tick totals are single-process upper bounds, not measured
-production Celery fleet throughput. Real fleet verification remains required.
+production Celery fleet throughput. Harness poller refresh is60s; production
+watchdog cadence is5s and is separately assertion-tested. Real fleet verification
+remains required, including the latency SLO and workload duration used to define
+"handles N shops". More RAM alone does not establish that service level.
 
 Prepare Docker/WSL, Postgres and Redis BEFORE admitting the benchmark; record
 free RAM and the top five working sets at each setup boundary. No RAM polling,

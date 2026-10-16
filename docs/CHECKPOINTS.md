@@ -2088,26 +2088,90 @@ Before source: clean `f8f73b8405322ec99cb1e06305fc9f7330f31df0`.
 
 |Shops|Status|Commit / tree SHA|Start / min free MiB|Reply p50/p95/p99 ms|Reminder / order tick s|Bot/worker DB connections; queries / ms|Redis ops|
 |---|---|---|---|---|---|---|---|
-|10|queued; RAM gate pending|—|—|—|—|—|—|
-|25|queued; RAM gate pending|—|—|—|—|—|—|
-|50|queued; RAM gate pending|—|—|—|—|—|—|
-|100|queued; RAM gate pending|—|—|—|—|—|—|
-|500|queued; RAM gate pending|—|—|—|—|—|—|
-|1000|queued; RAM gate pending|—|—|—|—|—|—|
+|10|measured|2a3358b8 / 7495f09a785f|5113.53125 / 4219.99|634.039/1334.93/1350.23|1.768/1.350|15; 292 / 6791.85; 1; 101 / 445.69|140|
+|25|measured|2a3358b8 / 7495f09a785f|5045.5078125 / 4166.29|980.127/2077.924/2116.964|2.550/1.947|15; 727 / 15778.9; 1; 236 / 876.88|350|
+|50|measured|2a3358b8 / 7495f09a785f|4998.37109375 / 4028.34|1448.291/3238.578/3328.786|3.559/2.476|15; 1452 / 30690.21; 1; 461 / 1365.03|700|
+|100|measured|2a3358b8 / 7495f09a785f|4951.01953125 / 3897.67|1825.855/5781.544/6058.268|5.773/4.359|15; 2902 / 55408.15; 1; 911 / 2818.09|1400|
+|500|failed (incomplete1044/2000; no successful progress120s after worker finished; not RAM)|—|4964.67578125 / —|—|—|—|—|
+|1000|not run: preceding scale failed (500-shop stage failed; no automatic restart or silent extrapolation)|—|None / —|—|—|—|—|
+
+|Shops|Process|Peak RSS MiB|CPU seconds|CPU % one core|RSS MiB/shop|CPU seconds/shop|
+|---|---|---|---|---|---|---|
+|10|bot|256.9|6.75|18.07|25.690|0.67500|
+|10|worker|241.53|1.266|40.56|24.153|0.12660|
+|10|API stub|233.86|0.828|1.77|23.386|0.08280|
+|10|coordinator|233.49|1.422|2.24|23.349|0.14220|
+|25|bot|287.28|13.344|28.7|11.491|0.53376|
+|25|worker|242.1|1.797|39.94|9.684|0.07188|
+|25|API stub|236.32|1.25|2.23|9.453|0.05000|
+|25|coordinator|234.38|1.5|2.12|9.375|0.06000|
+|50|bot|336.49|25.125|40.3|6.730|0.50250|
+|50|worker|242.63|2.234|37.01|4.853|0.04468|
+|50|API stub|241.25|1.5|2.08|4.825|0.03000|
+|50|coordinator|235.4|1.672|1.9|4.708|0.03344|
+|100|bot|434.04|50.203|51.58|4.340|0.50203|
+|100|worker|243.42|3.656|36.08|2.434|0.03656|
+|100|API stub|251.84|3.188|3.0|2.518|0.03188|
+|100|coordinator|238.48|2.719|2.25|2.385|0.02719|
 
 Full certificates/raw measurements: `docs/capacity/cp25-clean-*.json`.
 
 <!-- CP25 CERTIFIED TABLES END -->
 
-2026-10-14 owner-authorized attempt: Docker was initially off. Observed free
+Historical refused evening-d113f94c attempt, BEFORE the certified tables above: Docker was initially off. Observed free
 RAM5530.55MiB before cold start,2938.15MiB during (vmmemWSL1863.51MiB),
 1956.72MiB immediately afterward; concurrent processes preclude assigning
 the entire3573.83MiB change to Docker. Once infrastructure/imports/private
 reference seed were ready, the certified evening controller admitted once
 at2756.38MiB and refused the3072MiB floor. No benchmark/profile child started.
-All BEFORE/AFTER rows above remain not run: RAM; their timestamps describe
+Only that historical attempt was refused for RAM; current certified tables above supersede it. Its timestamps describe
 the preserved earlier attempt, not this new startup refusal. No latency,
 CPU/RAM-per-shop or capacity conclusion can be drawn. Timestamped top5/RAM
 and executed-tree provenance: capacity/cp25-startup-evening-20261014.json.
 No client fix activated, no full gate/push/merge. Runtime assertion proofs
 now102/102 plus retained harness12/12; touched-file Ruff and strict mypy green.
+
+
+CP25 AFTER500 failed at1044/2000 after admission4964.68MiB;1000 was NOT attempted.
+Runtime DB snapshots2000 handled/956 errors/0 handler deadlines; deterministic real-PG
+tests subsequently reproduced retained connections across welcome/publication replies.
+New release/logging fixes are NOT represented by the2a3358b AFTER rows. No silent rerun
+or post-fix capacity claim. See CP25_STATUS and capacity/cp25-clean-after-500-failed.json.
+Harness additionally refreshes pollers60s; production watchdog5s is focused-test proven.
+
+CP25 subsequent local fixes are `c8d717f` (release registration/referral and
+completed publication indexing before final Telegram replies; qualified error
+attribution; future failure telemetry) and `1d4adbe` (group admin totals per
+table). They are not measured by the historical2a3358b AFTER table. A real
+one-connection Postgres test reproduced both reply paths retaining checkout
+while the RPC was blocked; both now allow another checkout before that RPC
+finishes. Handler timeout logs distinguish pool/request failures and25s deadlines
+without logging exception text. Runtime guards138/138 + retained harness12/12.
+
+Real Caddy2.11.7 proxy rehearsal: startup4698.63MiB, Python peak247.67MiB,
+base CSS23342 raw /6028 gzip /5672 Brotli bytes. Actual decoded bodies match,
+fingerprinted static ETags/304/immutable/Vary, private no-store HTML/CSP, and
+private photo200/304/foreign404/hidden404 all passed; owned test container removed.
+Raw certificate: `capacity/cp25-caddy-rehearsal.json`.
+
+Separate owned10-shop query fixture,1000 temporary catalogue rows: measured
+catalogue keyset0.057ms /choice0.119ms, pending reminder selection0.192ms,
+pending order claim0.659ms, order card0.140ms. All order-claim and temporary
+product changes rolled back. Original admin plan50.873ms included47.229ms JIT
+and relation scans repeated per shop. Grouped plan0.688ms with no JIT on the
+same fixture; tenant counts and inclusion of inactive finalized posts preserved,
+three new guards caught assertions. These are small SQL observations, not
+fleet capacity. Evidence: `capacity/cp25-pending-query-plans.json` and
+`capacity/cp25-admin-grouped-plan.json`.
+
+Fresh full gate running since09:32UTC at5177.50MiB on1d4adbe, after correction
+of a missing declared Playwright Python dependency. First failure before
+sweeps/tests is retained; existing Chrome/Node used, no browsers/models downloaded.
+Full lint460 files and mypy212 source files passed. Final sweep/pytest/zero-skip
+XML, configured-secret scan and current dev migration head remain pending.
+No push or merge. No claimed4/8/24GiB capacity or webhook threshold until a new
+authorized capacity attempt certifies the later source.
+
+09:43UTC gate observation: both production shop/platform sweeps reported zero
+shadows. Pytest remains active with one failure marker near9%; full trace/XML
+pending. Full gate is NOT green; no push/merge or completion claim.
