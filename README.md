@@ -217,3 +217,19 @@ Going live needs a domain and HTTPS, and the bot keeps the feature off in
 production until it has them: `docs/DEPLOY.md`, step 6. Design notes are in
 `docs/DESIGN_BRIEF_INVITES.md`, and what the feature guarantees is CP16 in
 `docs/CHECKPOINTS.md`.
+
+### Taklifnoma Studio (CP27)
+
+The whole invitation on one web page instead of the bot's step-by-step wizard.
+In a shop's bot: **💌 Taklifnoma · Ha/Yo'q → 🌐 Taklifnoma yaratish** sends a
+one-time link (15 minutes) to `/studio/enter/<token>`. Its "Kirish" button opens
+a session for that customer of that shop; there is no sign-up. The form takes
+the event, names, date and time, up to five places (kind, name, address, a
+Google/Yandex/2GIS link, time), the message, RSVP and the design, from all
+forty, with "Ko'rish" previews. Premium designs stay behind the CP18 gift.
+The page server serves it with the same `python -m gulbot.web.run`.
+
+Over plain http (local), the session cookie is not `Secure`, so the link works
+in a browser on this machine. A phone needs the page server reachable from it.
+After a design changes or one is added, redraw the picker's thumbnails:
+`python scripts/studio_thumbs.py`.

@@ -1,0 +1,160 @@
+{
+  "caught": 22,
+  "total": 22,
+  "results": [
+    {
+      "guard": "every /studio route behind the gate",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_studio_web.py::test_every_studio_route_refuses_a_request_without_a_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "CSRF on every POST",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_every_post_needs_the_sessions_csrf_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "a GET never spends the link",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_opening_the_link_does_not_spend_it",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "single use (compare-and-swap)",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_works_once_and_opens_a_session_for_its_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "link TTL",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_expires_after_fifteen_minutes",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "hash-only storage",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_is_stored_as_its_hash_only",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "link rate limit",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_links_are_rate_limited_per_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "entitlement re-checked on every request",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_pausing_the_shop_closes_the_studio_on_the_next_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "entitlement: a paused shop",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_entitlement_is_rechecked_at_spending_and_on_every_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "revocation at logout",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_logout_ends_the_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "cookie Secure on https",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_cookie_is_httponly_lax_scoped_and_secure_on_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "studio login rate limit",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_login_is_rate_limited",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "a creator sees only their own pages",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_a_creator_sees_only_their_own_pages",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "premium wall on create",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_web.py::test_premium_designs_are_locked_with_the_cp18_wording",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the preview saves nothing",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_preview_shows_the_creators_data_and_saves_nothing",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "studio CSP (form-action self, studio only)",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_studio_web.py::test_studio_pages_may_post_to_themselves_and_public_pages_may_not",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "map links: allowed hosts only",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_anything_else_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "map links: https only",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_anything_else_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "places scrubbed with a deleted page",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_places_go_with_the_page_on_delete_and_on_expiry",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "at most five places",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_places_the_form_could_not_produce_are_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the public page lists the places",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_share_page_venues.py::test_the_public_page_lists_the_places",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the bot sends the studio link",
+      "file": "src/gulbot/bot/routers/share_pages.py",
+      "test": "tests/test_studio_bot.py::test_the_button_sends_a_one_time_link_for_this_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    }
+  ]
+}

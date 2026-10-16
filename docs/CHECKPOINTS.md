@@ -1960,3 +1960,87 @@ results 10 and FSM 11. Earlier RAM-aborted gates are not passing evidence.
 
 CP25's capacity baseline and production reliability/performance changes follow
 this integration; no capacity claim is inferred from design tests.
+
+## CP27.1 — Taklifnoma Studio: the whole invitation on one web page
+
+The owner tried the bot and rejected its wizard: places and locations asked one
+by one in chat. CP27 moves invitation-making to a web creator that only a link
+from the shop's own bot opens. CP27.1 covers the invitation kind. It is built
+on `main` (`cp27-studio`), ahead of the CP26 design port; CP25 is parked.
+
+### What CP27.1 guarantees
+
+- **The way in is CP18/CP20's, bound to one customer of one shop.** The shop
+  bot's "🌐 Taklifnoma yaratish" mints 32 random bytes, stored as sha256 only,
+  valid 15 minutes, at most five per ten minutes. `GET /studio/enter/<token>`
+  shows a "Kirish" button and never spends the link (Telegram's preview robot
+  reads links). `POST /studio/enter` spends it by compare-and-swap and opens a
+  two-hour session (cookie `gb_studio`: HttpOnly, SameSite=Lax, Path=/studio,
+  Secure whenever the site is https).
+- **One gate for every `/studio` route** (`web/studio.studio_gate`), with CSRF
+  on every POST and refusals audited. A router walk covers routes added later.
+- **Entitlement is one function,** `services/studio.entitled`, checked at
+  minting, at spending and on every request. The owner decided that every
+  customer of this shop may use the studio, unless the shop is paused.
+  Premium designs, photos and music stay behind the CP18 gift, shown locked
+  with the existing "how to unlock" wording.
+- **The bot's rules, not a copy.** `share_pages.checked_draft` is the one set
+  of rules; `create_page` adds the premium wall, the limits and the write. The
+  studio calls `create_page` like the wizard does. The preview renders the real
+  template from `checked_draft` inside a savepoint that is always rolled back.
+- **Places** (`share_page_venues`): up to five, each with a kind (To'yxona,
+  Restoran, Kafe, Bog', Uy, Boshqa), a name, an address, a map link and a time.
+  Map links must be https to Google, Yandex or 2GIS. The server never fetches
+  one; it reads a point from the link only when the link carries one. Place 1
+  also fills `share_pages.venue`/`location`, so every design and the bot keep
+  working. Places are scrubbed with the page (delete, expiry). The public page
+  lists them; a page without places renders as before.
+- **Tenancy:** links and sessions carry the composite FK `(customer_id, shop_id)
+  -> customers`, places `(page_id, shop_id) -> share_pages`. `/studio/done/<id>`
+  shows only the creator's own live page in their own shop. `studio_audit_log`
+  is append-only by trigger.
+- **CSP:** studio routes get the panels' policy (`form-action 'self'`); public
+  pages keep `form-action 'none'`. No inline script or style, no third-party
+  request. The form needs no JavaScript: adding or removing a place
+  round-trips the form, and `studio.js` only adds the copy button.
+
+### Decisions, each with its reason
+
+- **A new table for places.** `share_page_options` holds a Ha/Yo'q page's
+  voting places and times as text only; it cannot carry a kind, an address, a
+  link and a time per place. The migration is additive.
+- **The session lasts two hours, not /shop's one,** because a creator filling a
+  whole invitation must not lose it to the clock.
+- **The design picker uses pre-drawn thumbnails** (`scripts/studio_thumbs.py`:
+  each cover at 360 px through the CP24 harness, 150x267 WebP, 180 KB for all
+  forty). A test fails while any design lacks one.
+- **The wizard stays** until CP27.5; the menu leads with the studio.
+
+### Evidence
+
+Migration `c27a1e5d9f01`: upgrade → downgrade → upgrade on a throwaway
+database, and the models match it with no diff. New tests: studio auth 11,
+places 36, studio web 24, bot 2, and a real-Chrome run at 360 px. That run
+covers in by the link, worst-case strings (an unbroken Cyrillic word, markup),
+a refused map link, a second place, a design, a preview in a new tab, create
+and copy. It checks no overflow, no other origin, no CSP violation, no script
+error, and AA contrast for every visible text. [The mutation sweep](CP27_MUTATIONS.json)
+breaks each new guard on purpose; every one fails its test on an assertion
+(22/22).
+
+The whole suite without the CP24 browser matrix: 7,301 passed, 1 failed, in
+72 minutes. The failure was `test_order_pings.py::test_the_claim_is_committed_before_telegram_is_called`
+("another connection could not see the claim while the send was in flight"),
+a code path CP27 does not touch. Alone it passed three times out of three, and
+its file passed 43/43. Under load it is timing-sensitive, and that stays open:
+an isolated pass does not dismiss a loaded failure. The CP24 browser matrix
+(480 cases: forty designs, three kinds, four languages, worst-case text at
+360 px) plus the studio's browser run then passed 481/481 in 11.5 minutes.
+Lint, format, strict mypy (190 files) and both shadow sweeps are clean.
+
+### Open
+
+- A phone run needs the page server reachable from the phone (CP27.4 needs a
+  public HTTPS origin anyway).
+- The dev database `gulbot` is at CP25's head, which this branch does not
+  contain. Run this branch against its own database.
