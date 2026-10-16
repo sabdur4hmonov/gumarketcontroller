@@ -29,6 +29,8 @@ KINDS = "tests/test_studio_kinds.py::"
 PAGES = "tests/test_studio_pages.py::"
 MINI = "tests/test_studio_webapp.py::"
 WEBAPP = "src/gulbot/services/studio_webapp.py"
+SLIM = "tests/test_share_pages_slim.py::"
+SLIM_ROUTER = "src/gulbot/bot/routers/share_pages_slim.py"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -446,6 +448,54 @@ def mutants() -> list[Mutant]:
             '    if not base.startswith("https://"):',
             "    if False:",
             MINI + "test_the_bot_offers_the_mini_app_only_on_https",
+        ),
+        # --- CP27.5: the slim bot ---------------------------------------------------------
+        Mutant(
+            "5: the wizard is off by default",
+            "src/gulbot/config.py",
+            "    share_wizard_in_bot: bool = False",
+            "    share_wizard_in_bot: bool = True",
+            SLIM + "test_the_wizard_is_off_by_default",
+        ),
+        Mutant(
+            "5: off means the one-button menu",
+            "src/gulbot/bot/routers/__init__.py",
+            "    if not config.share_wizard_in_bot():",
+            "    if False:",
+            SLIM + "test_the_menu_is_one_button",
+        ),
+        Mutant(
+            "5: an old wizard button answers with the studio",
+            SLIM_ROUTER,
+            "    router.callback_query.register("
+            "to_the_studio, F.data.startswith(WIZARD_PREFIXES))\n",
+            "",
+            SLIM + "test_an_old_wizard_button_sends_a_studio_link",
+        ),
+        Mutant(
+            "5: a conversation left mid-wizard is cleared",
+            SLIM_ROUTER,
+            "    router.message.register(\n"
+            "        left_mid_wizard,\n"
+            "        StateFilter(YesNoPage, InvitePage, ApologyPage, EditPage),\n"
+            '        flags={"catch_all": True},\n'
+            "    )\n",
+            "",
+            SLIM + "test_a_conversation_left_mid_wizard_is_cleared",
+        ),
+        Mutant(
+            "5: every wizard button factory is listed",
+            SLIM_ROUTER,
+            "    SealCB,\n    MusicCB,\n",
+            "    SealCB,\n",
+            SLIM + "test_every_old_wizard_button_is_covered",
+        ),
+        Mutant(
+            "5: the wishes notification router stays",
+            "src/gulbot/bot/routers/__init__.py",
+            "        return (build_share_pages_slim_router(), build_share_page_wishes_router())",
+            "        return (build_share_pages_slim_router(),)",
+            SLIM + "test_the_slim_dispatcher_passes_the_shadow_sweep",
         ),
     ]
 

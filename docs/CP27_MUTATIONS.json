@@ -1,6 +1,6 @@
 {
-  "caught": 51,
-  "total": 51,
+  "caught": 57,
+  "total": 57,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -356,6 +356,48 @@
       "guard": "4: the Mini App button only on https",
       "file": "src/gulbot/bot/routers/share_pages.py",
       "test": "tests/test_studio_webapp.py::test_the_bot_offers_the_mini_app_only_on_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: the wizard is off by default",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_the_wizard_is_off_by_default",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: off means the one-button menu",
+      "file": "src/gulbot/bot/routers/__init__.py",
+      "test": "tests/test_share_pages_slim.py::test_the_menu_is_one_button",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: an old wizard button answers with the studio",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_an_old_wizard_button_sends_a_studio_link",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: a conversation left mid-wizard is cleared",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_a_conversation_left_mid_wizard_is_cleared",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: every wizard button factory is listed",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_every_old_wizard_button_is_covered",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: the wishes notification router stays",
+      "file": "src/gulbot/bot/routers/__init__.py",
+      "test": "tests/test_share_pages_slim.py::test_the_slim_dispatcher_passes_the_shadow_sweep",
       "assertion_caught": true,
       "exit_code": 1
     }

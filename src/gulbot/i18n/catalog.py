@@ -1664,6 +1664,20 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.pages.mine": {"uz": "📂 Mening sahifalarim", "ru": "📂 Мои страницы"},
     "ibtn.pages.studio": {"uz": "🌐 Taklifnoma yaratish", "ru": "🌐 Создать приглашение"},
     "ibtn.studio.webapp": {"uz": "📱 Telegram ichida ochish", "ru": "📱 Открыть в Telegram"},
+    "pages.menu_studio": {
+        "uz": (
+            "💌 Taklifnoma, Ha/Yo'q sahifa yoki Uzrnoma — hammasi endi bitta sahifada, "
+            "saytda yaratiladi. Pastdagi tugmani bosing."
+        ),
+        "ru": (
+            "💌 Приглашение, страница Да/Нет или письмо-извинение — теперь всё "
+            "создаётся на одной странице сайта. Нажмите кнопку ниже."
+        ),
+    },
+    "pages.moved_to_studio": {
+        "uz": "Sahifalar endi saytda, bitta sahifada yaratiladi — mana yangi havola.",
+        "ru": "Страницы теперь создаются на сайте, на одной странице — вот новая ссылка.",
+    },
     "studio.link": {
         "uz": (
             "🌐 Taklifnomani saytda, bitta sahifada to‘ldiring — barcha dizaynlar o‘sha yerda.\n"
@@ -1934,6 +1948,11 @@ _EN: Final[dict[str, str]] = {
     "ibtn.pages.mine": "📂 My pages",
     "ibtn.pages.studio": "🌐 Create an invitation",
     "ibtn.studio.webapp": "📱 Open in Telegram",
+    "pages.menu_studio": (
+        "💌 An invitation, a Yes/No page or an apology letter — all made on one "
+        "page of the website now. Tap the button below."
+    ),
+    "pages.moved_to_studio": "Pages are now made on the website, on one page — here is a new link.",
     "studio.link": (
         "🌐 Fill in the invitation on the website, on one page — every design is there.\n"
         "The link works for {minutes} min and only once:\n{url}\n\nDo not forward it."

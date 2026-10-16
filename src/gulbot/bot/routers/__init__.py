@@ -11,6 +11,7 @@ only ever be attached to one Dispatcher, so singletons make a second dispatcher
 
 from aiogram import Router
 
+from gulbot import config
 from gulbot.bot.routers.admin_orders import build_admin_orders_router
 from gulbot.bot.routers.announcements import build_announcement_router
 from gulbot.bot.routers.browse import build_browse_router
@@ -30,8 +31,36 @@ from gulbot.bot.routers.share_page_photo import build_share_page_photo_router
 from gulbot.bot.routers.share_page_plan import build_share_page_plan_router
 from gulbot.bot.routers.share_page_wishes import build_share_page_wishes_router
 from gulbot.bot.routers.share_pages import build_share_pages_router
+from gulbot.bot.routers.share_pages_slim import build_share_pages_slim_router
 from gulbot.bot.routers.shop_logo import build_shop_logo_router
 from gulbot.bot.routers.shop_onboarding import build_shop_onboarding_router
+
+
+def _share_page_routers() -> tuple[Router, ...]:
+    """CP27.5: the share-page flow in the shop bot. By default ONE button into
+    Taklifnoma Studio (share_pages_slim); SHARE_WIZARD_IN_BOT=true restores the
+    old wizard and its editors exactly as they were. The wishes router is a
+    notification with buttons and stays in both modes."""
+    if not config.share_wizard_in_bot():
+        return (build_share_pages_slim_router(), build_share_page_wishes_router())
+    return (
+        # Ha/Yo'q pages and taklifnomas. Five text-waiting states, each a
+        # state-scoped catch_all, so after nav and onboarding like every
+        # other flow; its menu entry is StateFilter(None).
+        build_share_pages_router(),
+        # CP17: editing a page in place. Its own states and callback prefixes.
+        build_share_page_edit_router(),
+        # CP17: the date plan of a Ha/Yo'q page. Its own states and prefix.
+        build_share_page_plan_router(),
+        # CP17: the Foto design's photo step, in creation and in editing.
+        build_share_page_photo_router(),
+        # CP17: the dress-code palette.
+        build_share_page_colors_router(),
+        # CP17: making an Uzrnoma.
+        build_share_page_apology_router(),
+        # CP17: the creator's view of the wishes wall.
+        build_share_page_wishes_router(),
+    )
 
 
 def build_routers() -> tuple[Router, ...]:
@@ -73,22 +102,8 @@ def build_routers() -> tuple[Router, ...]:
         # CP10. Its own callback prefixes and its own states, so it neither
         # shadows nor is shadowed by the occasions flow.
         build_orders_router(),
-        # Ha/Yo'q pages and taklifnomas. Five text-waiting states, each a
-        # state-scoped catch_all, so after nav and onboarding like every
-        # other flow; its menu entry is StateFilter(None).
-        build_share_pages_router(),
-        # CP17: editing a page in place. Its own states and callback prefixes.
-        build_share_page_edit_router(),
-        # CP17: the date plan of a Ha/Yo'q page. Its own states and prefix.
-        build_share_page_plan_router(),
-        # CP17: the Foto design's photo step, in creation and in editing.
-        build_share_page_photo_router(),
-        # CP17: the dress-code palette.
-        build_share_page_colors_router(),
-        # CP17: making an Uzrnoma.
-        build_share_page_apology_router(),
-        # CP17: the creator's view of the wishes wall.
-        build_share_page_wishes_router(),
+        # The share-page flow: the studio button, or the old wizard (CP27.5).
+        *_share_page_routers(),
         build_menu_router(),
         build_fallback_router(),
     )

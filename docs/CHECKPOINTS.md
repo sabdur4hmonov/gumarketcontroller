@@ -2165,3 +2165,30 @@ scripts; the button on https and not on http. A real-Chrome run opens
 `/studio/app#tgWebAppData=...` offline and lands in the studio with the
 fragment gone, no foreign request, no CSP violation. Mutations 9/9 (51/51 in
 total).
+
+## CP27.5 — the slim bot: one button into the studio
+
+- **`SHARE_WIZARD_IN_BOT`, default OFF** (`config.share_wizard_in_bot()`, read
+  when a shop bot's dispatcher is built). OFF, `bot/routers.build_routers`
+  registers `share_pages_slim` in place of the wizard and its editors (pages,
+  edit, plan, photo, colours, apology). ON, they come back exactly as they were;
+  their code and tests are kept.
+- **OFF, the pages menu is one button**, "🌐 Taklifnoma yaratish", which sends the
+  studio link (and the Mini App button on https). Nothing the old wizard left
+  goes dead: every menu action and every button it ever sent (`WIZARD_BUTTONS`,
+  a test fails if a new `pg*` factory is not listed) answers with a studio link,
+  and a conversation stopped half-way through it is cleared rather than read as
+  a name or a venue.
+- **Notifications are untouched:** Ha and RSVP messages come from the worker, and
+  the wishes router (a notification with buttons) stays in both modes.
+- **Tests run the wizard ON** (`tests/conftest.py` pins it), so the wizard's own
+  tests keep proving what the flag brings back; `tests/test_share_pages_slim.py`
+  switches it off and tests the default, including a shadow sweep of the slim
+  dispatcher. `make shadow` reads the real default (OFF).
+
+Evidence: `tests/test_share_pages_slim.py` 17 tests (default off and env on,
+one-button menu, five menu actions and six old wizard buttons answer with a
+studio link, every `pg*` factory covered, a half-finished wizard cleared with
+no page made, the slim dispatcher's shadow sweep, the wizard back when on).
+`make shadow` (default off): shop and platform dispatchers clean. Bot, i18n and
+wizard suites with the flag on: 199 passed. Mutations 6/6 (57/57 in total).

@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** CP27.5 (slim the bot: only "🌐 Taklifnoma yaratish"; wizard behind SHARE_WIZARD_IN_BOT, off). CP27.4 is committed.
+**Now:** end of night: full suite + 480-case CP24 matrix (RAM-gated), secrets scan, morning report. CP27.5 is committed.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -28,6 +28,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.2 Ha/Yo'q, Uzrnoma, photos, music | e7db988 | green; mutations 38/38 |
 | CP27.3 my pages: list, edit, delete, counts | 8f36ce9 | green; mutations 42/42 |
 | CP27.4 Telegram Mini App | c4a2fa3 | green; mutations 51/51 |
+| CP27.5 slim bot (wizard behind SHARE_WIZARD_IN_BOT, off) | (this commit) | green; mutations 57/57 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -55,9 +56,21 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - The Mini App URL carries the shop id and bot @username; the shop id picks the key (wrong id = HMAC fails); the username only feeds the page's order link.
 - Telegram Web (iframe) is not supported: `frame-ancestors 'none'` and SameSite=Lax stay; mobile/desktop Telegram apps only.
 - The HMAC check is aiogram's `check_webapp_signature` (the bot's own library), tested against launch data crafted from Telegram's spec.
+- SHARE_WIZARD_IN_BOT defaults OFF; tests/conftest.py pins it ON so the wizard's existing tests keep running; slim mode has its own tests and sweep.
+- Slim mode keeps the wishes router (a notification with buttons); every other old wizard button answers with a studio link.
+- "Mening sahifalarim" in the bot (old "mine" button) now sends the studio link; the list lives at /studio/pages.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open
+
+- **order-pings claim test (CP25 item), investigated 2026-10-17:** the loaded failure was `assert [] == ['sending']`, an EMPTY list: the
+  fake transport's send_photo never ran, so NO send happened. The message ("another connection could not see the claim") misreads that.
+  Reproduced exactly by setting the fixture's due time 1 s ahead (`now() + interval '1 second'`); 1 s behind passes. Cause class: `committed_world`
+  sets `due_at_utc = now()` by the POSTGRES clock (Docker's WSL VM) while the tick runs with `now_utc=datetime.now(UTC)` from the Windows host,
+  against CONTRIBUTING's rule ("a due time explicitly in the past relative to the now the test passes in"); a VM clock ahead of the host under
+  load leaves the row not yet due. Skew measured now: within +/-15 ms (not proven for the failing moment). Claim-before-send is NOT implicated.
+  Proposed CP25 fix (not applied; CP25 is parked and not to be touched): insert `due_at_utc` from the host clock minus 1 s, and assert
+  `observed` is non-empty with its own message before checking 'sending'. To record in docs/CP25_STATUS.md on codex/cp25-reliability.
 
 - `test_order_pings.py::test_the_claim_is_committed_before_telegram_is_called` failed once under load
   (CP25 reliability item, see docs/CP25_STATUS.md on codex/cp25-reliability). Not a flake.

@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     web_trust_proxy: bool = False
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
+    #: CP27.5: the old step-by-step share-page wizard in the shop bot. OFF by
+    #: default -- pages are made in Taklifnoma Studio and the bot's pages menu is
+    #: one button. True brings the wizard back at once (bot/routers).
+    share_wizard_in_bot: bool = False
     log_level: str = "INFO"
     #: The product's name wherever a person reads it (CP19). The brand is not
     #: decided; this is the ONE place it is written. Read it through
@@ -234,6 +238,11 @@ def check_production_config(settings: Settings, environ: Mapping[str, str] | Non
             + "\nSet each of these as a real environment variable for this process. "
             "See docs/DEPLOY.md."
         )
+
+
+def share_wizard_in_bot() -> bool:
+    """Read when a shop bot's dispatcher is built (bot/routers.build_routers)."""
+    return get_settings().share_wizard_in_bot
 
 
 @lru_cache
