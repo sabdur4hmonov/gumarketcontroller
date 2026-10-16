@@ -32,6 +32,8 @@ SHOTS = Path(__file__).resolve().parents[1] / ".cp22-stage" / "cp27"
 HOSTILE = "<script>alert(1)</script>\"'&<img src=x onerror=alert(2)>"
 LONG_CYRL = "Қўшимчаисмсизбирсўзузун" * 3  # one unbroken word, 69 letters
 LONG_LATN = "Wxyz" * 40
+#: CP27.1b: the empty form at 360 px, CSS px (it was ~6,200 with forty cards inline).
+FORM_MAX_HEIGHT = 2600
 
 #: Runs in the page: what a person would see that breaks the rules.
 AUDIT_JS = """
@@ -76,6 +78,7 @@ AUDIT_JS = """
     }
   }
   return {width: vw, scroll: document.documentElement.scrollWidth, overflow, low,
+          height: document.documentElement.scrollHeight,
           csp: window.__csp || []};
 }
 """
@@ -166,8 +169,8 @@ async def audit(page: Page, name: str) -> dict[str, Any]:
     await page.screenshot(path=str(SHOTS / f"{name}.png"), full_page=True)
     result: dict[str, Any] = await page.evaluate(AUDIT_JS)
     assert result["width"] == 360, name
-    assert result["scroll"] <= 360, (name, result["scroll"])
     assert result["overflow"] == [], (name, result["overflow"][:10])
+    assert result["scroll"] <= 360, (name, result["scroll"])
     assert result["low"] == [], (name, result["low"][:10])
     assert result["csp"] == [], (name, result["csp"])
     return result
@@ -201,7 +204,9 @@ async def test_the_studio_at_360px_end_to_end(
         await audit(page, "01-enter")
         await page.get_by_role("button", name="Kirish").click()
         await page.wait_for_url(f"{origin}/studio")
-        await audit(page, "02-form-empty")
+        empty = await audit(page, "02-form-empty")
+        # CP27.1b: the data form is short; the forty designs live on their own screen.
+        assert empty["height"] <= FORM_MAX_HEIGHT, empty["height"]
 
         # Worst-case strings, then a mistake: the form comes back with them.
         await page.fill('input[name="name_1"]', (HOSTILE + LONG_CYRL)[:60])
@@ -222,22 +227,33 @@ async def test_the_studio_at_360px_end_to_end(
         await page.wait_for_load_state()
         await page.locator('input[name="venue_name_2"]').fill("Kelin tomon")
         await page.locator('label.chip:has(input[name="venue_kind_2"][value="uy"])').click()
-        await page.locator('label.design-pick:has(input[value="tungi"])').click()
         await audit(page, "04-form-two-places")
+
+        # The picker: its own screen, filters, a choice, back to the same form.
+        await page.get_by_role("button", name="O‘zgartirish").click()
+        await page.wait_for_url(f"{origin}/studio/design")
+        await page.get_by_role("button", name="Hammasi").first.click()
+        await page.wait_for_load_state()
+        await audit(page, "05-picker-all")
+        await page.locator('[data-design="tungi"] button.choose').click()
+        await page.wait_for_load_state()
+        assert await page.input_value('input[name="venue_name_2"]') == "Kelin tomon"
+        assert await page.locator('.chosen[data-design="tungi"]').count() == 1
+        await audit(page, "06-form-design-chosen")
 
         # "Ko'rish" opens the real page in a new tab, saved nowhere.
         async with context.expect_page() as opened:
-            await page.locator('.design:has(input[value="tungi"]) button').click()
+            await page.locator(".chosen button.link").click()
         preview = await opened.value
         watch.attach(preview)
         await preview.wait_for_load_state()
         assert "theme-tungi" in await preview.content()
-        await preview.screenshot(path=str(SHOTS / "05-preview.png"))
+        await preview.screenshot(path=str(SHOTS / "07-preview.png"))
         await preview.close()
 
         await page.get_by_role("button", name="Yaratish").last.click()
         await page.wait_for_url(f"{origin}/studio/done/*")
-        await audit(page, "06-done")
+        await audit(page, "08-done")
         copy = page.get_by_role("button", name="Nusxalash")
         await copy.click()
         await page.get_by_role("button", name="Nusxalandi ✓").wait_for()

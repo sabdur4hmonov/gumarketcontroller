@@ -24,6 +24,7 @@ REPORT = ROOT / "docs" / "CP27_MUTATIONS.json"
 WEB = "tests/test_studio_web.py::"
 AUTH = "tests/test_studio_auth.py::"
 VENUES = "tests/test_share_page_venues.py::"
+PICKER = "tests/test_studio_picker.py::"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -214,6 +215,57 @@ def mutants() -> list[Mutant]:
             "",
             "tests/test_studio_bot.py::test_the_button_sends_a_one_time_link_for_this_customer",
         ),
+        # --- CP27.1b: the design picker on its own screen ---------------------------
+        Mutant(
+            "1b: a locked design cannot be chosen",
+            STUDIO_WEB,
+            '                if card is None or card["locked"]:',
+            "                if card is None:",
+            PICKER + "test_a_locked_design_can_be_looked_at_but_not_chosen",
+        ),
+        Mutant(
+            "1b: an unknown design cannot be chosen",
+            STUDIO_WEB,
+            '                if card is None or card["locked"]:',
+            '                if card is not None and card["locked"]:',
+            PICKER + "test_an_unknown_design_or_filter_is_refused",
+        ),
+        Mutant(
+            "1b: the category filter",
+            STUDIO_WEB,
+            '        if (cat == "all" or cat in studio_designs.DESIGN_CATEGORIES[d["key"]])',
+            "        if True",
+            PICKER + "test_the_picker_keeps_what_was_typed_and_filters",
+        ),
+        Mutant(
+            "1b: the free/premium filter",
+            STUDIO_WEB,
+            '        and (tier == "all" or (tier == "premium") == d["premium"])',
+            "        and True",
+            PICKER + "test_the_picker_keeps_what_was_typed_and_filters",
+        ),
+        Mutant(
+            "1b: the picker carries what was typed",
+            "src/gulbot/web/templates/studio/picker.html",
+            "  {{ hidden_state(v.state, v.csrf) }}\n",
+            '  <input type="hidden" name="csrf" value="{{ v.csrf }}">\n',
+            PICKER + "test_the_picker_keeps_what_was_typed_and_filters",
+        ),
+        Mutant(
+            "1b: every design has a category",
+            "src/gulbot/web/studio_designs.py",
+            '    "moviy": frozenset({_TOY, _BOSH}),\n',
+            "",
+            PICKER + "test_every_design_has_a_category",
+        ),
+        Mutant(
+            "1b: the form carries one design card",
+            "src/gulbot/web/templates/studio/form.html",
+            "    {%- set d = v.chosen %}",
+            "    {%- set d = v.chosen %}{% for x in ['atlas', 'oltin'] %}"
+            '<i data-design="{{ x }}"></i>{% endfor %}',
+            PICKER + "test_the_form_shows_one_chosen_design_not_forty",
+        ),
     ]
 
 
@@ -275,20 +327,27 @@ def main() -> None:
             file.write_bytes(original)
         if file.read_bytes() != original:
             raise SystemExit("Mutation restore failed.")
-    if not args.only:
-        REPORT.write_text(
-            json.dumps(
-                {
-                    "caught": sum(r["assertion_caught"] for r in results),
-                    "total": len(results),
-                    "results": results,
-                },
-                indent=2,
-                ensure_ascii=False,
-            )
-            + "\n",
-            encoding="utf-8",
+    if args.only and REPORT.exists():
+        # A partial run updates its own guards and keeps every other recorded result.
+        kept = [
+            r
+            for r in json.loads(REPORT.read_text(encoding="utf-8"))["results"]
+            if r["guard"] not in {m.name for m in selected}
+        ]
+        results = kept + results
+    REPORT.write_text(
+        json.dumps(
+            {
+                "caught": sum(r["assertion_caught"] for r in results),
+                "total": len(results),
+                "results": results,
+            },
+            indent=2,
+            ensure_ascii=False,
         )
+        + "\n",
+        encoding="utf-8",
+    )
     if not all(r["assertion_caught"] for r in results):
         raise SystemExit(1)
 

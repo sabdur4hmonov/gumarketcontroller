@@ -115,22 +115,25 @@
   <section class="card" aria-labelledby="s-design">
     <h2 id="s-design">Dizayn</h2>
     {{ error('template') }}
-    {%- if v.designs|selectattr('locked')|list %}
-    <p class="hint locked-hint">{{ v.locked_text }}</p>
-    {%- endif %}
-    <div class="designs">
-      {%- for d in v.designs %}
-      <div class="design{% if d.locked %} is-locked{% endif %}">
-        <label class="design-pick">
-          <input type="radio" name="template" value="{{ d.key }}"{% if v.state.template == d.key %} checked{% endif %}{% if d.locked %} disabled{% endif %}>
-          <img src="{{ static(d.thumb) }}" alt="" width="150" height="267" loading="lazy" decoding="async">
-          <span class="design-name">{{ d.name }}{% if d.premium %} <span class="star" aria-label="premium">⭐</span>{% endif %}</span>
-          {%- if d.locked %}<span class="lock">🔒 Yopiq</span>{% endif %}
-        </label>
+    {#- CP27.1b: one card here; the forty designs live on their own screen. #}
+    {%- set d = v.chosen %}
+    {%- if d %}
+    <input type="hidden" name="template" value="{{ d.key }}">
+    <div class="chosen design{% if d.locked %} is-locked{% endif %}" data-design="{{ d.key }}">
+      <img src="{{ static(d.thumb) }}" alt="" width="96" height="171" decoding="async">
+      <div class="chosen-text">
+        <span class="design-name">{{ d.name }}{% if d.premium %} <span class="star" aria-label="premium">⭐</span>{% endif %}</span>
+        {%- if d.locked %}
+        <span class="lock">🔒 Yopiq — {{ v.locked_text }}</span>
+        {%- endif %}
+        <button type="submit" class="secondary" formaction="/studio/design" name="action" value="pick">O‘zgartirish</button>
         <button type="submit" class="link" formaction="/studio/preview" formtarget="_blank" name="preview_template" value="{{ d.key }}">Ko‘rish</button>
       </div>
-      {%- endfor %}
     </div>
+    {%- else %}
+    <p class="hint">Dizayn tanlanmagan.</p>
+    <button type="submit" class="secondary" formaction="/studio/design" name="action" value="pick">Dizayn tanlash</button>
+    {%- endif %}
   </section>
 
   <div class="actions">

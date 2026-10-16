@@ -381,3 +381,86 @@ a {
     gap: 12px;
   }
 }
+
+/* CP27.1b: the chosen design on the form; the picker on its own screen. */
+.chosen {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.chosen.design > img {
+  flex: none;
+  width: 96px;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid var(--accent);
+}
+
+.chosen-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.filter {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--field);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.filter[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+.design > img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+}
+
+.design.is-chosen > img {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.choose {
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.is-chosen .choose {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.wide {
+  width: 100%;
+}

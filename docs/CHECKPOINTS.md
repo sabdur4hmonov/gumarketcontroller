@@ -2046,3 +2046,27 @@ Lint, format, strict mypy (190 files) and both shadow sweeps are clean.
   public HTTPS origin anyway).
 - The dev database `gulbot` is at CP25's head, which this branch does not
   contain. Run this branch against its own database.
+
+## CP27.1b — the design picker on its own studio screen
+
+The CP27.1 form was about 6,200 CSS px tall at 360 px because all forty design
+cards sat inline. The data stays on one form; the design is now one card on it
+("O'zgartirish", "Ko'rish"), and the forty live on `POST /studio/design`.
+
+- **No JavaScript.** "O'zgartirish" submits the form to `/studio/design`, which
+  carries everything typed in hidden fields (`templates/studio/_state.html`).
+  Filters are submit buttons: category (Hammasi / To'y / Tug'ilgan kun / Boshqa,
+  opening on the form's event type) and price (Hammasi / Bepul / Premium).
+  "Tanlash" returns to the same form with the new design and nothing lost.
+- **Locked designs** show 🔒 and the CP18 wording, can be previewed, and offer no
+  "Tanlash". The server refuses a forced choice of a locked or unknown design
+  (422, picker shown again).
+- **Grouping is data:** `web/studio_designs.py` puts every design in at least
+  one category. A test fails if a new design has none. It is a picker grouping
+  only; any design still works for any event.
+
+Evidence: the empty form is 2,069 CSS px at 360 px (the browser test asserts it
+is at most 2,600); the picker is a separate 4,619 px screen with all forty, or
+shorter when filtered. Picker tests 7; the studio's browser run now goes
+form → picker → filter → choose → form. Mutations 7/7 (29/29 in total).
+CSP unchanged. The router walk covers the new route.

@@ -263,9 +263,11 @@ async def test_one_form_makes_a_whole_taklifnoma(world: dict) -> None:
     db = world["db"]
     async with TestClient(TestServer(app_for(db))) as client:
         csrf = await log_in(client, db, world["a"], world["ca"])
-        screen = await (await client.get("/studio")).text()
+        picker = await (
+            await client.post("/studio/design", data=form(csrf, action="pick", cat="all"))
+        ).text()
         for design in render.THEME_NAMES:
-            assert f'value="{design}"' in screen, f"design {design} missing from the picker"
+            assert f'data-design="{design}"' in picker, f"design {design} missing from the picker"
         made = await client.post("/studio/create", data=form(csrf), allow_redirects=False)
         assert made.status == 303, await made.text()
         done_url = made.headers["Location"]
@@ -350,9 +352,11 @@ async def test_premium_designs_are_locked_with_the_cp18_wording(world: dict) -> 
     locked_text = t("premium.locked", "uz")
     async with TestClient(TestServer(app_for(db))) as client:
         csrf = await log_in(client, db, world["a"], world["ca"])
-        screen = await (await client.get("/studio")).text()
-        assert re.search(r'value="deco"[^>]*disabled', screen)
-        assert not re.search(r'value="milliy"[^>]*disabled', screen)
+        screen = await (
+            await client.post("/studio/design", data=form(csrf, action="pick", cat="all"))
+        ).text()
+        assert 'name="choose" value="milliy"' in screen
+        assert 'name="choose" value="deco"' not in screen, "a locked design offers no choice"
         assert locked_text.split("—")[0].strip() in screen.replace("&#39;", "'")
         refused = await client.post("/studio/create", data=form(csrf, template="deco"))
         assert refused.status == 422
@@ -376,8 +380,10 @@ async def test_with_the_gift_premium_designs_open(world: dict) -> None:
     )
     async with TestClient(TestServer(app_for(db))) as client:
         csrf = await log_in(client, db, world["a"], world["ca"])
-        screen = await (await client.get("/studio")).text()
-        assert not re.search(r'value="deco"[^>]*disabled', screen)
+        screen = await (
+            await client.post("/studio/design", data=form(csrf, action="pick", cat="all"))
+        ).text()
+        assert 'name="choose" value="deco"' in screen
         made = await client.post(
             "/studio/create", data=form(csrf, template="deco"), allow_redirects=False
         )
@@ -438,6 +444,9 @@ async def test_no_phone_or_token_reaches_any_studio_screen(world: dict) -> None:
             await (await client.post("/studio/create", data=form(csrf, name_1=""))).text()
         )
         bodies.append(await (await client.post("/studio/preview", data=form(csrf))).text())
+        bodies.append(  # CP27.1b: the design picker
+            await (await client.post("/studio/design", data=form(csrf, cat="all"))).text()
+        )
         cookie = client.session.cookie_jar.filter_cookies(client.make_url("/studio"))
     everything = "\n".join(bodies)
     for planted in (PHONE_A, PHONE_B, OWNER_PHONE, raw, cookie[studio_web.COOKIE].value):

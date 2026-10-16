@@ -1,6 +1,6 @@
 {
-  "caught": 22,
-  "total": 22,
+  "caught": 29,
+  "total": 29,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -153,6 +153,55 @@
       "guard": "the bot sends the studio link",
       "file": "src/gulbot/bot/routers/share_pages.py",
       "test": "tests/test_studio_bot.py::test_the_button_sends_a_one_time_link_for_this_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: a locked design cannot be chosen",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_a_locked_design_can_be_looked_at_but_not_chosen",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: an unknown design cannot be chosen",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_an_unknown_design_or_filter_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the category filter",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the free/premium filter",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: every design has a category",
+      "file": "src/gulbot/web/studio_designs.py",
+      "test": "tests/test_studio_picker.py::test_every_design_has_a_category",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the picker carries what was typed",
+      "file": "src/gulbot/web/templates/studio/picker.html",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the form carries one design card",
+      "file": "src/gulbot/web/templates/studio/form.html",
+      "test": "tests/test_studio_picker.py::test_the_form_shows_one_chosen_design_not_forty",
       "assertion_caught": true,
       "exit_code": 1
     }

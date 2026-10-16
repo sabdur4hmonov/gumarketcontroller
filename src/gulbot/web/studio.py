@@ -59,7 +59,7 @@ from gulbot.services.share_pages import (
     VenueDraft,
     event_window,
 )
-from gulbot.web import links, render, strings
+from gulbot.web import links, render, strings, studio_designs
 
 log = logging.getLogger("gulbot.web.studio")
 
@@ -363,11 +363,14 @@ async def _form_view(
 ) -> dict[str, Any]:
     creator = request[KEY_CREATOR]
     first, last = event_window(_today())
+    designs = await _designs(session, creator)
+    chosen = next((d for d in designs if d["key"] == state.template), None)
     return {
         "creator": creator,
         "csrf": creator.csrf,
         "state": state,
-        "designs": await _designs(session, creator),
+        # CP27.1b: the form carries ONE design card; the forty live on /studio/design.
+        "chosen": chosen,
         "languages": LANGUAGE_NAMES,
         "events": {key: strings.event_label(key, "uz") for key in EVENT_TYPES},
         "chips": VENUE_CHIPS,
@@ -390,6 +393,67 @@ async def form_screen(request: web.Request) -> web.Response:
     async with request.app[KEY_STUDIO_SESSIONS]() as session:
         view = await _form_view(request, session, FormState())
     return _html(render.render("studio/form.html", view))
+
+
+def _choice(form: MultiDictProxy[Any], key: str, current: str, allowed: dict[str, str]) -> str:
+    """A filter value: the pressed button's, else the one already shown."""
+    value = _text(form, key, 16) or _text(form, f"cur_{key}", 16)
+    return value if value in allowed else current
+
+
+async def design(request: web.Request) -> web.Response:
+    """The design picker, its own screen (CP27.1b). Everything typed so far
+    rides along in hidden fields; "choose" goes back to the same form."""
+    creator = request[KEY_CREATOR]
+    form = await request.post()
+    state = read_form(form)
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        designs = await _designs(session, creator)
+        chosen = _text(form, "choose", 16)
+        if chosen or "back" in form:
+            if chosen:
+                card = next((d for d in designs if d["key"] == chosen), None)
+                if card is None or card["locked"]:
+                    problem = strings_locked() if card is not None else "Dizaynni tanlang."
+                    view = await _picker_view(request, form, state, designs, problem=problem)
+                    return _html(render.render("studio/picker.html", view), status=422)
+                state.template = chosen
+            view = await _form_view(request, session, state)
+            return _html(render.render("studio/form.html", view))
+        view = await _picker_view(request, form, state, designs)
+    return _html(render.render("studio/picker.html", view))
+
+
+async def _picker_view(
+    request: web.Request,
+    form: MultiDictProxy[Any],
+    state: FormState,
+    designs: list[dict[str, Any]],
+    **extra: Any,
+) -> dict[str, Any]:
+    creator = request[KEY_CREATOR]
+    categories = {"all": "Hammasi", **studio_designs.CATEGORIES}
+    cat = _choice(form, "cat", studio_designs.category_for_event(state.event_type), categories)
+    tier = _choice(form, "tier", "all", studio_designs.TIERS)
+    shown = [
+        d
+        for d in designs
+        if (cat == "all" or cat in studio_designs.DESIGN_CATEGORIES[d["key"]])
+        and (tier == "all" or (tier == "premium") == d["premium"])
+    ]
+    return {
+        "creator": creator,
+        "csrf": creator.csrf,
+        "state": state,
+        "designs": shown,
+        "categories": categories,
+        "tiers": studio_designs.TIERS,
+        "cat": cat,
+        "tier": tier,
+        "locked_text": strings_locked(),
+        "any_locked": any(d["locked"] for d in shown),
+        **extra,
+    }
 
 
 async def create(request: web.Request) -> web.Response:
@@ -552,4 +616,5 @@ def add_routes(app: web.Application, *, session_factory: async_sessionmaker[Asyn
     app.router.add_get(PREFIX, form_screen)
     app.router.add_post(PREFIX + "/create", create)
     app.router.add_post(PREFIX + "/preview", preview)
+    app.router.add_post(PREFIX + "/design", design)
     app.router.add_get(PREFIX + "/done/{page_id}", done)
