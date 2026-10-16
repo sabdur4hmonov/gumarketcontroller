@@ -27,7 +27,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.1b design picker on its own screen | 46d3349 | green; mutations 29/29 |
 | CP27.2 Ha/Yo'q, Uzrnoma, photos, music | e7db988 | green; mutations 38/38 |
 | CP27.3 my pages: list, edit, delete, counts | 8f36ce9 | green; mutations 42/42 |
-| CP27.4 Telegram Mini App | (this commit) | green; mutations 51/51 |
+| CP27.4 Telegram Mini App | c4a2fa3 | green; mutations 51/51 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
