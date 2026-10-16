@@ -22,6 +22,7 @@ from gulbot.models.share_page import (
     NAME_MAX,
     PAGE_LANGUAGES,
     PLACE_MAX,
+    PLAN_MAX,
     QUESTION_MAX,
     QUESTION_PRESETS,
     VENUE_ADDRESS_MAX,
@@ -89,12 +90,23 @@ class FormState:
     slots: list[str] = field(default_factory=lambda: [""] * PLAN_ROWS)
     # Uzrnoma
     letter: str = ""
+    #: CP27.3: the page being edited ("" when making a new one).
+    edit_id: str = ""
     errors: dict[str, str] = field(default_factory=dict)
 
 
 def text_of(form: MultiDictProxy[Any], key: str, limit: int = 400) -> str:
     value = form.get(key)
     return value[: limit * 2] if isinstance(value, str) else ""
+
+
+def _rows(form: MultiDictProxy[Any], name: str, limit: int) -> list[str]:
+    """A date plan's rows: at least PLAN_ROWS, more (up to PLAN_MAX) when the
+    form carried them -- an edit of a page made with five keeps all five."""
+    count = max(
+        PLAN_ROWS, max((n for n in range(1, PLAN_MAX + 1) if f"{name}_{n}" in form), default=0)
+    )
+    return [text_of(form, f"{name}_{n}", limit) for n in range(1, count + 1)]
 
 
 def read_form(form: MultiDictProxy[Any]) -> FormState:
@@ -117,10 +129,12 @@ def read_form(form: MultiDictProxy[Any]) -> FormState:
         question_preset=text_of(form, "question_preset", 16),
         question=text_of(form, "question", QUESTION_MAX),
         notify=form.get("notify") == "1",
-        places=[text_of(form, f"place_{n}", PLACE_MAX) for n in range(1, PLAN_ROWS + 1)],
-        slots=[text_of(form, f"slot_{n}", 16) for n in range(1, PLAN_ROWS + 1)],
+        places=_rows(form, "place", PLACE_MAX),
+        slots=_rows(form, "slot", 16),
         letter=text_of(form, "letter", MESSAGE_MAX),
     )
+    edit_id = text_of(form, "edit_id", 18)
+    state.edit_id = edit_id if edit_id.isdigit() else ""
     raw_count = text_of(form, "venue_count", 2)
     count = min(int(raw_count), VENUES_MAX) if raw_count.isdigit() else 1
     for n in range(1, max(count, 1) + 1):
@@ -133,6 +147,50 @@ def read_form(form: MultiDictProxy[Any]) -> FormState:
                 time=text_of(form, f"venue_time_{n}", 5),
             )
         )
+    return state
+
+
+def state_from_page(
+    page: Any, *, venues: list[Any], places: list[Any], slots: list[Any], tz: ZoneInfo
+) -> FormState:
+    """A saved page as the form shows it for editing (CP27.3)."""
+    state = FormState(
+        kind=page.kind,
+        lang=page.lang,
+        template=page.template,
+        music=page.music or "",
+        edit_id=str(page.id),
+    )
+    if page.kind == PageKind.INVITE:
+        state.event_type = page.event_type or "wedding"
+        state.name_1 = page.name_1 or ""
+        state.name_2 = page.name_2 or ""
+        state.event_date = page.event_date.isoformat() if page.event_date else ""
+        state.event_time = page.event_time.strftime("%H:%M") if page.event_time else ""
+        state.message = page.message or ""
+        state.rsvp = bool(page.rsvp_enabled)
+        state.venues = [
+            VenueRow(
+                kind=v.kind,
+                name=v.name,
+                address=v.address or "",
+                map_url=v.map_url or "",
+                time=v.starts_at.strftime("%H:%M") if v.starts_at else "",
+            )
+            for v in venues
+        ] or [VenueRow(kind="boshqa", name=page.venue or "")]
+    elif page.kind == PageKind.YESNO:
+        state.question_preset = page.question_preset or "custom"
+        state.question = page.question if page.question_preset == "custom" else ""
+        state.notify = bool(page.notify_creator)
+        names = [o.place for o in places if o.place]
+        times = [o.slot_at.astimezone(tz).strftime("%Y-%m-%dT%H:%M") for o in slots if o.slot_at]
+        rows = max(PLAN_ROWS, len(names), len(times))
+        state.places = (names + [""] * rows)[:rows]
+        state.slots = (times + [""] * rows)[:rows]
+    else:
+        state.letter = page.message or ""
+        state.notify = bool(page.notify_creator)
     return state
 
 

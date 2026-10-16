@@ -330,3 +330,65 @@ async def test_yesno_apology_and_photos_at_360px(
     assert watch.failed == [], watch.failed
     assert watch.errors == [], watch.errors
     assert watch.dialogs == [], "typed markup ran as script"
+
+
+async def test_my_pages_edit_and_delete_at_360px(
+    world: dict[str, Any],  # noqa: F811
+    chrome: Browser,
+) -> None:
+    """CP27.3: the list, a page's counts, an edit with the same link, delete."""
+    db: AsyncConnection = world["db"]
+    server = TestServer(app_for(db))
+    await server.start_server()
+    origin = str(server.make_url("")).rstrip("/")
+    watch = Watch(origin)
+    context = await chrome.new_context(
+        viewport={"width": 360, "height": 780},
+        device_scale_factor=2,
+        is_mobile=True,
+        has_touch=True,
+    )
+    await context.add_init_script(CSP_LISTENER)
+    watch.watch_context(context)
+    try:
+        page = await context.new_page()
+        watch.attach(page)
+        raw = await mint(db, world["a"], world["ca"])
+        await page.goto(f"{origin}/studio/enter/{raw}")
+        await page.get_by_role("button", name="Kirish").click()
+        await page.wait_for_url(f"{origin}/studio")
+        await page.fill('input[name="name_1"]', (HOSTILE + LONG_CYRL)[:60])
+        await page.fill('input[name="venue_name_1"]', LONG_LATN[:80])
+        await page.fill('input[name="event_date"]', DATE)
+        await page.get_by_role("button", name="Yaratish").last.click()
+        await page.wait_for_url(f"{origin}/studio/done/*")
+        link = await page.input_value("#page-url")
+
+        await page.get_by_role("link", name="Mening sahifalarim").click()
+        await page.wait_for_url(f"{origin}/studio/pages")
+        await audit(page, "21-my-pages")
+        await page.locator(".page-link").first.click()
+        await page.wait_for_url(f"{origin}/studio/page/*")
+        await audit(page, "22-page-counts")
+
+        await page.get_by_role("link", name="Tahrirlash").click()
+        await page.wait_for_url(f"{origin}/studio/page/*/edit")
+        await page.fill('input[name="name_2"]', "Malika")
+        await audit(page, "23-edit-form")
+        await page.get_by_role("button", name="Saqlash").last.click()
+        await page.wait_for_url(f"{origin}/studio/page/*")
+        assert await page.input_value("#page-url") == link, "an edit changed the link"
+
+        await page.get_by_role("button", name="O‘chirish").click()
+        await page.wait_for_url(f"{origin}/studio/page/*/delete")
+        await audit(page, "24-delete-confirm")
+        await page.get_by_role("button", name="Ha, o‘chirilsin").click()
+        await page.wait_for_url(f"{origin}/studio/pages")
+        assert await page.locator(".page-link").count() == 0
+    finally:
+        await context.close()
+        await server.close()
+    assert watch.foreign == [], watch.foreign
+    assert watch.failed == [], watch.failed
+    assert watch.errors == [], watch.errors
+    assert watch.dialogs == [], "typed markup ran as script"

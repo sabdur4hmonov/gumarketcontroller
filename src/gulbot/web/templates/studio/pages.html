@@ -1,0 +1,20 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<h1>Mening sahifalarim</h1>
+<p class="lead">Shu do‘kondagi faol sahifalaringiz. Faqat siz ko‘rasiz.</p>
+{%- if not v["items"] %}
+<p class="hint">Hozircha sahifa yo‘q.</p>
+{%- endif %}
+<ul class="page-list">
+  {%- for item in v["items"] %}
+  <li class="page-item">
+    <a href="/studio/page/{{ item.id }}" class="page-link">
+      <span class="page-kind">{{ item.kind }}</span>
+      <span class="page-title">{{ item.title }}</span>
+      <span class="page-meta">{{ item.created }} · {{ item.expires }} gacha · 👁 {{ item.views }}</span>
+    </a>
+  </li>
+  {%- endfor %}
+</ul>
+<p><a class="secondary" href="/studio">+ Yangi sahifa</a></p>
+{% endblock %}

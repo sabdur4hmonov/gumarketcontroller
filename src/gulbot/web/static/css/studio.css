@@ -527,3 +527,79 @@ input[type="datetime-local"] {
 h1 + .tabs {
   margin-top: 0;
 }
+
+/* CP27.3: "Mening sahifalarim", a page's counts, delete. */
+.bar {
+  flex-wrap: wrap;
+}
+
+.bar-nav {
+  display: flex;
+  gap: 14px;
+  flex: 1 1 auto;
+}
+
+.bar-nav a {
+  color: var(--accent);
+}
+
+.page-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+
+.page-item {
+  margin: 0 0 10px;
+}
+
+.page-link {
+  display: block;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.page-kind,
+.page-meta {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.page-title {
+  display: block;
+  font-weight: 600;
+  margin: 2px 0;
+}
+
+.counts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+
+.counts div {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+
+.counts dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.counts dd {
+  margin: 2px 0 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.danger-button {
+  background: var(--error);
+}

@@ -55,16 +55,25 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.services import premium, share_page_photos, share_pages, studio
-from gulbot.services.share_pages import InvalidDraft, PageLimitReached, event_window
+from gulbot.services.share_pages import (
+    ApologyDraft,
+    InvalidDraft,
+    InviteDraft,
+    PageLimitReached,
+    YesNoDraft,
+    event_window,
+)
 from gulbot.web import links, render, strings, studio_designs
 from gulbot.web.studio_form import (
     KINDS,
     PLAN_ROWS,
+    Draft,
     FormState,
     VenueRow,
     fresh_state,
     preview_draft,
     read_form,
+    state_from_page,
     text_of,
     to_draft,
 )
@@ -266,6 +275,8 @@ async def _form_view(
         "csrf": creator.csrf,
         "state": state,
         "kinds": KINDS,
+        # CP27.3: an edit posts to its page and saves; a new page is created.
+        "edit_id": state.edit_id,
         # CP27.1b: the form carries ONE design card; the forty live on /studio/design.
         "chosen": chosen,
         "languages": LANGUAGE_NAMES,
@@ -519,6 +530,11 @@ async def _done(
         "creator": creator,
         "page_id": page.id,
         "kind": KINDS.get(page.kind, ""),
+        "page_kind": page.kind,
+        "title": page_title(page),
+        "fresh": False,
+        # CP27.3: counts only -- never who, never what a guest typed.
+        "counts": await share_pages.page_counts(session, page=page),
         "url": links.page_url(page.token),
         "photos": await share_page_photos.photo_count(session, page_id=page.id),
         "photo_limit": share_page_photos.photo_limit(page),
@@ -535,7 +551,217 @@ async def _done(
 async def done(request: web.Request) -> web.Response:
     page_id = _page_id(request)
     async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        return await _done(request, session, page_id, fresh=True)
+
+
+# --- "Mening taklifnomalarim" (CP27.3) -------------------------------------------------
+
+
+def page_title(page: SharePage) -> str:
+    """What the list calls a page: the creator's own words, shortened."""
+    if page.kind == PageKind.INVITE:
+        names = " & ".join(n for n in (page.name_1, page.name_2) if n)
+        return names or KINDS[page.kind]
+    text = (page.question if page.kind == PageKind.YESNO else page.message) or ""
+    return text if len(text) <= 48 else text[:47].rstrip() + "…"
+
+
+async def pages_screen(request: web.Request) -> web.Response:
+    creator = request[KEY_CREATOR]
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        pages = await share_pages.list_pages(
+            session, shop_id=creator.shop_id, customer_id=creator.customer_id
+        )
+        _name, tz_name = await share_pages.shop_brand(session, shop_id=creator.shop_id)
+        tz = ZoneInfo(tz_name)
+        items = [
+            {
+                "id": page.id,
+                "kind": KINDS.get(page.kind, ""),
+                "title": page_title(page),
+                "created": page.created_at.astimezone(tz).strftime("%d.%m.%Y"),
+                "expires": page.expires_at.astimezone(tz).strftime("%d.%m.%Y"),
+                "views": page.view_count,
+            }
+            for page in pages
+        ]
+    view = {"creator": creator, "csrf": creator.csrf, "items": items}
+    return _html(render.render("studio/pages.html", view))
+
+
+async def page_screen(request: web.Request) -> web.Response:
+    page_id = _page_id(request)
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
         return await _done(request, session, page_id)
+
+
+async def _own_page(request: web.Request, session: AsyncSession, page_id: int) -> SharePage:
+    creator = request[KEY_CREATOR]
+    page = await share_pages.get_own_page(
+        session, shop_id=creator.shop_id, customer_id=creator.customer_id, page_id=page_id
+    )
+    if page is None:
+        raise web.HTTPNotFound()
+    return page
+
+
+async def edit_screen(request: web.Request) -> web.Response:
+    page_id = _page_id(request)
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        page = await _own_page(request, session, page_id)
+        _name, tz_name = await share_pages.shop_brand(session, shop_id=page.shop_id)
+        places, slots = await share_pages.plan_of(session, page_id=page.id)
+        state = state_from_page(
+            page,
+            venues=await share_pages.venues_of(session, page_id=page.id),
+            places=places,
+            slots=slots,
+            tz=ZoneInfo(tz_name),
+        )
+        return await _form(request, session, state)
+
+
+#: Why an edit was refused, as the creator reads it.
+EDIT_REFUSED: Final = {
+    "locked": "Bu sahifaga javob berilgan — endi uni o‘zgartirib bo‘lmaydi.",
+    "invalid": FIX_FIELDS,
+}
+
+
+def _changes(page: SharePage, draft: Draft, state: FormState) -> dict[str, object]:
+    """The form's values as update_page's changes, for this page's kind."""
+    changes: dict[str, object] = {
+        "template": draft.template,
+        "lang": draft.lang,
+        "music": draft.music,
+    }
+    if isinstance(draft, InviteDraft):
+        changes |= {
+            "name_1": draft.name_1,
+            "name_2": draft.name_2,
+            "message": draft.message,
+            "event_at": (draft.event_date, draft.event_time),
+            "rsvp_enabled": draft.rsvp_enabled,
+        }
+    elif isinstance(draft, YesNoDraft):
+        changes["notify_creator"] = draft.notify_creator
+        if state.question_preset != page.question_preset or (
+            state.question_preset == "custom" and draft.question != page.question
+        ):
+            changes["question"] = draft.question
+    elif isinstance(draft, ApologyDraft):
+        changes |= {"message": draft.text, "notify_creator": draft.notify_creator}
+    return changes
+
+
+async def edit_save(request: web.Request) -> web.Response:
+    """An edit: the same row, the same token, the same public link -- through
+    update_page, set_venues and set_plan, the bot's own services."""
+    creator = request[KEY_CREATOR]
+    page_id = _page_id(request)
+    form = await request.post()
+    state = read_form(form)
+    state.edit_id = str(page_id)
+    action = text_of(form, "action", 16)
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        page = await _own_page(request, session, page_id)
+        state.kind = page.kind  # an edit never changes the kind
+        if action == "add_venue":
+            if len(state.venues) < VENUES_MAX:
+                state.venues.append(VenueRow())
+            return await _form(request, session, state)
+        if action.startswith("remove_") and action[7:].isdigit():
+            index = int(action[7:]) - 1
+            if 0 <= index < len(state.venues) and len(state.venues) > 1:
+                del state.venues[index]
+            return await _form(request, session, state)
+        tz = await _shop_tz(session, creator.shop_id)
+        draft = to_draft(state, today=_today(), tz=tz, now=datetime.now(UTC))
+        if draft is None:
+            return await _form(request, session, state, 422, problem=FIX_FIELDS)
+        shop_id, customer_id = creator.shop_id, creator.customer_id
+        try:
+            await share_pages.update_page(
+                session,
+                shop_id=shop_id,
+                customer_id=customer_id,
+                page_id=page_id,
+                changes=_changes(page, draft, state),
+            )
+            if isinstance(draft, InviteDraft):
+                await share_pages.set_venues(
+                    session,
+                    shop_id=shop_id,
+                    customer_id=customer_id,
+                    page_id=page_id,
+                    venues=draft.venues,
+                )
+            elif isinstance(draft, YesNoDraft):
+                places, slots = await share_pages.plan_of(session, page_id=page_id)
+                before = ([o.place for o in places], [o.slot_at for o in slots])
+                if before != (list(draft.places), sorted(draft.slots)):
+                    await share_pages.set_plan(
+                        session,
+                        shop_id=shop_id,
+                        customer_id=customer_id,
+                        page_id=page_id,
+                        places=draft.places,
+                        slots=draft.slots,
+                    )
+        except share_pages.EditRefused as refused:
+            await session.rollback()
+            if refused.reason == "gone":
+                raise web.HTTPNotFound() from None
+            problem = (
+                strings_locked()
+                if refused.reason == "premium"
+                else EDIT_REFUSED.get(refused.reason, FIX_FIELDS)
+            )
+            return await _form(request, session, state, 422, problem=problem)
+        await studio.audit(
+            session,
+            shop_id=creator.shop_id,
+            action="page_edited",
+            customer_id=creator.customer_id,
+            detail={"page_id": page_id},
+            ip=_ip(request),
+        )
+        await session.commit()
+    raise web.HTTPSeeOther(f"{PREFIX}/page/{page_id}")
+
+
+async def delete(request: web.Request) -> web.Response:
+    """Asks once ("confirm"), then deletes exactly as the bot does: the page
+    goes, and everything typed into it is scrubbed (share_pages.delete_page)."""
+    creator = request[KEY_CREATOR]
+    page_id = _page_id(request)
+    form = await request.post()
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        page = await _own_page(request, session, page_id)
+        if form.get("confirm") != "1":
+            view = {
+                "creator": creator,
+                "csrf": creator.csrf,
+                "page_id": page.id,
+                "kind": KINDS.get(page.kind, ""),
+                "title": page_title(page),
+            }
+            return _html(render.render("studio/delete.html", view))
+        deleted = await share_pages.delete_page(
+            session, shop_id=creator.shop_id, customer_id=creator.customer_id, page_id=page_id
+        )
+        if not deleted:
+            raise web.HTTPNotFound()
+        await studio.audit(
+            session,
+            shop_id=creator.shop_id,
+            action="page_deleted",
+            customer_id=creator.customer_id,
+            detail={"page_id": page_id},
+            ip=_ip(request),
+        )
+        await session.commit()
+    raise web.HTTPSeeOther(f"{PREFIX}/pages")
 
 
 async def _read_photo(request: web.Request) -> bytes | None:
@@ -628,3 +854,8 @@ def add_routes(app: web.Application, *, session_factory: async_sessionmaker[Asyn
     app.router.add_get(PREFIX + "/done/{page_id}", done)
     app.router.add_post(PREFIX + "/page/{page_id}/photo", add_photo)
     app.router.add_post(PREFIX + "/page/{page_id}/photos/clear", clear_photos)
+    app.router.add_get(PREFIX + "/pages", pages_screen)
+    app.router.add_get(PREFIX + "/page/{page_id}", page_screen)
+    app.router.add_get(PREFIX + "/page/{page_id}/edit", edit_screen)
+    app.router.add_post(PREFIX + "/page/{page_id}/edit", edit_save)
+    app.router.add_post(PREFIX + "/page/{page_id}/delete", delete)

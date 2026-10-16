@@ -1,6 +1,6 @@
 {
-  "caught": 38,
-  "total": 38,
+  "caught": 42,
+  "total": 42,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -265,6 +265,34 @@
       "guard": "2: clearing photos only on one's own page",
       "file": "src/gulbot/web/studio.py",
       "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: a page id is only ever this creator's own page",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_pages.py::test_another_creators_page_is_404_everywhere",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: delete asks once",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_pages.py::test_delete_asks_once_then_scrubs",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: an edit keeps a pin the new link does not name",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_pages.py::test_set_venues_keeps_a_pin_the_new_link_does_not_name",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: an edit to a premium part needs the gift (shared service)",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_pages.py::test_an_edit_to_a_premium_design_needs_the_gift",
       "assertion_caught": true,
       "exit_code": 1
     }

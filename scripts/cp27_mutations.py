@@ -26,6 +26,7 @@ AUTH = "tests/test_studio_auth.py::"
 VENUES = "tests/test_share_page_venues.py::"
 PICKER = "tests/test_studio_picker.py::"
 KINDS = "tests/test_studio_kinds.py::"
+PAGES = "tests/test_studio_pages.py::"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -331,6 +332,47 @@ def mutants() -> list[Mutant]:
             "    await premium.require(session, shop_id=shop_id, customer_id=customer_id)",
             "    pass",
             KINDS + "test_a_photo_is_premium",
+        ),
+        # --- CP27.3: "Mening taklifnomalarim" --------------------------------------------
+        Mutant(
+            "3: a page id is only ever this creator's own page",
+            STUDIO_WEB,
+            "    page = await share_pages.get_own_page(\n"
+            "        session, shop_id=creator.shop_id, customer_id=creator.customer_id,"
+            " page_id=page_id\n"
+            "    )\n"
+            "    if page is None:\n"
+            "        raise web.HTTPNotFound()\n"
+            "    return page\n",
+            "    page = await session.get(SharePage, page_id)\n"
+            "    if page is None:\n"
+            "        raise web.HTTPNotFound()\n"
+            "    return page\n",
+            PAGES + "test_another_creators_page_is_404_everywhere",
+        ),
+        Mutant(
+            "3: delete asks once",
+            STUDIO_WEB,
+            '        if form.get("confirm") != "1":',
+            "        if False:",
+            PAGES + "test_delete_asks_once_then_scrubs",
+        ),
+        Mutant(
+            "3: an edit keeps a pin the new link does not name",
+            SHARE,
+            "    if point is not None:\n"
+            '        values["location_lat"], values["location_lon"] = point',
+            '    values["location_lat"], values["location_lon"] = point or (None, None)',
+            PAGES + "test_set_venues_keeps_a_pin_the_new_link_does_not_name",
+        ),
+        Mutant(
+            "3: an edit to a premium part needs the gift (shared service)",
+            SHARE,
+            "    if not await premium.unlocked("
+            "session, shop_id=shop_id, customer_id=customer_id):\n"
+            '        raise EditRefused("premium")',
+            "    return None",
+            PAGES + "test_an_edit_to_a_premium_design_needs_the_gift",
         ),
     ]
 

@@ -1230,6 +1230,87 @@ async def choose(
     return ChoiceOutcome(page.id, True, place.place, slot.slot_at, tz)
 
 
+async def set_venues(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    page_id: int,
+    venues: tuple[VenueDraft, ...],
+    now: datetime | None = None,
+) -> SharePage:
+    """Replace the places of THIS customer's own live invitation (CP27.3).
+
+    Scoped like update_page. 1..VENUES_MAX places, checked by the same rules as
+    on creation. Place 1 becomes the page's `venue`; the page's map point
+    follows place 1's link when that link names a point, and is otherwise
+    KEPT, so a pin sent in the bot is not lost by an edit in the studio.
+    """
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.kind == PageKind.INVITE.value,
+            SharePage.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if page is None or page.expires_at <= now:
+        raise EditRefused("gone")
+    try:
+        cleaned = _checked_venues(venues)
+    except InvalidDraft:
+        raise EditRefused("invalid") from None
+    if not cleaned:
+        raise EditRefused("invalid")
+    first = cleaned[0]
+    parts = (first["name"], first["address"])
+    venue = clean_text(", ".join(str(part) for part in parts if part), VENUE_MAX)
+    values: dict[str, object] = {"venue": venue, "edited_at": now}
+    map_url = first["map_url"]
+    point = point_of_map_url(map_url if isinstance(map_url, str) else None)
+    if point is not None:
+        values["location_lat"], values["location_lon"] = point
+    await session.execute(delete(SharePageVenue).where(SharePageVenue.page_id == page.id))
+    _add_venues(session, page, cleaned)
+    await session.execute(update(SharePage).where(SharePage.id == page.id).values(**values))
+    await session.flush()
+    await session.refresh(page)
+    return page
+
+
+@dataclass(frozen=True)
+class PageCounts:
+    """What a creator may see about their own page: COUNTS ONLY (CP27.3).
+    Never who opened it, who answered or what a guest typed."""
+
+    views: int
+    cta_clicks: int
+    answered: bool
+    coming: int
+    guests: int
+    not_coming: int
+
+
+async def page_counts(session: AsyncSession, *, page: SharePage) -> PageCounts:
+    rsvp = (
+        await rsvp_summary(session, shop_id=page.shop_id, page_id=page.id)
+        if page.kind == PageKind.INVITE
+        else RsvpSummary(coming=0, guests=0, not_coming=0)
+    )
+    return PageCounts(
+        views=page.view_count,
+        cta_clicks=page.cta_click_count,
+        answered=page.answered_at is not None,
+        coming=rsvp.coming,
+        guests=rsvp.guests,
+        not_coming=rsvp.not_coming,
+    )
+
+
 @dataclass(frozen=True)
 class PageStats:
     pages: int

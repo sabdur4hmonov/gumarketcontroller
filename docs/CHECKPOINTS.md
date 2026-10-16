@@ -2099,3 +2099,31 @@ limits, oversize unread, upload CSRF and cross-customer), a second 360 px
 browser run (Ha/Yo'q with a hostile custom question and music, a real photo
 upload, Uzrnoma with a 400-character unbroken letter). Mutations 9/9 for this
 checkpoint (38/38 in total). 332 tests across studio and share-page suites pass.
+
+## CP27.3 — "Mening taklifnomalarim": list, manage, edit, delete, counts
+
+- `GET /studio/pages` lists THIS creator's live pages in THIS shop
+  (`share_pages.list_pages`); `GET /studio/page/<id>` is a page's own screen:
+  link, counts, photos, "Tahrirlash", "O'chirish". Every route that takes a
+  page id looks it up as this creator's own page (`get_own_page`); anything
+  else is 404, and nothing about it changes.
+- **Counts only** (`share_pages.page_counts`): views, Ha answered, RSVP
+  coming / guests / not coming. Never who opened a page, never a guest's name.
+- **An edit keeps the row and the public link.** The same form in edit mode
+  posts to `/studio/page/<id>/edit`, through the bot's own services:
+  `update_page` (answered Ha/Yo'q pages are locked; premium design or music
+  needs the gift), `set_plan`, and the new `set_venues`. `set_venues` replaces
+  the places, makes place 1 the page's `venue`, and moves the map point only
+  when place 1's link names one, so a pin sent in the bot survives an edit.
+  The picker returns to the edit form. An edit shows every saved date-plan row
+  (up to five), so a page made in the bot loses none.
+- **Delete asks once**, then calls `share_pages.delete_page`: the same scrub
+  as the bot (text, places, photos, wishes, RSVP names); the public link
+  answers 410.
+
+Evidence: 10 tests in `tests/test_studio_pages.py` (list scoping across
+customers and shops, counts with a planted guest name, edit with the same
+token, pin kept, locked Ha/Yo'q, premium edit, picker in edit mode, delete,
+404 everywhere for another creator's page, plant-and-grep on every new
+screen), a third 360 px browser run (create → list → counts → edit, link
+unchanged → delete confirm → empty list). Mutations 4/4 (42/42 in total).

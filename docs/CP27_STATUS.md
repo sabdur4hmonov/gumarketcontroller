@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** CP27.3 ("Mening taklifnomalarim": list, edit, delete, counts). CP27.2 is committed.
+**Now:** CP27.4 (Telegram Mini App: initData HMAC with the shop's token, nonce, https-only button). CP27.3 is committed.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -26,6 +26,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.1 link, session, one-form creator (invite) | a67ca49, f600118, 107ba0c, 7770af6 | green; 22/22 mutations |
 | CP27.1b design picker on its own screen | 46d3349 | green; mutations 29/29 |
 | CP27.2 Ha/Yo'q, Uzrnoma, photos, music | e7db988 | green; mutations 38/38 |
+| CP27.3 my pages: list, edit, delete, counts | (this commit) | green; mutations 42/42 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -45,6 +46,10 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - Photos are added on the result screen after creation, not in the form (no JS round trips); move later if wanted.
 - Upload CSRF token travels in the query string (multipart body unreadable by the gate); a JS fetch with a header is the alternative.
 - Ha/Yo'q date plan shows 3 places and 3 times (service allows 5); raise PLAN_ROWS in web/studio_form.py.
+- Edit keeps the page's map pin unless place 1's new link names a point (`set_venues`); change there to clear it instead.
+- A page's screen is `/studio/page/<id>`; `/studio/done/<id>` is the same screen titled "tayyor" right after creation.
+- Delete asks once on its own screen (no JS confirm dialog).
+- Free RAM was 1.39 GiB before one browser run (rule: 1.5); later runs check first.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open
