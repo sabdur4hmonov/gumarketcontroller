@@ -18,7 +18,7 @@ import logging
 
 from aiohttp import web
 
-from gulbot.config import get_settings
+from gulbot.config import get_settings, warn_if_unlimited_pages
 from gulbot.db.session import build_session_factory
 from gulbot.services import admin_auth
 from gulbot.web.app import build_app
@@ -42,6 +42,7 @@ async def main() -> None:
     logging.basicConfig(
         level=settings.log_level, format="%(asctime)s %(levelname)-5s %(name)s %(message)s"
     )
+    warn_if_unlimited_pages(log)
     app = build_app(
         session_factory=build_session_factory(),
         notify=queue_notification,

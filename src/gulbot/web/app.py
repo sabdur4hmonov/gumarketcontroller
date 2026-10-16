@@ -42,6 +42,7 @@ from aiohttp import web
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from gulbot import config
 from gulbot.brand import brand_name
 from gulbot.models.share_page import (
     MAX_GUESTS,
@@ -201,7 +202,13 @@ def client_address(request: web.Request) -> str:
     return request.remote or "?"
 
 
+#: Never bypassed, not even by DEV_UNLIMITED_PAGES: they guard the panels' logins.
+LOGIN_BUCKETS: Final = frozenset({"admin_login", "shop_login"})
+
+
 def limit(request: web.Request, bucket: str) -> None:
+    if bucket not in LOGIN_BUCKETS and config.unlimited_pages_active():
+        return  # DEV_UNLIMITED_PAGES, local testing only
     limiter = request.app[KEY_LIMITER]
     if not limiter[bucket].allow(f"{bucket}:{client_address(request)}"):
         raise web.HTTPTooManyRequests(text="Too many requests")

@@ -52,7 +52,7 @@ from gulbot.bot.factory import (
 from gulbot.bot.loop_lag import monitor as monitor_event_loop
 from gulbot.bot.registry import BotFactory, build_bot_for, stored_tokens
 from gulbot.bot.reliability import PollObserver, PollProgress
-from gulbot.config import get_settings
+from gulbot.config import get_settings, warn_if_unlimited_pages
 from gulbot.db.session import build_session_factory
 from gulbot.sending.transport import ShopBotUnavailable
 from gulbot.services.runtime_state import store_states
@@ -361,6 +361,7 @@ async def main() -> None:
         level=settings.log_level,
         format="%(asctime)s %(levelname)-5s %(name)s %(message)s",
     )
+    warn_if_unlimited_pages(log)
     session_factory = build_session_factory()
     storage = build_storage()
     pollers = ShopPollers(session_factory, storage=storage)

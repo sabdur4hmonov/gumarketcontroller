@@ -33,6 +33,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot import config
 from gulbot.models.customer import Customer
 from gulbot.models.order import Order
 from gulbot.models.share_page import (
@@ -230,6 +231,8 @@ async def check_limits(
     session: AsyncSession, *, shop_id: int, customer_id: int, now: datetime
 ) -> None:
     """Raise PageLimitReached if one more page would be one too many."""
+    if config.unlimited_pages_active():
+        return  # DEV_UNLIMITED_PAGES, local testing only; the caller's lock is still taken
     made_today = await session.scalar(
         select(func.count())
         .select_from(SharePage)

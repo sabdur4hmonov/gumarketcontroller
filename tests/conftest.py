@@ -29,6 +29,11 @@ from gulbot.config import Settings, get_settings
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# A local .env may switch DEV_UNLIMITED_PAGES on for manual testing; the suite
+# must still see the real limits. A real environment variable beats .env, and
+# this runs before any test module builds Settings.
+os.environ["DEV_UNLIMITED_PAGES"] = "false"
+
 
 @pytest.fixture(scope="session")
 def settings() -> Settings:

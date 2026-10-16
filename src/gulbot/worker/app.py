@@ -16,10 +16,14 @@ exactly that reason.
 
 from __future__ import annotations
 
+import logging
+from typing import Any
+
 from celery import Celery
 from celery.schedules import crontab
+from celery.signals import worker_ready
 
-from gulbot.config import get_settings
+from gulbot.config import get_settings, warn_if_unlimited_pages
 
 settings = get_settings()
 
@@ -128,3 +132,8 @@ app.conf.update(
         },
     },
 )
+
+
+@worker_ready.connect
+def _warn_if_unlimited_pages(**_: Any) -> None:
+    warn_if_unlimited_pages(logging.getLogger("gulbot.worker"))

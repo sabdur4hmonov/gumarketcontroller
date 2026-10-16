@@ -6,6 +6,7 @@ tests/test_infrastructure.py can assert them in one place.
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
 from collections.abc import Mapping
@@ -74,6 +75,11 @@ class Settings(BaseSettings):
     web_trust_proxy: bool = False
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
+    #: LOCAL TESTING ONLY. On, the share-page creation limits, the premium gate
+    #: and the public pages' rate limits are bypassed so every design can be
+    #: tried. Read only through unlimited_pages_active(), which is False in
+    #: production whatever this says; production refuses to start with it on.
+    dev_unlimited_pages: bool = False
     log_level: str = "INFO"
     #: The product's name wherever a person reads it (CP19). The brand is not
     #: decided; this is the ONE place it is written. Read it through
@@ -201,6 +207,8 @@ def production_config_problems(
     ]
     if settings.postgres_password.get_secret_value() == DEV_DEFAULT_PASSWORD:
         problems.append("POSTGRES_PASSWORD is the dev default password")
+    if settings.dev_unlimited_pages:
+        problems.append("DEV_UNLIMITED_PAGES is on (a local-testing switch; never in production)")
     # CP18: a production panel nobody can log into is a panel nobody watches,
     # and a typo in the list must be loud, not a silent lock-out.
     if not parse_admin_ids(settings.platform_admin_telegram_ids):
@@ -237,6 +245,28 @@ def check_production_config(settings: Settings, environ: Mapping[str, str] | Non
             + "\nSet each of these as a real environment variable for this process. "
             "See docs/DEPLOY.md."
         )
+
+
+UNLIMITED_PAGES_WARNING = (
+    "DEV_UNLIMITED_PAGES is ON: page limits, premium gate and web rate limits are "
+    "bypassed (local only)"
+)
+
+
+def unlimited_pages_active(settings: Settings | None = None) -> bool:
+    """THE ONE CHECK every DEV_UNLIMITED_PAGES bypass goes through.
+
+    False in production even if the flag is somehow on: the startup guard
+    refuses that configuration, and this does not rely on the guard having run.
+    """
+    settings = get_settings() if settings is None else settings
+    return settings.dev_unlimited_pages and settings.environment.strip().lower() != PRODUCTION
+
+
+def warn_if_unlimited_pages(logger: logging.Logger) -> None:
+    """One WARNING at process start (bot, web, worker) while the switch is on."""
+    if unlimited_pages_active():
+        logger.warning(UNLIMITED_PAGES_WARNING)
 
 
 @lru_cache

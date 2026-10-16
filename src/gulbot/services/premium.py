@@ -27,6 +27,7 @@ from typing import Final
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gulbot import config
 from gulbot.models.share_page import PAGE_TEMPLATES
 
 _CP17_PREMIUM_TEMPLATES: Final = frozenset(
@@ -84,6 +85,8 @@ def is_premium_template(template: str | None) -> bool:
 async def unlocked(session: AsyncSession, *, shop_id: int, customer_id: int) -> bool:
     from gulbot.models.premium import PremiumUnlock
 
+    if config.unlimited_pages_active():
+        return True  # DEV_UNLIMITED_PAGES, local testing only; nothing is written
     found = await session.scalar(
         select(PremiumUnlock.customer_id).where(
             PremiumUnlock.shop_id == shop_id, PremiumUnlock.customer_id == customer_id
