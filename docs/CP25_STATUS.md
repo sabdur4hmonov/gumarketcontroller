@@ -15,6 +15,21 @@ A separate local-testing commit on this branch adds `DEV_UNLIMITED_PAGES`
 (off by default, refused in production; `tests/test_dev_unlimited_pages.py`).
 CP27 is built on its own branch `cp27-studio` from `main`, with no CP25 files.
 
+### OPEN CP25 reliability items (owner, 2026-10-16)
+
+1. **The failed 2026-10-14 gate log is still UNINSPECTED.** Files:
+   `.cp22-stage/cp25/final-gate-20261014-playwright/` (`gate.json` says
+   `phase: failed`, exit 1, min free 507.6 MiB; read `gate.log` and the pytest
+   XML). Read every failure before any CP25 fix.
+2. **`tests/test_order_pings.py::test_the_claim_is_committed_before_telegram_is_called`
+   FAILED in a loaded full run** (cp27-studio worktree, from `main`, 2026-10-16:
+   7,301 passed, 1 failed). Message: "another connection could not see the
+   claim while the send was in flight" (`assert [] == ['sending']`). It guards
+   against DOUBLE MESSAGES (claim-before-send). Alone it passed 3/3 and its file
+   43/43, but that does NOT close it. It is an open reliability item, not a flake:
+   find why the claim was invisible to another connection under load, and
+   whether `main` or this branch can send twice.
+
 ## CURRENT RESUME POINT — read this before chronological history
 
 **DEADLINE STOP — 2026-10-14T10:31:27Z.** The absolute10:30UTC unattended
