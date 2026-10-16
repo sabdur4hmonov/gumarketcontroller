@@ -1,6 +1,6 @@
 {
-  "caught": 42,
-  "total": 42,
+  "caught": 51,
+  "total": 51,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -293,6 +293,69 @@
       "guard": "3: an edit to a premium part needs the gift (shared service)",
       "file": "src/gulbot/services/share_pages.py",
       "test": "tests/test_studio_pages.py::test_an_edit_to_a_premium_design_needs_the_gift",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data must carry this bot's signature",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data older than an hour is refused",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[stale]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data from the future is refused",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[future]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data opens one session (replay nonce)",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_launch_data_opens_one_session_only",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the key is THIS shop's bot token",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[other_shops_bot] tests/test_studio_webapp.py::test_valid_launch_data_opens_the_same_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the legacy shop uses the process token",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_the_legacy_shop_is_checked_with_the_process_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the POST needs JSON and X-Requested-With",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_webapp.py::test_the_post_needs_json_and_the_header",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the page carries only a well-formed bot name",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_webapp.py::test_the_page_loads_only_our_own_script",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the Mini App button only on https",
+      "file": "src/gulbot/bot/routers/share_pages.py",
+      "test": "tests/test_studio_webapp.py::test_the_bot_offers_the_mini_app_only_on_https",
       "assertion_caught": true,
       "exit_code": 1
     }

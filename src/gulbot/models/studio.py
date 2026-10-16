@@ -116,3 +116,32 @@ class StudioAuditEntry(IdMixin, Base):
     ip: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     __table_args__ = (Index("ix_studio_audit_log_shop_at", "shop_id", "at"),)
+
+
+class StudioWebAppUse(IdMixin, Base):
+    """One Telegram Mini App launch that opened a studio session (CP27.4).
+
+    Telegram's initData is valid for an hour and could be replayed within it;
+    each one opens at most ONE session: its own hash is stored (as sha256)
+    under a UNIQUE constraint, and the insert is the compare-and-swap.
+    Rows older than the replay window are pruned on the next launch.
+    """
+
+    __tablename__ = "studio_webapp_uses"
+
+    shop_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("shops.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    data_hash: Mapped[str] = mapped_column(String(HASH_LENGTH), nullable=False, unique=True)
+    auth_date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["customer_id", "shop_id"], ["customers.id", "customers.shop_id"], ondelete="CASCADE"
+        ),
+        Index("ix_studio_webapp_uses_shop_used", "shop_id", "used_at"),
+    )

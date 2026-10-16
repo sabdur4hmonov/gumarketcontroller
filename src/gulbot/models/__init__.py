@@ -42,7 +42,12 @@ from gulbot.models.share_page import (
 from gulbot.models.shop import Shop
 from gulbot.models.shop_panel import ShopAuditEntry, ShopLoginLink, ShopSession
 from gulbot.models.staff import ShopStaff
-from gulbot.models.studio import StudioAuditEntry, StudioLink, StudioSession
+from gulbot.models.studio import (
+    StudioAuditEntry,
+    StudioLink,
+    StudioSession,
+    StudioWebAppUse,
+)
 
 __all__ = [
     "AnnouncementCorrection",
@@ -98,5 +103,6 @@ __all__ = [
     "StudioAuditEntry",
     "StudioLink",
     "StudioSession",
+    "StudioWebAppUse",
     "SubscriptionPayment",
 ]

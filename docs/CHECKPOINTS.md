@@ -2127,3 +2127,41 @@ token, pin kept, locked Ha/Yo'q, premium edit, picker in edit mode, delete,
 404 everywhere for another creator's page, plant-and-grep on every new
 screen), a third 360 px browser run (create → list → counts → edit, link
 unchanged → delete confirm → empty list). Mutations 4/4 (42/42 in total).
+
+## CP27.4 — Taklifnoma Studio as a Telegram Mini App
+
+- **The button.** With the studio link, the shop's bot now offers
+  "📱 Telegram ichida ochish", a WebAppInfo button to `/studio/app?s=<shop>&b=<bot>`,
+  ONLY when PUBLIC_BASE_URL is https (Telegram opens Mini Apps from https alone).
+  Over http only the link is sent, as before.
+- **No telegram.org script.** `/studio/app` loads only `static/js/studio-app.js`:
+  it reads Telegram's launch data from the URL fragment (`#tgWebAppData=...`,
+  never in a server log), removes it from the address bar, and posts it to
+  `POST /studio/webapp` as JSON with `X-Requested-With: gulbot`, so a
+  cross-site form cannot post it.
+- **The server decides** (`services/studio_webapp.py`):
+  - the key is THIS shop's bot token, by bot/registry's rule (its own stored
+    token, or the process BOT_TOKEN for the one legacy shop);
+  - the HMAC is Telegram's published rule, via the library the bot already uses
+    (`aiogram.utils.web_app.check_webapp_signature`, constant-time compare);
+  - auth_date is at most one hour old and at most a minute in the future;
+  - the data opens ONE session: the sha256 of its own hash is stored under a
+    UNIQUE constraint on the first POST (`studio_webapp_uses`, migration
+    `c27b4d2e8a13`, additive, composite FK to customers); a replay is refused
+    and audited; rows past the window are pruned on the next launch;
+  - the Telegram user must already be this shop's customer, and entitled;
+  - then the same session as a link (`studio.open_session`, now shared).
+- **Not covered:** Telegram Web (web.telegram.org) shows Mini Apps in an
+  iframe; the studio keeps `frame-ancestors 'none'` and SameSite=Lax cookies,
+  so it opens in the Telegram apps (mobile and desktop), not in Telegram Web.
+
+Evidence: migration round-tripped (upgrade → downgrade → upgrade on a
+throwaway DB, single head `c27b4d2e8a13`, models match). 15 tests in
+`tests/test_studio_webapp.py` with launch data crafted by Telegram's rule,
+independently of the code: valid; tampered, stale, future, another shop's
+bot, no hash, garbage, oversize; replay; stranger, other shop's customer,
+paused shop, unknown shop; legacy token; JSON and header required; the page's
+scripts; the button on https and not on http. A real-Chrome run opens
+`/studio/app#tgWebAppData=...` offline and lands in the studio with the
+fragment gone, no foreign request, no CSP violation. Mutations 9/9 (51/51 in
+total).

@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** CP27.4 (Telegram Mini App: initData HMAC with the shop's token, nonce, https-only button). CP27.3 is committed.
+**Now:** CP27.5 (slim the bot: only "🌐 Taklifnoma yaratish"; wizard behind SHARE_WIZARD_IN_BOT, off). CP27.4 is committed.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -27,6 +27,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.1b design picker on its own screen | 46d3349 | green; mutations 29/29 |
 | CP27.2 Ha/Yo'q, Uzrnoma, photos, music | e7db988 | green; mutations 38/38 |
 | CP27.3 my pages: list, edit, delete, counts | 8f36ce9 | green; mutations 42/42 |
+| CP27.4 Telegram Mini App | (this commit) | green; mutations 51/51 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -50,6 +51,10 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - A page's screen is `/studio/page/<id>`; `/studio/done/<id>` is the same screen titled "tayyor" right after creation.
 - Delete asks once on its own screen (no JS confirm dialog).
 - Free RAM was 1.39 GiB before one browser run (rule: 1.5); later runs check first.
+- Mini App replay nonce = sha256 of the launch data's own hash, UNIQUE in `studio_webapp_uses` (one session per launch).
+- The Mini App URL carries the shop id and bot @username; the shop id picks the key (wrong id = HMAC fails); the username only feeds the page's order link.
+- Telegram Web (iframe) is not supported: `frame-ancestors 'none'` and SameSite=Lax stay; mobile/desktop Telegram apps only.
+- The HMAC check is aiogram's `check_webapp_signature` (the bot's own library), tested against launch data crafted from Telegram's spec.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open

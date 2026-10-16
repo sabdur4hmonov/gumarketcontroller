@@ -27,6 +27,8 @@ VENUES = "tests/test_share_page_venues.py::"
 PICKER = "tests/test_studio_picker.py::"
 KINDS = "tests/test_studio_kinds.py::"
 PAGES = "tests/test_studio_pages.py::"
+MINI = "tests/test_studio_webapp.py::"
+WEBAPP = "src/gulbot/services/studio_webapp.py"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -373,6 +375,77 @@ def mutants() -> list[Mutant]:
             '        raise EditRefused("premium")',
             "    return None",
             PAGES + "test_an_edit_to_a_premium_design_needs_the_gift",
+        ),
+        # --- CP27.4: the Telegram Mini App -----------------------------------------------
+        Mutant(
+            "4: launch data must carry this bot's signature",
+            WEBAPP,
+            "    if not check_webapp_signature(token, init_data):",
+            "    if False:",
+            MINI + "test_bad_launch_data_is_refused",
+        ),
+        Mutant(
+            "4: launch data older than an hour is refused",
+            WEBAPP,
+            "    if not (now - WEBAPP_MAX_AGE <= auth_date <= now + CLOCK_SKEW):",
+            "    if not (auth_date <= now + CLOCK_SKEW):",
+            MINI + "test_bad_launch_data_is_refused[stale]",
+        ),
+        Mutant(
+            "4: launch data from the future is refused",
+            WEBAPP,
+            "    if not (now - WEBAPP_MAX_AGE <= auth_date <= now + CLOCK_SKEW):",
+            "    if not (now - WEBAPP_MAX_AGE <= auth_date):",
+            MINI + "test_bad_launch_data_is_refused[future]",
+        ),
+        Mutant(
+            "4: launch data opens one session (replay nonce)",
+            WEBAPP,
+            '                    data_hash=hashlib.sha256(fields["hash"].encode()).hexdigest(),',
+            "                    data_hash=hashlib.sha256(repr(object()).encode()).hexdigest(),",
+            MINI + "test_launch_data_opens_one_session_only",
+        ),
+        Mutant(
+            "4: the key is THIS shop's bot token",
+            WEBAPP,
+            "    credential = (await load_bot_credentials("
+            "session, shop_ids=[shop_id])).get(shop_id)",
+            "    credential = max(\n"
+            "        (await load_bot_credentials(session)).values(), key=lambda c: c.shop_id\n"
+            "    )",
+            MINI
+            + "test_bad_launch_data_is_refused[other_shops_bot] "
+            + MINI
+            + "test_valid_launch_data_opens_the_same_session",
+        ),
+        Mutant(
+            "4: the legacy shop uses the process token",
+            WEBAPP,
+            "        return get_settings().bot_token.get_secret_value() or None",
+            "        return None",
+            MINI + "test_the_legacy_shop_is_checked_with_the_process_token",
+        ),
+        Mutant(
+            "4: the POST needs JSON and X-Requested-With",
+            STUDIO_WEB,
+            '        request.headers.get("X-Requested-With") != "gulbot"\n'
+            '        or request.content_type != "application/json"\n',
+            "        False\n",
+            MINI + "test_the_post_needs_json_and_the_header",
+        ),
+        Mutant(
+            "4: the page carries only a well-formed bot name",
+            STUDIO_WEB,
+            '        "bot": bot if BOT_USERNAME_RE.match(bot) else "",',
+            '        "bot": bot,',
+            MINI + "test_the_page_loads_only_our_own_script",
+        ),
+        Mutant(
+            "4: the Mini App button only on https",
+            "src/gulbot/bot/routers/share_pages.py",
+            '    if not base.startswith("https://"):',
+            "    if False:",
+            MINI + "test_the_bot_offers_the_mini_app_only_on_https",
         ),
     ]
 

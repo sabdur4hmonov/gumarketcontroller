@@ -1663,6 +1663,7 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.pages.invite": {"uz": "💌 Taklifnoma", "ru": "💌 Приглашение"},
     "ibtn.pages.mine": {"uz": "📂 Mening sahifalarim", "ru": "📂 Мои страницы"},
     "ibtn.pages.studio": {"uz": "🌐 Taklifnoma yaratish", "ru": "🌐 Создать приглашение"},
+    "ibtn.studio.webapp": {"uz": "📱 Telegram ichida ochish", "ru": "📱 Открыть в Telegram"},
     "studio.link": {
         "uz": (
             "🌐 Taklifnomani saytda, bitta sahifada to‘ldiring — barcha dizaynlar o‘sha yerda.\n"
@@ -1932,6 +1933,7 @@ _EN: Final[dict[str, str]] = {
     "ibtn.pages.invite": "💌 Invitation",
     "ibtn.pages.mine": "📂 My pages",
     "ibtn.pages.studio": "🌐 Create an invitation",
+    "ibtn.studio.webapp": "📱 Open in Telegram",
     "studio.link": (
         "🌐 Fill in the invitation on the website, on one page — every design is there.\n"
         "The link works for {minutes} min and only once:\n{url}\n\nDo not forward it."

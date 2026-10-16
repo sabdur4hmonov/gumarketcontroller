@@ -47,6 +47,7 @@ __all__ = [
     "entitled",
     "load_session",
     "mint_link",
+    "open_session",
 ]
 
 #: How long a studio link stays usable (the owner's choice: 15 minutes).
@@ -187,6 +188,29 @@ async def consume_link(
             ip=ip,
         )
         return None
+    return await open_session(
+        session,
+        shop_id=shop_id,
+        customer_id=customer_id,
+        bot_username=bot_username,
+        action="login",
+        ip=ip,
+        now=now,
+    )
+
+
+async def open_session(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    bot_username: str | None,
+    action: str,
+    ip: str | None,
+    now: datetime,
+) -> NewSession:
+    """A new studio session for an ENTITLED customer -- the caller has checked.
+    One way to open one, whether by the bot's link or by the Mini App (CP27.4)."""
     token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
     await session.execute(
         insert(StudioSession).values(
@@ -199,7 +223,7 @@ async def consume_link(
             expires_at=now + SESSION_TTL,
         )
     )
-    await audit(session, shop_id=shop_id, action="login", customer_id=customer_id, ip=ip)
+    await audit(session, shop_id=shop_id, action=action, customer_id=customer_id, ip=ip)
     return NewSession(token=token, shop_id=shop_id, customer_id=customer_id, csrf=csrf)
 
 

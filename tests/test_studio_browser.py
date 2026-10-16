@@ -25,6 +25,7 @@ from aiohttp.test_utils import TestServer
 from playwright.async_api import Browser, Page, async_playwright
 from sqlalchemy.ext.asyncio import AsyncConnection
 from tests.test_studio_web import DATE, app_for, mint, world  # noqa: F401  (fixture)
+from tests.test_studio_webapp import keyed  # noqa: F401  (fixture)
 
 pytestmark = pytest.mark.infra
 
@@ -392,3 +393,54 @@ async def test_my_pages_edit_and_delete_at_360px(
     assert watch.failed == [], watch.failed
     assert watch.errors == [], watch.errors
     assert watch.dialogs == [], "typed markup ran as script"
+
+
+async def test_the_mini_app_page_signs_in_from_the_fragment_at_360px(
+    world: dict[str, Any],  # noqa: F811
+    chrome: Browser,
+    keyed: None,  # noqa: F811
+) -> None:
+    """CP27.4, offline: Telegram's launch data in the URL fragment is read by our
+    own script, checked by the server, and the studio opens; nothing else is
+    fetched from anywhere, and the fragment leaves the address bar."""
+    from urllib.parse import quote
+
+    from tests.test_studio_webapp import TOKEN_A, USER_A, _tokens, init_data
+
+    db: AsyncConnection = world["db"]
+    await _tokens(db, world)
+    server = TestServer(app_for(db))
+    await server.start_server()
+    origin = str(server.make_url("")).rstrip("/")
+    watch = Watch(origin)
+    context = await chrome.new_context(
+        viewport={"width": 360, "height": 780},
+        device_scale_factor=2,
+        is_mobile=True,
+        has_touch=True,
+    )
+    await context.add_init_script(CSP_LISTENER)
+    watch.watch_context(context)
+    try:
+        page = await context.new_page()
+        watch.attach(page)
+        launch = quote(init_data(TOKEN_A, user_id=USER_A), safe="")
+        await page.goto(
+            f"{origin}/studio/app?s={world['a']}&b=lola_bot"
+            f"#tgWebAppData={launch}&tgWebAppVersion=8.0&tgWebAppPlatform=android"
+        )
+        await page.wait_for_url(f"{origin}/studio")
+        assert "#" not in page.url
+        await audit(page, "31-mini-app-in")
+
+        stray = await context.new_page()
+        watch.attach(stray)
+        await stray.goto(f"{origin}/studio/app?s={world['a']}")
+        await stray.get_by_text("Telegram ichida, do‘kon botidagi tugma orqali").wait_for()
+        await audit(stray, "32-mini-app-without-data")
+    finally:
+        await context.close()
+        await server.close()
+    assert watch.foreign == [], watch.foreign
+    assert watch.failed == [], watch.failed
+    assert watch.errors == [], watch.errors

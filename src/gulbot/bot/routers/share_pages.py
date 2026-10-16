@@ -38,6 +38,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     LinkPreviewOptions,
     Message,
+    WebAppInfo,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -219,11 +220,12 @@ async def _send_studio_link(
 ) -> None:
     """CP27: a one-time link into Taklifnoma Studio for THIS customer of THIS
     shop (services/studio.py decides who may have one)."""
+    username = await _bot_username(bot)
     raw = await studio.mint_link(
         session,
         shop_id=customer.shop_id,
         customer_id=customer.id,
-        bot_username=await _bot_username(bot),
+        bot_username=username,
     )
     if raw is None:
         await target.answer(t("studio.link_refused", lang))
@@ -233,6 +235,28 @@ async def _send_studio_link(
     await target.answer(
         t("studio.link", lang, url=f"{links.base_url()}/studio/enter/{raw}", minutes=minutes),
         link_preview_options=LinkPreviewOptions(is_disabled=True),
+        reply_markup=studio_webapp_keyboard(customer.shop_id, username, lang),
+    )
+
+
+def studio_webapp_keyboard(
+    shop_id: int, username: str | None, lang: str
+) -> InlineKeyboardMarkup | None:
+    """CP27.4: the Mini App button beside the link -- ONLY on https, since
+    Telegram opens Mini Apps from https alone. Otherwise the link is enough."""
+    base = links.base_url()
+    if not base.startswith("https://"):
+        return None
+    query = f"s={shop_id}" + (f"&b={username}" if username else "")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.studio.webapp", lang),
+                    web_app=WebAppInfo(url=f"{base}/studio/app?{query}"),
+                )
+            ]
+        ]
     )
 
 

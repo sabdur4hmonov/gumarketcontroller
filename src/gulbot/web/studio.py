@@ -36,6 +36,7 @@ HttpOnly, SameSite=Lax, Path=/studio, Secure whenever the site is https.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime
 from typing import Any, Final
@@ -54,7 +55,7 @@ from gulbot.models.share_page import (
     PageKind,
     SharePage,
 )
-from gulbot.services import premium, share_page_photos, share_pages, studio
+from gulbot.services import premium, share_page_photos, share_pages, studio, studio_webapp
 from gulbot.services.share_pages import (
     ApologyDraft,
     InvalidDraft,
@@ -82,7 +83,15 @@ log = logging.getLogger("gulbot.web.studio")
 
 PREFIX: Final = "/studio"
 COOKIE: Final = "gb_studio"
-PUBLIC_ROUTES: Final = frozenset({("GET", "/studio/enter/{token}"), ("POST", "/studio/enter")})
+PUBLIC_ROUTES: Final = frozenset(
+    {
+        ("GET", "/studio/enter/{token}"),
+        ("POST", "/studio/enter"),
+        # CP27.4: the Telegram Mini App's way in (launch data, not a cookie).
+        ("GET", "/studio/app"),
+        ("POST", "/studio/webapp"),
+    }
+)
 #: The one route whose body is multipart: its CSRF token is in the query string.
 UPLOAD_ROUTES: Final = frozenset({("POST", "/studio/page/{page_id}/photo")})
 #: A photo upload's whole body: the photo's own cap plus room for the form.
@@ -109,6 +118,8 @@ VENUE_CHIPS: Final = {
     "boshqa": "Boshqa",
 }
 FIX_FIELDS: Final = "Belgilangan joylarni to‘g‘rilang."
+#: A shop bot's @username, as the Mini App's URL carries it (CTA link only).
+BOT_USERNAME_RE: Final = re.compile(r"^[A-Za-z0-9_]{5,32}$")
 
 
 def is_studio_path(path: str) -> bool:
@@ -187,7 +198,7 @@ async def enter_page(request: web.Request) -> web.Response:
 
 
 async def enter(request: web.Request) -> web.Response:
-    from gulbot.web.app import KEY_SETTINGS, limit
+    from gulbot.web.app import limit
 
     limit(request, "studio_login")
     form = await request.post()
@@ -200,16 +211,71 @@ async def enter(request: web.Request) -> web.Response:
     if opened is None:
         return _denied()
     response = web.HTTPSeeOther(PREFIX)
+    _set_session_cookie(request, response, opened.token)
+    raise response
+
+
+def _set_session_cookie(request: web.Request, response: web.StreamResponse, token: str) -> None:
+    from gulbot.web.app import KEY_SETTINGS
+
     response.set_cookie(
         COOKIE,
-        opened.token,
+        token,
         path=PREFIX,
         max_age=int(studio.SESSION_TTL.total_seconds()),
         httponly=True,
         secure=request.app[KEY_SETTINGS].secure,
         samesite="Lax",
     )
-    raise response
+
+
+async def app_page(request: web.Request) -> web.Response:
+    """The Mini App's page (CP27.4). Its script reads Telegram's launch data
+    from the URL fragment and posts it to /studio/webapp; nothing here is
+    trusted until the server has checked that data."""
+    shop = request.query.get("s", "")
+    bot = request.query.get("b", "")
+    view = {
+        "shop": shop if shop.isdigit() and len(shop) <= 18 else "",
+        "bot": bot if BOT_USERNAME_RE.match(bot) else "",
+    }
+    return _html(render.render("studio/app.html", view))
+
+
+async def webapp(request: web.Request) -> web.Response:
+    """Launch data in, a studio session out (services/studio_webapp.py).
+    JSON with X-Requested-With only, so a cross-site form cannot post it."""
+    from gulbot.web.app import limit
+
+    limit(request, "studio_login")
+    if (
+        request.headers.get("X-Requested-With") != "gulbot"
+        or request.content_type != "application/json"
+    ):
+        raise web.HTTPForbidden(text="Forbidden")
+    try:
+        body = await request.json()
+        shop_id = int(body["shop"])
+        init_data = str(body["init_data"])
+        bot = str(body.get("bot") or "")
+    except (ValueError, KeyError, TypeError):
+        raise web.HTTPBadRequest(text="Bad request") from None
+    async with request.app[KEY_STUDIO_SESSIONS]() as session:
+        try:
+            opened = await studio_webapp.open_from_webapp(
+                session,
+                shop_id=shop_id,
+                init_data=init_data,
+                bot_username=bot if BOT_USERNAME_RE.match(bot) else None,
+                ip=_ip(request),
+            )
+        except studio_webapp.WebAppRefused:
+            await session.commit()  # keep the audited refusal
+            return web.json_response({"ok": False}, status=403)
+        await session.commit()
+    response = web.json_response({"ok": True, "next": PREFIX})
+    _set_session_cookie(request, response, opened.token)
+    return response
 
 
 async def logout(request: web.Request) -> web.Response:
@@ -855,6 +921,8 @@ def add_routes(app: web.Application, *, session_factory: async_sessionmaker[Asyn
     app.router.add_post(PREFIX + "/page/{page_id}/photo", add_photo)
     app.router.add_post(PREFIX + "/page/{page_id}/photos/clear", clear_photos)
     app.router.add_get(PREFIX + "/pages", pages_screen)
+    app.router.add_get(PREFIX + "/app", app_page)
+    app.router.add_post(PREFIX + "/webapp", webapp)
     app.router.add_get(PREFIX + "/page/{page_id}", page_screen)
     app.router.add_get(PREFIX + "/page/{page_id}/edit", edit_screen)
     app.router.add_post(PREFIX + "/page/{page_id}/edit", edit_save)
