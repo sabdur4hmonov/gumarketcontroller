@@ -2032,8 +2032,10 @@ The whole suite without the CP24 browser matrix: 7,301 passed, 1 failed, in
 72 minutes. The failure was `test_order_pings.py::test_the_claim_is_committed_before_telegram_is_called`
 ("another connection could not see the claim while the send was in flight"),
 a code path CP27 does not touch. Alone it passed three times out of three, and
-its file passed 43/43. Under load it is timing-sensitive, and that stays open:
-an isolated pass does not dismiss a loaded failure. The CP24 browser matrix
+its file passed 43/43. It stays OPEN as a CP25 reliability item (the owner's
+decision): the test guards against double messages, and an isolated pass does
+not dismiss a loaded failure (docs/CP25_STATUS.md on codex/cp25-reliability,
+"OPEN CP25 reliability items"). The CP24 browser matrix
 (480 cases: forty designs, three kinds, four languages, worst-case text at
 360 px) plus the studio's browser run then passed 481/481 in 11.5 minutes.
 Lint, format, strict mypy (190 files) and both shadow sweeps are clean.
