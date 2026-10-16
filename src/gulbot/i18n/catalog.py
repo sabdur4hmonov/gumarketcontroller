@@ -1662,6 +1662,21 @@ CATALOG: Final[dict[str, dict[str, str]]] = {
     "ibtn.pages.yesno": {"uz": "💍 Ha/Yo'q sahifa", "ru": "💍 Страница «Да/Нет»"},
     "ibtn.pages.invite": {"uz": "💌 Taklifnoma", "ru": "💌 Приглашение"},
     "ibtn.pages.mine": {"uz": "📂 Mening sahifalarim", "ru": "📂 Мои страницы"},
+    "ibtn.pages.studio": {"uz": "🌐 Taklifnoma yaratish", "ru": "🌐 Создать приглашение"},
+    "studio.link": {
+        "uz": (
+            "🌐 Taklifnomani saytda, bitta sahifada to‘ldiring — barcha dizaynlar o‘sha yerda.\n"
+            "Havola {minutes} daqiqa ishlaydi va bir martalik:\n{url}\n\nHech kimga yubormang."
+        ),
+        "ru": (
+            "🌐 Заполните приглашение на сайте, на одной странице — там же все дизайны.\n"
+            "Ссылка действует {minutes} мин и одноразовая:\n{url}\n\nНикому её не пересылайте."
+        ),
+    },
+    "studio.link_refused": {
+        "uz": "Hozircha yangi havola berilmaydi — bir ozdan keyin qayta urinib ko‘ring.",
+        "ru": "Сейчас новую ссылку выдать нельзя — попробуйте чуть позже.",
+    },
     "pages.unavailable": {
         "uz": "Bu xizmat hali ishga tushmagan. Tez orada!",
         "ru": "Эта функция ещё не запущена. Скоро!",
@@ -1916,6 +1931,12 @@ _EN: Final[dict[str, str]] = {
     "ibtn.pages.yesno": "💍 Yes/No page",
     "ibtn.pages.invite": "💌 Invitation",
     "ibtn.pages.mine": "📂 My pages",
+    "ibtn.pages.studio": "🌐 Create an invitation",
+    "studio.link": (
+        "🌐 Fill in the invitation on the website, on one page — every design is there.\n"
+        "The link works for {minutes} min and only once:\n{url}\n\nDo not forward it."
+    ),
+    "studio.link_refused": "A new link can't be issued right now — try again a little later.",
     "pages.unavailable": "This isn't available yet. Coming soon!",
     "pages.choose_lang": "Which language should the page be in?",
     "pages.choose_question": "Which question shall we ask?",

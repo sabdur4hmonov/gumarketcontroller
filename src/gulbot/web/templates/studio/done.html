@@ -1,0 +1,17 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<section class="panel narrow">
+  <h1>Taklifnoma tayyor</h1>
+  <p>Havolani nusxalang va mehmonlarga yuboring.</p>
+  <label class="field">
+    <span class="label">Taklifnoma havolasi</span>
+    <input id="page-url" type="text" value="{{ v.url }}" readonly>
+  </label>
+  <div class="row">
+    <button type="button" class="primary" data-copy="page-url" data-done="Nusxalandi ✓" hidden>Nusxalash</button>
+    <a class="secondary" href="{{ v.url }}" target="_blank" rel="noopener">Ochib ko‘rish</a>
+  </div>
+  <p class="hint">Botda yuboring: havolani do‘stlaringizga Telegram orqali ulashing — sahifa o‘sha yerda ochiladi.</p>
+  <p><a href="/studio">Yana bitta yaratish</a></p>
+</section>
+{% endblock %}

@@ -50,7 +50,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.services import share_page_photos, share_page_wishes, share_pages
-from gulbot.web import admin, render, shop_panel, strings
+from gulbot.web import admin, render, shop_panel, strings, studio
 
 log = logging.getLogger("gulbot.web")
 
@@ -142,7 +142,12 @@ def _harden(request: web.Request, response: web.StreamResponse) -> None:
     headers = response.headers
     # The admin panel and the shop owner's panel (CP20) post forms to this
     # origin; the public pages never do.
-    panel = _is_admin(request) or shop_panel.is_panel_path(request.path)
+    # CP27: so does Taklifnoma Studio (form-action 'self' on /studio only).
+    panel = (
+        _is_admin(request)
+        or shop_panel.is_panel_path(request.path)
+        or studio.is_studio_path(request.path)
+    )
     headers["Content-Security-Policy"] = admin.CSP if panel else CSP
     headers["X-Content-Type-Options"] = "nosniff"
     headers["Referrer-Policy"] = "no-referrer"
@@ -623,10 +628,11 @@ def build_app(
     admin_login_limit: int = 10,
     admin_ids: Callable[[], frozenset[int]] | None = None,
     shop_panel_on: bool = False,
+    studio_on: bool = False,
     ig_limit: int = 30,
 ) -> web.Application:
     app = web.Application(
-        middlewares=[secure_headers, admin.admin_gate, shop_panel.shop_gate],
+        middlewares=[secure_headers, admin.admin_gate, shop_panel.shop_gate, studio.studio_gate],
         client_max_size=4096,
     )
     app[KEY_SESSIONS] = session_factory
@@ -638,6 +644,7 @@ def build_app(
         "wish": RateLimiter(limit=wish_limit, window=60.0),
         "admin_login": RateLimiter(limit=admin_login_limit, window=60.0),
         "shop_login": RateLimiter(limit=admin_login_limit, window=60.0),
+        "studio_login": RateLimiter(limit=admin_login_limit, window=60.0),
         "ig": RateLimiter(limit=ig_limit, window=60.0),
     }
     app.router.add_get("/p/{token}", page)
@@ -666,4 +673,6 @@ def build_app(
     # page server's entrypoint turns it on.
     if shop_panel_on:
         shop_panel.add_routes(app, session_factory=session_factory)
+    if studio_on:
+        studio.add_routes(app, session_factory=session_factory)
     return app

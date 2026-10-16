@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>{% block title %}Taklifnoma yaratish · {{ brand() }}{% endblock %}</title>
+<link rel="stylesheet" href="{{ static('css/studio.css') }}">
+<script src="{{ static('js/studio.js') }}" defer></script>
+</head>
+<body class="studio">
+{% if v.creator is defined and v.creator %}
+<header class="bar">
+  <span class="brand">{{ brand() }} · Taklifnoma</span>
+  <form method="post" action="/studio/logout" class="inline">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link">Chiqish</button>
+  </form>
+</header>
+{% endif %}
+<main class="wrap">
+{% block main %}{% endblock %}
+</main>
+</body>
+</html>

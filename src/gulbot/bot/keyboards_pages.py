@@ -83,6 +83,13 @@ def _rows(buttons: Sequence[InlineKeyboardButton], width: int) -> list[list[Inli
 def pages_menu_keyboard(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
+            # CP27: the whole taklifnoma on one web page (Taklifnoma Studio).
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.pages.studio", lang),
+                    callback_data=PageMenuCB(action="studio").pack(),
+                )
+            ],
             [
                 InlineKeyboardButton(
                     text=t("ibtn.pages.yesno", lang),
