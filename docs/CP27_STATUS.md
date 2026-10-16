@@ -24,7 +24,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | Step | Commits | State |
 |---|---|---|
 | CP27.1 link, session, one-form creator (invite) | a67ca49, f600118, 107ba0c, 7770af6 | green; 22/22 mutations |
-| CP27.1b design picker on its own screen | (this commit) | green; mutations 29/29 |
+| CP27.1b design picker on its own screen | 46d3349 | green; mutations 29/29 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
