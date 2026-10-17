@@ -1,0 +1,11 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<section class="panel narrow" id="webapp" data-shop="{{ v.shop }}" data-bot="{{ v.bot }}">
+  <h1>Taklifnoma yaratish</h1>
+  <p id="wa-wait">Kirilmoqda…</p>
+  <p id="wa-missing" class="problem" hidden>Bu sahifa Telegram ichida, do‘kon botidagi tugma orqali ochiladi.</p>
+  <p id="wa-refused" class="problem" hidden>Kirib bo‘lmadi. Botda «💌 Taklifnoma · Ha/Yo'q» → «🌐 Taklifnoma yaratish» ni qayta bosing.</p>
+  <noscript><p class="problem">Botdagi havola orqali kiring.</p></noscript>
+</section>
+<script src="{{ static('js/studio-app.js') }}" defer></script>
+{% endblock %}

@@ -24,8 +24,9 @@ import secrets
 import unicodedata
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Final
+from urllib.parse import parse_qs, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import and_, delete, func, select, text, update
@@ -42,6 +43,7 @@ from gulbot.models.share_page import (
     DRESS_CODE_MAX,
     EVENT_TYPES,
     GUEST_NAME_MAX,
+    MAP_URL_MAX,
     MAX_GUESTS,
     MESSAGE_MAX,
     MONOGRAM_MAX,
@@ -55,13 +57,18 @@ from gulbot.models.share_page import (
     QUESTION_MAX,
     QUESTION_PRESETS,
     TITLE_MAX,
+    VENUE_ADDRESS_MAX,
+    VENUE_KINDS,
     VENUE_MAX,
+    VENUE_NAME_MAX,
+    VENUES_MAX,
     PageKind,
     SharePage,
     SharePageOption,
     SharePagePhoto,
     SharePageReferral,
     SharePageRsvp,
+    SharePageVenue,
     SharePageWish,
 )
 from gulbot.models.shop import Shop, ShopStatus
@@ -136,6 +143,8 @@ class YesNoDraft:
     #: CP17: the optional date plan. Both empty, or 1-5 of each.
     places: tuple[str, ...] = ()
     slots: tuple[datetime, ...] = ()
+    #: CP27.2: one of MUSIC_TRACKS, premium (services/premium.py); None for none.
+    music: str | None = None
 
 
 @dataclass(frozen=True)
@@ -146,6 +155,19 @@ class ApologyDraft:
     lang: str
     text: str
     notify_creator: bool
+    #: CP27.2: one of MUSIC_TRACKS, premium; None for none.
+    music: str | None = None
+
+
+@dataclass(frozen=True)
+class VenueDraft:
+    """One of a taklifnoma's places, as the studio's form sends it (CP27)."""
+
+    kind: str
+    name: str
+    address: str | None = None
+    map_url: str | None = None
+    starts_at: time | None = None
 
 
 @dataclass(frozen=True)
@@ -163,6 +185,11 @@ class InviteDraft:
     rsvp_enabled: bool
     #: The Konvert seal (CP17); None shows the couple's initials.
     seal_monogram: str | None = None
+    #: CP27: up to VENUES_MAX places. Venue 1 also fills `venue` (when that is
+    #: empty) and `location` (when that is None and its map link has a point).
+    venues: tuple[VenueDraft, ...] = ()
+    #: CP27.2: one of MUSIC_TRACKS, premium; None for none.
+    music: str | None = None
 
 
 def clean_monogram(value: object) -> str | None:
@@ -190,6 +217,117 @@ def _draft_monogram(value: str | None) -> str | None:
         return clean_monogram(value)
     except ValueError:
         raise InvalidDraft("a seal monogram the bot could not have taken") from None
+
+
+#: Map links a creator may paste (CP27): https, these hosts, nothing else. The
+#: server never fetches one; it is only a link a guest may tap.
+MAP_HOSTS: Final = frozenset(
+    {
+        "www.google.com",
+        "google.com",
+        "maps.google.com",
+        "maps.app.goo.gl",
+        "goo.gl",
+        "yandex.uz",
+        "yandex.ru",
+        "yandex.com",
+        "maps.yandex.uz",
+        "maps.yandex.ru",
+        "2gis.uz",
+        "2gis.ru",
+        "go.2gis.com",
+    }
+)
+#: Hosts that serve more than maps: only their /maps paths are accepted.
+_MAPS_PATH_ONLY: Final = frozenset(
+    {"www.google.com", "google.com", "goo.gl", "yandex.uz", "yandex.ru", "yandex.com"}
+)
+_GOOGLE_AT = re.compile(r"@(-?\d{1,2}\.\d+),(-?\d{1,3}\.\d+)")
+_PAIR = re.compile(r"^(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)")
+
+
+def clean_map_url(value: str | None) -> str | None:
+    """A pasted map link as stored, None for nothing, InvalidDraft for anything
+    that is not an https link to one of MAP_HOSTS (no credentials, no port)."""
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    if len(raw) > MAP_URL_MAX or any(ch.isspace() or not ch.isprintable() for ch in raw):
+        raise InvalidDraft("a map link that cannot be stored")
+    try:
+        parts = urlsplit(raw)
+        port = parts.port
+    except ValueError:
+        raise InvalidDraft("a map link that cannot be read") from None
+    host = (parts.hostname or "").lower()
+    if (
+        parts.scheme.lower() != "https"
+        or host not in MAP_HOSTS
+        or parts.username is not None
+        or parts.password is not None
+        or port is not None
+        or (host in _MAPS_PATH_ONLY and not parts.path.startswith("/maps"))
+    ):
+        raise InvalidDraft("only Google, Yandex or 2GIS map links")
+    return urlunsplit(("https", host, parts.path, parts.query, ""))
+
+
+def _point(lat: str, lon: str) -> tuple[Decimal, Decimal] | None:
+    try:
+        la = Decimal(lat).quantize(Decimal("0.000001"))
+        lo = Decimal(lon).quantize(Decimal("0.000001"))
+    except InvalidOperation:
+        return None
+    return (la, lo) if -90 <= la <= 90 and -180 <= lo <= 180 else None
+
+
+def point_of_map_url(url: str | None) -> tuple[Decimal, Decimal] | None:
+    """The point a cleaned map link names, when it names one in the link itself.
+    Short links (maps.app.goo.gl/...) do not; they stay a link, never fetched."""
+    if not url:
+        return None
+    parts = urlsplit(url)
+    host = parts.hostname or ""
+    query = parse_qs(parts.query)
+    if "google" in host:
+        at = _GOOGLE_AT.search(parts.path)
+        if at:
+            return _point(at.group(1), at.group(2))
+        for key in ("query", "q", "ll"):
+            pair = _PAIR.match(query.get(key, [""])[0])
+            if pair:
+                return _point(pair.group(1), pair.group(2))
+        return None
+    # Yandex and 2GIS put the longitude first.
+    for key in ("ll", "pt", "m"):
+        pair = _PAIR.match(query.get(key, [""])[0])
+        if pair:
+            return _point(pair.group(2), pair.group(1))
+    return None
+
+
+def _checked_venues(venues: tuple[VenueDraft, ...]) -> list[dict[str, object]]:
+    """0-VENUES_MAX places, each with a known kind and a name. Anything else is
+    a form the studio could not have produced."""
+    if len(venues) > VENUES_MAX:
+        raise InvalidDraft(f"at most {VENUES_MAX} places")
+    cleaned: list[dict[str, object]] = []
+    for venue in venues:
+        if venue.kind not in VENUE_KINDS:
+            raise InvalidDraft(f"unknown place kind {venue.kind!r}")
+        name = clean_text(venue.name, VENUE_NAME_MAX)
+        if name is None:
+            raise InvalidDraft("a place needs a name")
+        cleaned.append(
+            {
+                "kind": venue.kind,
+                "name": name,
+                "address": clean_text(venue.address, VENUE_ADDRESS_MAX),
+                "map_url": clean_map_url(venue.map_url),
+                "starts_at": venue.starts_at,
+            }
+        )
+    return cleaned
 
 
 def _check_common(template: str, lang: str) -> None:
@@ -255,26 +393,32 @@ async def check_limits(
         raise PageLimitReached("live")
 
 
-async def create_page(
+@dataclass(frozen=True)
+class CheckedDraft:
+    """A draft that passed every rule: the page's columns, its date plan and
+    its places. What create_page writes, and what the studio's preview shows."""
+
+    values: dict[str, object]
+    plan: tuple[list[str], list[datetime]]
+    venues: list[dict[str, object]]
+
+
+async def checked_draft(
     session: AsyncSession,
     *,
     shop_id: int,
     customer_id: int,
     bot_username: str | None,
     draft: YesNoDraft | InviteDraft | ApologyDraft,
-    now: datetime | None = None,
-) -> SharePage:
-    """Write one page, or raise PageLimitReached / InvalidDraft.
-
-    Call inside the handler's transaction: the limit is checked under a lock
-    that the commit releases, so two taps on Create count as two.
-    """
-    now = now or datetime.now(UTC)
+    now: datetime,
+) -> CheckedDraft:
+    """THE rules for a new page, shared by the bot and the studio (CP27).
+    Raises InvalidDraft. The premium wall and the limits are create_page's."""
     _check_common(draft.template, draft.lang)
-    if premium.is_premium_template(draft.template):
-        # Raises PremiumLocked: the bot offers these only once unlocked, and
-        # this is the wall behind that offer (CP18, the gift rule).
-        await premium.require(session, shop_id=shop_id, customer_id=customer_id)
+    if draft.music is not None and draft.music not in MUSIC_TRACKS:
+        raise InvalidDraft(f"unknown track {draft.music!r}")
+    plan: tuple[list[str], list[datetime]] = ([], [])
+    venues: list[dict[str, object]] = []
     values: dict[str, object] = {
         "shop_id": shop_id,
         "customer_id": customer_id,
@@ -283,6 +427,7 @@ async def create_page(
         "bot_username": bot_username,
         # The same clock the limit is checked against, not the server's.
         "created_at": now,
+        "music": draft.music,
     }
     if isinstance(draft, YesNoDraft):
         if draft.question_preset not in QUESTION_PRESETS:
@@ -312,14 +457,23 @@ async def create_page(
         if draft.event_type not in EVENT_TYPES:
             raise InvalidDraft(f"unknown event type {draft.event_type!r}")
         name_1 = clean_text(draft.name_1, NAME_MAX)
+        venues = _checked_venues(draft.venues)
+        place_1 = venues[0] if venues else None
         venue = clean_text(draft.venue, VENUE_MAX)
+        if venue is None and place_1 is not None:
+            parts = (place_1["name"], place_1["address"])
+            venue = clean_text(", ".join(str(part) for part in parts if part), VENUE_MAX)
         if name_1 is None or venue is None:
             raise InvalidDraft("an invitation needs a name and a venue")
         tz = await _shop_timezone(session, shop_id)
         first, last = event_window(now.astimezone(tz).date())
         if not first <= draft.event_date <= last:
             raise InvalidDraft("event date outside the window the picker offers")
-        lat, lon = draft.location if draft.location is not None else (None, None)
+        location = draft.location
+        if location is None and place_1 is not None:
+            map_url = place_1["map_url"]
+            location = point_of_map_url(map_url if isinstance(map_url, str) else None)
+        lat, lon = location if location is not None else (None, None)
         if lat is not None and lon is not None and not (-90 <= lat <= 90 and -180 <= lon <= 180):
             raise InvalidDraft("location out of range")
         values |= {
@@ -337,18 +491,51 @@ async def create_page(
             "seal_monogram": _draft_monogram(draft.seal_monogram),
             "expires_at": invite_expiry(draft.event_date, tz),
         }
+    return CheckedDraft(values=values, plan=plan, venues=venues)
+
+
+async def create_page(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    bot_username: str | None,
+    draft: YesNoDraft | InviteDraft | ApologyDraft,
+    now: datetime | None = None,
+) -> SharePage:
+    """Write one page, or raise PageLimitReached / InvalidDraft / PremiumLocked.
+
+    Call inside the handler's transaction: the limit is checked under a lock
+    that the commit releases, so two taps on Create count as two.
+    """
+    now = now or datetime.now(UTC)
+    _check_common(draft.template, draft.lang)
+    if premium.is_premium_template(draft.template) or draft.music is not None:
+        # Raises PremiumLocked: the bot offers these only once unlocked, and
+        # this is the wall behind that offer (CP18, the gift rule). Music is
+        # premium too (premium.PREMIUM_FIELDS).
+        await premium.require(session, shop_id=shop_id, customer_id=customer_id)
+    checked = await checked_draft(
+        session,
+        shop_id=shop_id,
+        customer_id=customer_id,
+        bot_username=bot_username,
+        draft=draft,
+        now=now,
+    )
 
     await _lock_customer(session, customer_id)
     await check_limits(session, shop_id=shop_id, customer_id=customer_id, now=now)
 
     for _attempt in range(3):
-        page = SharePage(token=new_token(), **values)
+        page = SharePage(token=new_token(), **checked.values)
         try:
             async with session.begin_nested():
                 session.add(page)
                 await session.flush()
-                if isinstance(draft, YesNoDraft):
-                    _add_plan(session, page, *plan)
+                if checked.plan != ([], []) or checked.venues:
+                    _add_plan(session, page, *checked.plan)
+                    _add_venues(session, page, checked.venues)
                     await session.flush()
         except IntegrityError as clash:
             # 128 random bits do not collide; this is here so a collision is a
@@ -445,6 +632,7 @@ async def delete_page(
     if deleted is None:
         return False
     await session.execute(delete(SharePageOption).where(SharePageOption.page_id == page_id))
+    await session.execute(delete(SharePageVenue).where(SharePageVenue.page_id == page_id))
     await purge_photos(session, [page_id], now=now)
     await session.execute(delete(SharePageWish).where(SharePageWish.page_id == page_id))
     await session.execute(
@@ -471,6 +659,7 @@ async def scrub_expired(session: AsyncSession, *, now: datetime | None = None) -
             update(SharePageRsvp).where(SharePageRsvp.page_id.in_(ids)).values(guest_name=None)
         )
         await session.execute(delete(SharePageOption).where(SharePageOption.page_id.in_(ids)))
+        await session.execute(delete(SharePageVenue).where(SharePageVenue.page_id.in_(ids)))
         await purge_photos(session, ids, now=now)
         await session.execute(delete(SharePageWish).where(SharePageWish.page_id.in_(ids)))
     return len(ids)
@@ -832,6 +1021,12 @@ async def release_notification(session: AsyncSession, *, page_id: int, kind: str
     await session.execute(update(SharePage).where(SharePage.id == page_id).values(**values))
 
 
+async def shop_brand(session: AsyncSession, *, shop_id: int) -> tuple[str, str]:
+    """(name, timezone) of a shop, as a page shows it (the studio's preview)."""
+    row = (await session.execute(select(Shop.name, Shop.timezone).where(Shop.id == shop_id))).one()
+    return str(row.name), str(row.timezone or "Asia/Tashkent")
+
+
 async def _shop_timezone_name(session: AsyncSession, shop_id: int) -> str:
     return str(
         await session.scalar(select(Shop.timezone).where(Shop.id == shop_id)) or "Asia/Tashkent"
@@ -885,6 +1080,22 @@ def _add_plan(
                 shop_id=page.shop_id, page_id=page.id, kind="slot", position=n, slot_at=slot
             )
         )
+
+
+def _add_venues(session: AsyncSession, page: SharePage, venues: list[dict[str, object]]) -> None:
+    for n, venue in enumerate(venues, start=1):
+        session.add(SharePageVenue(shop_id=page.shop_id, page_id=page.id, position=n, **venue))
+
+
+async def venues_of(session: AsyncSession, *, page_id: int) -> list[SharePageVenue]:
+    """A taklifnoma's places (CP27), in the creator's order; [] for none."""
+    return list(
+        await session.scalars(
+            select(SharePageVenue)
+            .where(SharePageVenue.page_id == page_id)
+            .order_by(SharePageVenue.position)
+        )
+    )
 
 
 async def has_plan(session: AsyncSession, *, page_id: int) -> bool:
@@ -1017,6 +1228,87 @@ async def choose(
         .values(chosen_place=place.place, chosen_slot_at=slot.slot_at, chosen_at=now)
     )
     return ChoiceOutcome(page.id, True, place.place, slot.slot_at, tz)
+
+
+async def set_venues(
+    session: AsyncSession,
+    *,
+    shop_id: int,
+    customer_id: int,
+    page_id: int,
+    venues: tuple[VenueDraft, ...],
+    now: datetime | None = None,
+) -> SharePage:
+    """Replace the places of THIS customer's own live invitation (CP27.3).
+
+    Scoped like update_page. 1..VENUES_MAX places, checked by the same rules as
+    on creation. Place 1 becomes the page's `venue`; the page's map point
+    follows place 1's link when that link names a point, and is otherwise
+    KEPT, so a pin sent in the bot is not lost by an edit in the studio.
+    """
+    now = now or datetime.now(UTC)
+    page = await session.scalar(
+        select(SharePage)
+        .where(
+            SharePage.id == page_id,
+            SharePage.shop_id == shop_id,
+            SharePage.customer_id == customer_id,
+            SharePage.kind == PageKind.INVITE.value,
+            SharePage.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if page is None or page.expires_at <= now:
+        raise EditRefused("gone")
+    try:
+        cleaned = _checked_venues(venues)
+    except InvalidDraft:
+        raise EditRefused("invalid") from None
+    if not cleaned:
+        raise EditRefused("invalid")
+    first = cleaned[0]
+    parts = (first["name"], first["address"])
+    venue = clean_text(", ".join(str(part) for part in parts if part), VENUE_MAX)
+    values: dict[str, object] = {"venue": venue, "edited_at": now}
+    map_url = first["map_url"]
+    point = point_of_map_url(map_url if isinstance(map_url, str) else None)
+    if point is not None:
+        values["location_lat"], values["location_lon"] = point
+    await session.execute(delete(SharePageVenue).where(SharePageVenue.page_id == page.id))
+    _add_venues(session, page, cleaned)
+    await session.execute(update(SharePage).where(SharePage.id == page.id).values(**values))
+    await session.flush()
+    await session.refresh(page)
+    return page
+
+
+@dataclass(frozen=True)
+class PageCounts:
+    """What a creator may see about their own page: COUNTS ONLY (CP27.3).
+    Never who opened it, who answered or what a guest typed."""
+
+    views: int
+    cta_clicks: int
+    answered: bool
+    coming: int
+    guests: int
+    not_coming: int
+
+
+async def page_counts(session: AsyncSession, *, page: SharePage) -> PageCounts:
+    rsvp = (
+        await rsvp_summary(session, shop_id=page.shop_id, page_id=page.id)
+        if page.kind == PageKind.INVITE
+        else RsvpSummary(coming=0, guests=0, not_coming=0)
+    )
+    return PageCounts(
+        views=page.view_count,
+        cta_clicks=page.cta_click_count,
+        answered=page.answered_at is not None,
+        coming=rsvp.coming,
+        guests=rsvp.guests,
+        not_coming=rsvp.not_coming,
+    )
 
 
 @dataclass(frozen=True)

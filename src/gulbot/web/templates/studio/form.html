@@ -1,0 +1,228 @@
+{% extends "studio/_layout.html" %}
+{%- macro error(key) -%}
+{%- if v.state.errors.get(key) %}<span class="error" id="err-{{ key }}">{{ v.state.errors[key] }}</span>{% endif -%}
+{%- endmacro -%}
+{%- macro described(key) -%}
+{%- if v.state.errors.get(key) %} aria-invalid="true" aria-describedby="err-{{ key }}"{% endif -%}
+{%- endmacro -%}
+{% block main %}
+{%- if v.edit_id %}
+<h1>{{ v.kinds[v.state.kind] }}ni tahrirlash</h1>
+<p class="lead">O‘zgartiring va «Saqlash» ni bosing — havola o‘sha-o‘sha qoladi.</p>
+{%- else %}
+<h1>{{ v.kinds[v.state.kind] }} yaratish</h1>
+<nav class="tabs" aria-label="Sahifa turi">
+  {%- for key, label in v.kinds.items() %}
+  <a href="/studio?kind={{ key }}" class="tab"{% if v.state.kind == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  {%- endfor %}
+</nav>
+<p class="lead">Hammasini shu bitta sahifada to‘ldiring, dizaynni tanlang va «Yaratish» ni bosing.</p>
+{%- endif %}
+{%- if v.problem is defined and v.problem %}
+<p class="problem" role="alert">{{ v.problem }}</p>
+{%- endif %}
+{%- set submit_action = "save" if v.edit_id else "create" %}
+{%- set submit_label = "Saqlash" if v.edit_id else "Yaratish" %}
+<form method="post" action="{% if v.edit_id %}/studio/page/{{ v.edit_id }}/edit{% else %}/studio/create{% endif %}" class="studio-form" novalidate>
+  {#- Enter in any field means the main button, not the first place's "O'chirish". #}
+  <button type="submit" name="action" value="{{ submit_action }}" class="default-submit" tabindex="-1" aria-hidden="true">{{ submit_label }}</button>
+  <input type="hidden" name="edit_id" value="{{ v.edit_id }}">
+  <input type="hidden" name="csrf" value="{{ v.csrf }}">
+  <input type="hidden" name="kind" value="{{ v.state.kind }}">
+  <input type="hidden" name="venue_count" value="{{ v.state.venues|length }}">
+
+  {%- if v.state.kind == "invite" %}
+  <section class="card" aria-labelledby="s-event">
+    <h2 id="s-event">Tadbir</h2>
+    <label class="field">
+      <span class="label">Tadbir turi</span>
+      <select name="event_type"{{ described('event_type') }}>
+        {%- for key, label in v.events.items() %}
+        <option value="{{ key }}"{% if v.state.event_type == key %} selected{% endif %}>{{ label }}</option>
+        {%- endfor %}
+      </select>
+      {{ error('event_type') }}
+    </label>
+    {{ language() }}
+    <label class="field">
+      <span class="label">Ism (masalan, kuyov yoki yubilyar)</span>
+      <input type="text" name="name_1" value="{{ v.state.name_1 }}" maxlength="60" autocomplete="off"{{ described('name_1') }}>
+      {{ error('name_1') }}
+    </label>
+    <label class="field">
+      <span class="label">Ikkinchi ism <span class="opt">(ixtiyoriy)</span></span>
+      <input type="text" name="name_2" value="{{ v.state.name_2 }}" maxlength="60" autocomplete="off">
+    </label>
+    <div class="pair">
+      <label class="field">
+        <span class="label">Sana</span>
+        <input type="date" name="event_date" value="{{ v.state.event_date }}" min="{{ v.date_min }}" max="{{ v.date_max }}"{{ described('event_date') }}>
+        {{ error('event_date') }}
+      </label>
+      <label class="field">
+        <span class="label">Vaqt</span>
+        <input type="time" name="event_time" value="{{ v.state.event_time }}"{{ described('event_time') }}>
+        {{ error('event_time') }}
+      </label>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="s-venues">
+    <h2 id="s-venues">Joylar</h2>
+    <p class="hint">To‘yxona, restoran yoki uy — har birini alohida yozing. Xarita havolasini Google, Yandex yoki 2GIS dan nusxalab qo‘ying.</p>
+    {{ error('venues') }}
+    {%- for row in v.state.venues %}
+    {%- set n = loop.index %}
+    <fieldset class="venue-row"{% if row.error %} aria-describedby="err-venue-{{ n }}"{% endif %}>
+      <legend>{{ n }}-joy</legend>
+      <div class="chips" role="radiogroup" aria-label="Joy turi">
+        {%- for key, label in v.chips.items() %}
+        <label class="chip"><input type="radio" name="venue_kind_{{ n }}" value="{{ key }}"{% if row.kind == key %} checked{% endif %}><span>{{ label }}</span></label>
+        {%- endfor %}
+      </div>
+      <label class="field">
+        <span class="label">Joy nomi</span>
+        <input type="text" name="venue_name_{{ n }}" value="{{ row.name }}" maxlength="80" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">Manzil <span class="opt">(ixtiyoriy)</span></span>
+        <input type="text" name="venue_address_{{ n }}" value="{{ row.address }}" maxlength="160" autocomplete="off">
+      </label>
+      <label class="field">
+        <span class="label">Xarita havolasi <span class="opt">(ixtiyoriy)</span></span>
+        <input type="url" name="venue_map_{{ n }}" value="{{ row.map_url }}" maxlength="300" inputmode="url" autocomplete="off" placeholder="https://maps.app.goo.gl/…">
+      </label>
+      <label class="field narrow-field">
+        <span class="label">Vaqt <span class="opt">(ixtiyoriy)</span></span>
+        <input type="time" name="venue_time_{{ n }}" value="{{ row.time }}">
+      </label>
+      {%- if row.error %}<span class="error" id="err-venue-{{ n }}">{{ row.error }}</span>{% endif %}
+      {%- if v.state.venues|length > 1 %}
+      <button type="submit" name="action" value="remove_{{ n }}" class="link danger">Bu joyni o‘chirish</button>
+      {%- endif %}
+    </fieldset>
+    {%- endfor %}
+    {%- if v.state.venues|length < v.venues_max %}
+    <button type="submit" name="action" value="add_venue" class="secondary">+ Joy qo‘shish</button>
+    {%- endif %}
+  </section>
+
+  <section class="card" aria-labelledby="s-message">
+    <h2 id="s-message">Xabar va javoblar</h2>
+    <label class="field">
+      <span class="label">Mehmonlarga xabar <span class="opt">(ixtiyoriy, 400 belgigacha)</span></span>
+      <textarea name="message" rows="4" maxlength="400">{{ v.state.message }}</textarea>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="rsvp" value="1"{% if v.state.rsvp %} checked{% endif %}>
+      <span>Mehmonlar «Kelaman / Kela olmayman» deb javob bera olsin</span>
+    </label>
+  </section>
+
+  {%- elif v.state.kind == "yesno" %}
+  <section class="card" aria-labelledby="s-question">
+    <h2 id="s-question">Savol</h2>
+    {{ language() }}
+    <fieldset class="plain"{{ described('question_preset') }}>
+      <legend class="label">Qaysi savol?</legend>
+      {%- for key, label in v.questions.items() %}
+      <label class="check"><input type="radio" name="question_preset" value="{{ key }}"{% if v.state.question_preset == key %} checked{% endif %}><span>{{ label }}</span></label>
+      {%- endfor %}
+      {{ error('question_preset') }}
+    </fieldset>
+    <label class="field">
+      <span class="label">O‘z savolingiz <span class="opt">(«O‘z savolim» tanlansa, 140 belgigacha)</span></span>
+      <input type="text" name="question" value="{{ v.state.question }}" maxlength="140" autocomplete="off"{{ described('question') }}>
+      {{ error('question') }}
+    </label>
+    {{ notify() }}
+  </section>
+
+  <section class="card" aria-labelledby="s-plan">
+    <h2 id="s-plan">Uchrashuv rejasi <span class="opt">(ixtiyoriy)</span></h2>
+    <p class="hint">«Ha» degan kishi joy va vaqtni o‘zi tanlaydi. Bo‘sh qoldirsangiz, reja bo‘lmaydi.</p>
+    {{ error('plan') }}
+    {%- for place in v.state.places %}
+    <label class="field">
+      <span class="label">{{ loop.index }}-joy</span>
+      <input type="text" name="place_{{ loop.index }}" value="{{ place }}" maxlength="80" autocomplete="off">
+    </label>
+    {%- endfor %}
+    {%- for slot in v.state.slots %}
+    <label class="field">
+      <span class="label">{{ loop.index }}-vaqt</span>
+      <input type="datetime-local" name="slot_{{ loop.index }}" value="{{ slot }}"{{ described('slots') }}>
+    </label>
+    {%- endfor %}
+    {{ error('slots') }}
+  </section>
+
+  {%- else %}
+  <section class="card" aria-labelledby="s-letter">
+    <h2 id="s-letter">Maktub</h2>
+    {{ language() }}
+    <label class="field">
+      <span class="label">Uzr so‘zlaringiz <span class="opt">(400 belgigacha)</span></span>
+      <textarea name="letter" rows="6" maxlength="400"{{ described('letter') }}>{{ v.state.letter }}</textarea>
+      {{ error('letter') }}
+    </label>
+    {{ notify() }}
+  </section>
+  {%- endif %}
+
+  <section class="card" aria-labelledby="s-design">
+    <h2 id="s-design">Dizayn va musiqa</h2>
+    {{ error('template') }}
+    {#- CP27.1b: one card here; the forty designs live on their own screen. #}
+    {%- set d = v.chosen %}
+    {%- if d %}
+    <input type="hidden" name="template" value="{{ d.key }}">
+    <div class="chosen design{% if d.locked %} is-locked{% endif %}" data-design="{{ d.key }}">
+      <img src="{{ static(d.thumb) }}" alt="" width="96" height="171" decoding="async">
+      <div class="chosen-text">
+        <span class="design-name">{{ d.name }}{% if d.premium %} <span class="star" aria-label="premium">⭐</span>{% endif %}</span>
+        {%- if d.locked %}
+        <span class="lock">🔒 Yopiq — {{ v.locked_text }}</span>
+        {%- endif %}
+        <button type="submit" class="secondary" formaction="/studio/design" name="action" value="pick">O‘zgartirish</button>
+        <button type="submit" class="link" formaction="/studio/preview" formtarget="_blank" name="preview_template" value="{{ d.key }}">Ko‘rish</button>
+      </div>
+    </div>
+    {%- else %}
+    <p class="hint">Dizayn tanlanmagan.</p>
+    <button type="submit" class="secondary" formaction="/studio/design" name="action" value="pick">Dizayn tanlash</button>
+    {%- endif %}
+    <label class="field music-field">
+      <span class="label">Musiqa ⭐ <span class="opt">(ixtiyoriy)</span></span>
+      <select name="music"{{ described('music') }}>
+        <option value="">Musiqasiz</option>
+        {%- for key, label in v.tracks.items() %}
+        <option value="{{ key }}"{% if v.state.music == key %} selected{% endif %}{% if not v.premium_open %} disabled{% endif %}>{{ label }}{% if not v.premium_open %} 🔒{% endif %}</option>
+        {%- endfor %}
+      </select>
+      {{ error('music') }}
+    </label>
+  </section>
+
+  <div class="actions">
+    <button type="submit" name="action" value="{{ submit_action }}" class="primary">{{ submit_label }}</button>
+  </div>
+</form>
+{% endblock %}
+{%- macro language() -%}
+<label class="field">
+  <span class="label">Sahifa tili</span>
+  <select name="lang"{{ described('lang') }}>
+    {%- for key, label in v.languages.items() %}
+    <option value="{{ key }}"{% if v.state.lang == key %} selected{% endif %}>{{ label }}</option>
+    {%- endfor %}
+  </select>
+  {{ error('lang') }}
+</label>
+{%- endmacro -%}
+{%- macro notify() -%}
+<label class="check">
+  <input type="checkbox" name="notify" value="1"{% if v.state.notify %} checked{% endif %}>
+  <span>Javob berishganda botda xabar olay</span>
+</label>
+{%- endmacro -%}

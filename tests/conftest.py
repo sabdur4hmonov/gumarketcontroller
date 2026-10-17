@@ -29,6 +29,12 @@ from gulbot.config import Settings, get_settings
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
+# CP27.5: production runs WITHOUT the old share-page wizard (the bot's pages
+# menu is one button into Taklifnoma Studio). The suite keeps the wizard ON so
+# its many tests keep proving the code SHARE_WIZARD_IN_BOT=true brings back;
+# tests/test_share_pages_slim.py switches it off and tests the default.
+os.environ["SHARE_WIZARD_IN_BOT"] = "true"
+
 
 @pytest.fixture(scope="session")
 def settings() -> Settings:

@@ -1,0 +1,447 @@
+{
+  "caught": 63,
+  "total": 63,
+  "results": [
+    {
+      "guard": "every /studio route behind the gate",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_studio_web.py::test_every_studio_route_refuses_a_request_without_a_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "CSRF on every POST",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_every_post_needs_the_sessions_csrf_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "a GET never spends the link",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_opening_the_link_does_not_spend_it",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "single use (compare-and-swap)",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_works_once_and_opens_a_session_for_its_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "link TTL",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_expires_after_fifteen_minutes",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "hash-only storage",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_a_link_is_stored_as_its_hash_only",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "link rate limit",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_links_are_rate_limited_per_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "entitlement re-checked on every request",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_pausing_the_shop_closes_the_studio_on_the_next_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "entitlement: a paused shop",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_auth.py::test_entitlement_is_rechecked_at_spending_and_on_every_request",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "revocation at logout",
+      "file": "src/gulbot/services/studio.py",
+      "test": "tests/test_studio_web.py::test_logout_ends_the_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "cookie Secure on https",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_cookie_is_httponly_lax_scoped_and_secure_on_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "studio login rate limit",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_login_is_rate_limited",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "a creator sees only their own pages",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_a_creator_sees_only_their_own_pages",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "premium wall on create",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_web.py::test_premium_designs_are_locked_with_the_cp18_wording",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the preview saves nothing",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_the_preview_shows_the_creators_data_and_saves_nothing",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "studio CSP (form-action self, studio only)",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_studio_web.py::test_studio_pages_may_post_to_themselves_and_public_pages_may_not",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "map links: allowed hosts only",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_anything_else_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "map links: https only",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_anything_else_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "places scrubbed with a deleted page",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_places_go_with_the_page_on_delete_and_on_expiry",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "at most five places",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_share_page_venues.py::test_places_the_form_could_not_produce_are_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the public page lists the places",
+      "file": "src/gulbot/web/app.py",
+      "test": "tests/test_share_page_venues.py::test_the_public_page_lists_the_places",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "the bot sends the studio link",
+      "file": "src/gulbot/bot/routers/share_pages.py",
+      "test": "tests/test_studio_bot.py::test_the_button_sends_a_one_time_link_for_this_customer",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: a locked design cannot be chosen",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_a_locked_design_can_be_looked_at_but_not_chosen",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: an unknown design cannot be chosen",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_an_unknown_design_or_filter_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the category filter",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the free/premium filter",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: every design has a category",
+      "file": "src/gulbot/web/studio_designs.py",
+      "test": "tests/test_studio_picker.py::test_every_design_has_a_category",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the picker carries what was typed",
+      "file": "src/gulbot/web/templates/studio/picker.html",
+      "test": "tests/test_studio_picker.py::test_the_picker_keeps_what_was_typed_and_filters",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "1b: the form carries one design card",
+      "file": "src/gulbot/web/templates/studio/form.html",
+      "test": "tests/test_studio_picker.py::test_the_form_shows_one_chosen_design_not_forty",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: music is premium on create",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_kinds.py::test_music_is_premium_and_nothing_is_made_without_the_gift",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: only our own tracks (shared rules)",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_kinds.py::test_the_shared_rules_refuse_a_track_that_is_not_ours",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: a date plan needs a place and a time",
+      "file": "src/gulbot/web/studio_form.py",
+      "test": "tests/test_studio_kinds.py::test_a_custom_question_and_its_mistakes",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: an unknown kind falls back to the invitation",
+      "file": "src/gulbot/web/studio_form.py",
+      "test": "tests/test_studio_kinds.py::test_the_tabs_switch_the_form",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: a photo is premium (shared service)",
+      "file": "src/gulbot/services/share_page_photos.py",
+      "test": "tests/test_studio_kinds.py::test_a_photo_is_premium",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: clearing photos only on one's own page",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: a page id is only ever this creator's own page",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_pages.py::test_another_creators_page_is_404_everywhere",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: delete asks once",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_pages.py::test_delete_asks_once_then_scrubs",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: an edit keeps a pin the new link does not name",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_pages.py::test_set_venues_keeps_a_pin_the_new_link_does_not_name",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "3: an edit to a premium part needs the gift (shared service)",
+      "file": "src/gulbot/services/share_pages.py",
+      "test": "tests/test_studio_pages.py::test_an_edit_to_a_premium_design_needs_the_gift",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data must carry this bot's signature",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data older than an hour is refused",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[stale]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data from the future is refused",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[future]",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: launch data opens one session (replay nonce)",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_launch_data_opens_one_session_only",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the key is THIS shop's bot token",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_bad_launch_data_is_refused[other_shops_bot] tests/test_studio_webapp.py::test_valid_launch_data_opens_the_same_session",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the legacy shop uses the process token",
+      "file": "src/gulbot/services/studio_webapp.py",
+      "test": "tests/test_studio_webapp.py::test_the_legacy_shop_is_checked_with_the_process_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the POST needs JSON and X-Requested-With",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_webapp.py::test_the_post_needs_json_and_the_header",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the page carries only a well-formed bot name",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_webapp.py::test_the_page_loads_only_our_own_script",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "4: the Mini App button only on https",
+      "file": "src/gulbot/bot/routers/share_pages.py",
+      "test": "tests/test_studio_webapp.py::test_the_bot_offers_the_mini_app_only_on_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: the wizard is off by default",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_the_wizard_is_off_by_default",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: off means the one-button menu",
+      "file": "src/gulbot/bot/routers/__init__.py",
+      "test": "tests/test_share_pages_slim.py::test_the_menu_is_one_button",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: an old wizard button answers with the studio",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_an_old_wizard_button_sends_a_studio_link",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: a conversation left mid-wizard is cleared",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_a_conversation_left_mid_wizard_is_cleared",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: every wizard button factory is listed",
+      "file": "src/gulbot/bot/routers/share_pages_slim.py",
+      "test": "tests/test_share_pages_slim.py::test_every_old_wizard_button_is_covered",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "5: the wishes notification router stays",
+      "file": "src/gulbot/bot/routers/__init__.py",
+      "test": "tests/test_share_pages_slim.py::test_the_slim_dispatcher_passes_the_shadow_sweep",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: upload size from Content-Length, before reading",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: the upload read stops at the cap",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: an upload needs the session's CSRF token",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: a token in a studio URL is refused unread",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_tokens.py::test_an_upload_without_its_body_token_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: the upload's token comes from its body",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_tokens.py::test_the_upload_carries_its_token_in_the_body",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: the upload form's URL carries no token",
+      "file": "src/gulbot/web/templates/studio/done.html",
+      "test": "tests/test_studio_tokens.py::test_no_url_redirect_or_log_line_carries_a_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A2: over http the bot keeps the wizard",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_the_wizard_stays_unless_the_pages_are_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A2: production refuses studio-only mode without https",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_production_refuses_studio_only_mode_without_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: a non-multipart upload is refused, not a crash",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_every_post_needs_the_sessions_csrf_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<section class="panel narrow">
+  {%- if v.fresh %}
+  <h1>{{ v.kind }} tayyor</h1>
+  {%- else %}
+  <p class="page-kind">{{ v.kind }}</p>
+  <h1>{{ v.title }}</h1>
+  {%- endif %}
+  {%- if v.problem is defined and v.problem %}
+  <p class="problem" role="alert">{{ v.problem }}</p>
+  {%- endif %}
+  <p>Havolani nusxalang va yuboring.</p>
+  <label class="field">
+    <span class="label">Sahifa havolasi</span>
+    <input id="page-url" type="text" value="{{ v.url }}" readonly>
+  </label>
+  <div class="row">
+    <button type="button" class="primary" data-copy="page-url" data-done="Nusxalandi ✓" hidden>Nusxalash</button>
+    <a class="secondary" href="{{ v.url }}" target="_blank" rel="noopener">Ochib ko‘rish</a>
+  </div>
+  <p class="hint">Botda yuboring: havolani do‘stlaringizga Telegram orqali ulashing — sahifa o‘sha yerda ochiladi.</p>
+</section>
+
+<section class="panel narrow" aria-labelledby="s-counts">
+  <h2 id="s-counts">Hisob</h2>
+  <dl class="counts">
+    <div><dt>Ko‘rishlar</dt><dd data-count="views">{{ v.counts.views }}</dd></div>
+    {%- if v.page_kind == "invite" %}
+    <div><dt>Kelaman</dt><dd data-count="coming">{{ v.counts.coming }}</dd></div>
+    <div><dt>Mehmonlar</dt><dd data-count="guests">{{ v.counts.guests }}</dd></div>
+    <div><dt>Kela olmayman</dt><dd data-count="not_coming">{{ v.counts.not_coming }}</dd></div>
+    {%- else %}
+    <div><dt>Javob</dt><dd data-count="answered">{% if v.counts.answered %}Ha ✓{% else %}hali yo‘q{% endif %}</dd></div>
+    {%- endif %}
+  </dl>
+  <div class="row">
+    <a class="secondary" href="/studio/page/{{ v.page_id }}/edit">Tahrirlash</a>
+    <form method="post" action="/studio/page/{{ v.page_id }}/delete" class="inline">
+      <input type="hidden" name="csrf" value="{{ v.csrf }}">
+      <button type="submit" class="link danger">O‘chirish</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel narrow" aria-labelledby="s-photos">
+  <h2 id="s-photos">Suratlar ⭐ <span class="opt">({{ v.photos }}/{{ v.photo_limit }})</span></h2>
+  {%- if not v.premium_open %}
+  <p class="hint locked-hint">🔒 {{ v.locked_text }}</p>
+  {%- else %}
+  {%- if v.photos < v.photo_limit or v.photo_limit == 1 %}
+  <form method="post" enctype="multipart/form-data" action="/studio/page/{{ v.page_id }}/photo" class="upload">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <label class="field">
+      <span class="label">{% if v.photo_limit == 1 %}Surat (yangisi eskisining o‘rniga){% else %}Surat qo‘shish{% endif %} <span class="opt">({{ v.max_mb }} MB gacha)</span></span>
+      <input type="file" name="photo" accept="image/jpeg,image/png,image/webp">
+    </label>
+    <button type="submit" class="secondary">Yuklash</button>
+  </form>
+  {%- endif %}
+  {%- if v.photos %}
+  <form method="post" action="/studio/page/{{ v.page_id }}/photos/clear">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <button type="submit" class="link danger">Barcha suratlarni o‘chirish</button>
+  </form>
+  {%- endif %}
+  <p class="hint">Surat qayta ishlanadi: joylashuv va boshqa yashirin ma’lumotlar olib tashlanadi.</p>
+  {%- endif %}
+  <p><a href="/studio">Yana bitta yaratish</a></p>
+</section>
+{% endblock %}

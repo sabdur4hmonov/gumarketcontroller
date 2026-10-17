@@ -1,0 +1,13 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<section class="panel narrow">
+  <h1>O‘chirilsinmi?</h1>
+  <p>«{{ v.title }}» ({{ v.kind }}) o‘chiriladi. Havola ishlamay qoladi, yozganlaringiz va suratlar o‘chib ketadi. Buni qaytarib bo‘lmaydi.</p>
+  <form method="post" action="/studio/page/{{ v.page_id }}/delete">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
+    <input type="hidden" name="confirm" value="1">
+    <button type="submit" class="primary danger-button">Ha, o‘chirilsin</button>
+  </form>
+  <p><a href="/studio/page/{{ v.page_id }}">Yo‘q, qaytish</a></p>
+</section>
+{% endblock %}

@@ -98,6 +98,12 @@ Fill it in. Every variable is commented there. The essentials:
 - `PUBLIC_BASE_URL=https://pages.<your-domain>.uz` (an origin: no path, no
   trailing slash). Until it is https, the bots answer the pages menu with
   "coming soon" and the platform bot sends no admin link -- deliberately.
+- `SHARE_WIZARD_IN_BOT=false` (CP27): customers make pages in Taklifnoma Studio
+  and the shop bot's pages menu is one button. This NEEDS the https
+  `PUBLIC_BASE_URL` above: over http a studio link would not open on a phone,
+  so the bot keeps the old wizard by itself, and the production guard refuses
+  to start with `false` here and a non-https `PUBLIC_BASE_URL`. Before the
+  domain exists, set `SHARE_WIZARD_IN_BOT=true`.
 - `WEB_TRUST_PROXY=true`, only because Caddy is in front.
 - `BRAND_NAME`: the product's name in every bot text, the panel and the
   pages. Leave it unset for the working name until the brand is decided.

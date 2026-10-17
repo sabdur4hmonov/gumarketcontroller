@@ -1,0 +1,49 @@
+{% extends "studio/_layout.html" %}
+{%- from "studio/_state.html" import hidden_state -%}
+{% block main %}
+<h1>Dizayn tanlash</h1>
+<p class="lead">Dizaynni tanlang — yozganlaringiz saqlanib turibdi.</p>
+{%- if v.problem is defined and v.problem %}
+<p class="problem" role="alert">{{ v.problem }}</p>
+{%- endif %}
+<form method="post" action="/studio/design" class="studio-form">
+  {{ hidden_state(v.state, v.csrf) }}
+  <input type="hidden" name="cur_cat" value="{{ v.cat }}">
+  <input type="hidden" name="cur_tier" value="{{ v.tier }}">
+
+  <div class="filters" role="group" aria-label="Turkum">
+    {%- for key, label in v.categories.items() %}
+    <button type="submit" name="cat" value="{{ key }}" class="filter"{% if v.cat == key %} aria-pressed="true"{% else %} aria-pressed="false"{% endif %}>{{ label }}</button>
+    {%- endfor %}
+  </div>
+  <div class="filters" role="group" aria-label="Narx">
+    {%- for key, label in v.tiers.items() %}
+    <button type="submit" name="tier" value="{{ key }}" class="filter"{% if v.tier == key %} aria-pressed="true"{% else %} aria-pressed="false"{% endif %}>{{ label }}</button>
+    {%- endfor %}
+  </div>
+
+  {%- if v.any_locked %}
+  <p class="hint locked-hint">{{ v.locked_text }}</p>
+  {%- endif %}
+  {%- if not v.designs %}
+  <p class="hint">Bu tanlovda dizayn yo‘q — boshqa turkumni tanlang.</p>
+  {%- endif %}
+  <div class="designs">
+    {%- for d in v.designs %}
+    <div class="design{% if d.locked %} is-locked{% endif %}{% if d.key == v.state.template %} is-chosen{% endif %}" data-design="{{ d.key }}">
+      <img src="{{ static(d.thumb) }}" alt="" width="150" height="267" loading="lazy" decoding="async">
+      <span class="design-name">{{ d.name }}{% if d.premium %} <span class="star" aria-label="premium">⭐</span>{% endif %}</span>
+      {%- if d.locked %}
+      <span class="lock">🔒 Yopiq</span>
+      {%- else %}
+      <button type="submit" name="choose" value="{{ d.key }}" class="choose">{% if d.key == v.state.template %}Tanlangan ✓{% else %}Tanlash{% endif %}</button>
+      {%- endif %}
+      <button type="submit" class="link" formaction="/studio/preview" formtarget="_blank" name="preview_template" value="{{ d.key }}">Ko‘rish</button>
+    </div>
+    {%- endfor %}
+  </div>
+  <div class="actions">
+    <button type="submit" name="back" value="1" class="secondary wide">← Formaga qaytish</button>
+  </div>
+</form>
+{% endblock %}

@@ -49,6 +49,7 @@ async def main() -> None:
         trust_proxy=settings.web_trust_proxy,
         admin_ids=admin_auth.admin_ids,
         shop_panel_on=True,
+        studio_on=True,
     )
     runner = web.AppRunner(app, access_log=None)
     await runner.setup()

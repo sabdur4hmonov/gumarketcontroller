@@ -1,0 +1,41 @@
+{#- Everything typed into the studio's form, carried as hidden fields to a
+    screen that is not the form (CP27.1b: the design picker). Every kind's
+    fields ride along (CP27.2), so switching back loses nothing. -#}
+{%- macro hidden_state(state, csrf) -%}
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<input type="hidden" name="kind" value="{{ state.kind }}">
+<input type="hidden" name="lang" value="{{ state.lang }}">
+<input type="hidden" name="template" value="{{ state.template }}">
+<input type="hidden" name="music" value="{{ state.music }}">
+<input type="hidden" name="event_type" value="{{ state.event_type }}">
+<input type="hidden" name="name_1" value="{{ state.name_1 }}">
+<input type="hidden" name="name_2" value="{{ state.name_2 }}">
+<input type="hidden" name="event_date" value="{{ state.event_date }}">
+<input type="hidden" name="event_time" value="{{ state.event_time }}">
+<input type="hidden" name="message" value="{{ state.message }}">
+{%- if state.rsvp %}
+<input type="hidden" name="rsvp" value="1">
+{%- endif %}
+<input type="hidden" name="venue_count" value="{{ state.venues|length }}">
+{%- for row in state.venues %}
+{%- set n = loop.index %}
+<input type="hidden" name="venue_kind_{{ n }}" value="{{ row.kind }}">
+<input type="hidden" name="venue_name_{{ n }}" value="{{ row.name }}">
+<input type="hidden" name="venue_address_{{ n }}" value="{{ row.address }}">
+<input type="hidden" name="venue_map_{{ n }}" value="{{ row.map_url }}">
+<input type="hidden" name="venue_time_{{ n }}" value="{{ row.time }}">
+{%- endfor %}
+<input type="hidden" name="question_preset" value="{{ state.question_preset }}">
+<input type="hidden" name="question" value="{{ state.question }}">
+{%- if state.notify %}
+<input type="hidden" name="notify" value="1">
+{%- endif %}
+{%- for place in state.places %}
+<input type="hidden" name="place_{{ loop.index }}" value="{{ place }}">
+{%- endfor %}
+{%- for slot in state.slots %}
+<input type="hidden" name="slot_{{ loop.index }}" value="{{ slot }}">
+{%- endfor %}
+<input type="hidden" name="letter" value="{{ state.letter }}">
+<input type="hidden" name="edit_id" value="{{ state.edit_id }}">
+{%- endmacro -%}

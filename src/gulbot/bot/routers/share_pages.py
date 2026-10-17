@@ -32,7 +32,14 @@ from zoneinfo import ZoneInfo
 from aiogram import Bot, F, Router
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
+from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    LinkPreviewOptions,
+    Message,
+    WebAppInfo,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -91,7 +98,7 @@ from gulbot.models.share_page import (
     SharePage,
 )
 from gulbot.models.shop import Shop
-from gulbot.services import premium, share_pages
+from gulbot.services import premium, share_pages, studio
 from gulbot.services.share_pages import (
     ApologyDraft,
     InviteDraft,
@@ -208,6 +215,51 @@ async def _take_text(
 # --- entry -----------------------------------------------------------------
 
 
+async def _send_studio_link(
+    target: Message, session: AsyncSession, customer: Customer, lang: str, bot: Bot | None
+) -> None:
+    """CP27: a one-time link into Taklifnoma Studio for THIS customer of THIS
+    shop (services/studio.py decides who may have one)."""
+    username = await _bot_username(bot)
+    raw = await studio.mint_link(
+        session,
+        shop_id=customer.shop_id,
+        customer_id=customer.id,
+        bot_username=username,
+    )
+    if raw is None:
+        await target.answer(t("studio.link_refused", lang))
+        return
+    log.info("shop %s: studio link sent to customer %s", customer.shop_id, customer.id)
+    minutes = int(studio.LINK_TTL.total_seconds() // 60)
+    await target.answer(
+        t("studio.link", lang, url=f"{links.base_url()}/studio/enter/{raw}", minutes=minutes),
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+        reply_markup=studio_webapp_keyboard(customer.shop_id, username, lang),
+    )
+
+
+def studio_webapp_keyboard(
+    shop_id: int, username: str | None, lang: str
+) -> InlineKeyboardMarkup | None:
+    """CP27.4: the Mini App button beside the link -- ONLY on https, since
+    Telegram opens Mini Apps from https alone. Otherwise the link is enough."""
+    base = links.base_url()
+    if not base.startswith("https://"):
+        return None
+    query = f"s={shop_id}" + (f"&b={username}" if username else "")
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("ibtn.studio.webapp", lang),
+                    web_app=WebAppInfo(url=f"{base}/studio/app?{query}"),
+                )
+            ]
+        ]
+    )
+
+
 async def open_menu(message: Message, state: FSMContext, lang: str) -> None:
     await state.clear()
     if not links.pages_available():
@@ -232,6 +284,9 @@ async def menu_choice(
         return
     if callback_data.action == "mine":
         await _show_list(target, session, customer, lang)
+        return
+    if callback_data.action == "studio":
+        await _send_studio_link(target, session, customer, lang, callback.bot)
         return
     if callback_data.action == PageKind.YESNO:
         await state.update_data(kind=PageKind.YESNO.value)

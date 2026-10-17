@@ -1960,3 +1960,235 @@ results 10 and FSM 11. Earlier RAM-aborted gates are not passing evidence.
 
 CP25's capacity baseline and production reliability/performance changes follow
 this integration; no capacity claim is inferred from design tests.
+
+## CP27.1 — Taklifnoma Studio: the whole invitation on one web page
+
+The owner tried the bot and rejected its wizard: places and locations asked one
+by one in chat. CP27 moves invitation-making to a web creator that only a link
+from the shop's own bot opens. CP27.1 covers the invitation kind. It is built
+on `main` (`cp27-studio`), ahead of the CP26 design port; CP25 is parked.
+
+### What CP27.1 guarantees
+
+- **The way in is CP18/CP20's, bound to one customer of one shop.** The shop
+  bot's "🌐 Taklifnoma yaratish" mints 32 random bytes, stored as sha256 only,
+  valid 15 minutes, at most five per ten minutes. `GET /studio/enter/<token>`
+  shows a "Kirish" button and never spends the link (Telegram's preview robot
+  reads links). `POST /studio/enter` spends it by compare-and-swap and opens a
+  two-hour session (cookie `gb_studio`: HttpOnly, SameSite=Lax, Path=/studio,
+  Secure whenever the site is https).
+- **One gate for every `/studio` route** (`web/studio.studio_gate`), with CSRF
+  on every POST and refusals audited. A router walk covers routes added later.
+- **Entitlement is one function,** `services/studio.entitled`, checked at
+  minting, at spending and on every request. The owner decided that every
+  customer of this shop may use the studio, unless the shop is paused.
+  Premium designs, photos and music stay behind the CP18 gift, shown locked
+  with the existing "how to unlock" wording.
+- **The bot's rules, not a copy.** `share_pages.checked_draft` is the one set
+  of rules; `create_page` adds the premium wall, the limits and the write. The
+  studio calls `create_page` like the wizard does. The preview renders the real
+  template from `checked_draft` inside a savepoint that is always rolled back.
+- **Places** (`share_page_venues`): up to five, each with a kind (To'yxona,
+  Restoran, Kafe, Bog', Uy, Boshqa), a name, an address, a map link and a time.
+  Map links must be https to Google, Yandex or 2GIS. The server never fetches
+  one; it reads a point from the link only when the link carries one. Place 1
+  also fills `share_pages.venue`/`location`, so every design and the bot keep
+  working. Places are scrubbed with the page (delete, expiry). The public page
+  lists them; a page without places renders as before.
+- **Tenancy:** links and sessions carry the composite FK `(customer_id, shop_id)
+  -> customers`, places `(page_id, shop_id) -> share_pages`. `/studio/done/<id>`
+  shows only the creator's own live page in their own shop. `studio_audit_log`
+  is append-only by trigger.
+- **CSP:** studio routes get the panels' policy (`form-action 'self'`); public
+  pages keep `form-action 'none'`. No inline script or style, no third-party
+  request. The form needs no JavaScript: adding or removing a place
+  round-trips the form, and `studio.js` only adds the copy button.
+
+### Decisions, each with its reason
+
+- **A new table for places.** `share_page_options` holds a Ha/Yo'q page's
+  voting places and times as text only; it cannot carry a kind, an address, a
+  link and a time per place. The migration is additive.
+- **The session lasts two hours, not /shop's one,** because a creator filling a
+  whole invitation must not lose it to the clock.
+- **The design picker uses pre-drawn thumbnails** (`scripts/studio_thumbs.py`:
+  each cover at 360 px through the CP24 harness, 150x267 WebP, 180 KB for all
+  forty). A test fails while any design lacks one.
+- **The wizard stays** until CP27.5; the menu leads with the studio.
+
+### Evidence
+
+Migration `c27a1e5d9f01`: upgrade → downgrade → upgrade on a throwaway
+database, and the models match it with no diff. New tests: studio auth 11,
+places 36, studio web 24, bot 2, and a real-Chrome run at 360 px. That run
+covers in by the link, worst-case strings (an unbroken Cyrillic word, markup),
+a refused map link, a second place, a design, a preview in a new tab, create
+and copy. It checks no overflow, no other origin, no CSP violation, no script
+error, and AA contrast for every visible text. [The mutation sweep](CP27_MUTATIONS.json)
+breaks each new guard on purpose; every one fails its test on an assertion
+(22/22).
+
+The whole suite without the CP24 browser matrix: 7,301 passed, 1 failed, in
+72 minutes. The failure was `test_order_pings.py::test_the_claim_is_committed_before_telegram_is_called`
+("another connection could not see the claim while the send was in flight"),
+a code path CP27 does not touch. Alone it passed three times out of three, and
+its file passed 43/43. It stays OPEN as a CP25 reliability item (the owner's
+decision): the test guards against double messages, and an isolated pass does
+not dismiss a loaded failure (docs/CP25_STATUS.md on codex/cp25-reliability,
+"OPEN CP25 reliability items"). The CP24 browser matrix
+(480 cases: forty designs, three kinds, four languages, worst-case text at
+360 px) plus the studio's browser run then passed 481/481 in 11.5 minutes.
+Lint, format, strict mypy (190 files) and both shadow sweeps are clean.
+
+### Open
+
+- A phone run needs the page server reachable from the phone (CP27.4 needs a
+  public HTTPS origin anyway).
+- The dev database `gulbot` is at CP25's head, which this branch does not
+  contain. Run this branch against its own database.
+
+## CP27.1b — the design picker on its own studio screen
+
+The CP27.1 form was about 6,200 CSS px tall at 360 px because all forty design
+cards sat inline. The data stays on one form; the design is now one card on it
+("O'zgartirish", "Ko'rish"), and the forty live on `POST /studio/design`.
+
+- **No JavaScript.** "O'zgartirish" submits the form to `/studio/design`, which
+  carries everything typed in hidden fields (`templates/studio/_state.html`).
+  Filters are submit buttons: category (Hammasi / To'y / Tug'ilgan kun / Boshqa,
+  opening on the form's event type) and price (Hammasi / Bepul / Premium).
+  "Tanlash" returns to the same form with the new design and nothing lost.
+- **Locked designs** show 🔒 and the CP18 wording, can be previewed, and offer no
+  "Tanlash". The server refuses a forced choice of a locked or unknown design
+  (422, picker shown again).
+- **Grouping is data:** `web/studio_designs.py` puts every design in at least
+  one category. A test fails if a new design has none. It is a picker grouping
+  only; any design still works for any event.
+
+Evidence: the empty form is 2,069 CSS px at 360 px (the browser test asserts it
+is at most 2,600); the picker is a separate 4,619 px screen with all forty, or
+shorter when filtered. Picker tests 7; the studio's browser run now goes
+form → picker → filter → choose → form. Mutations 7/7 (29/29 in total).
+CSP unchanged. The router walk covers the new route.
+
+## CP27.2 — Ha/Yo'q and Uzrnoma in the studio; photos and music (premium)
+
+- **Three kinds, one form.** Tabs are plain links (`/studio?kind=invite|yesno|apology`;
+  anything else is the invitation). Ha/Yo'q: a ready question or one's own,
+  "notify me", and an optional date plan of up to three places and three
+  times (the service allows five; three keeps the form short). Uzrnoma: the
+  letter and "notify me". The form logic moved to `web/studio_form.py`; the
+  picker and preview carry every kind's fields.
+- **The same rules.** Every draft now carries `music`. `share_pages.checked_draft`
+  refuses a track that is not one of `MUSIC_TRACKS`; `create_page` puts music
+  behind the CP18 premium wall like a premium design. The bot builds the same
+  drafts (music stays an edit there), so nothing changed for it.
+- **Photos** are added after creation, on the result screen (a file input
+  cannot survive the form's round trips without JavaScript). They go through
+  `share_page_photos.store_photo`, so the existing rules hold: premium,
+  re-encoded with no EXIF/GPS, six on an invitation, one on a Ha/Yo'q page.
+  The size is checked BEFORE reading: Content-Length above 10 MB + 64 KB is
+  413 with nothing read, and the read stops at 10 MB. The upload is the one
+  multipart POST: the gate cannot read its body (the app caps bodies at 4 KB),
+  so its CSRF token is in the query string of the form's own same-origin
+  action (never sent as a Referer: Referrer-Policy is no-referrer).
+
+Evidence: 14 tests in `tests/test_studio_kinds.py` (kinds, mistakes, previews,
+music with and without the gift, photo premium, cleaning, gallery and Ha/Yo'q
+limits, oversize unread, upload CSRF and cross-customer), a second 360 px
+browser run (Ha/Yo'q with a hostile custom question and music, a real photo
+upload, Uzrnoma with a 400-character unbroken letter). Mutations 9/9 for this
+checkpoint (38/38 in total). 332 tests across studio and share-page suites pass.
+
+## CP27.3 — "Mening taklifnomalarim": list, manage, edit, delete, counts
+
+- `GET /studio/pages` lists THIS creator's live pages in THIS shop
+  (`share_pages.list_pages`); `GET /studio/page/<id>` is a page's own screen:
+  link, counts, photos, "Tahrirlash", "O'chirish". Every route that takes a
+  page id looks it up as this creator's own page (`get_own_page`); anything
+  else is 404, and nothing about it changes.
+- **Counts only** (`share_pages.page_counts`): views, Ha answered, RSVP
+  coming / guests / not coming. Never who opened a page, never a guest's name.
+- **An edit keeps the row and the public link.** The same form in edit mode
+  posts to `/studio/page/<id>/edit`, through the bot's own services:
+  `update_page` (answered Ha/Yo'q pages are locked; premium design or music
+  needs the gift), `set_plan`, and the new `set_venues`. `set_venues` replaces
+  the places, makes place 1 the page's `venue`, and moves the map point only
+  when place 1's link names one, so a pin sent in the bot survives an edit.
+  The picker returns to the edit form. An edit shows every saved date-plan row
+  (up to five), so a page made in the bot loses none.
+- **Delete asks once**, then calls `share_pages.delete_page`: the same scrub
+  as the bot (text, places, photos, wishes, RSVP names); the public link
+  answers 410.
+
+Evidence: 10 tests in `tests/test_studio_pages.py` (list scoping across
+customers and shops, counts with a planted guest name, edit with the same
+token, pin kept, locked Ha/Yo'q, premium edit, picker in edit mode, delete,
+404 everywhere for another creator's page, plant-and-grep on every new
+screen), a third 360 px browser run (create → list → counts → edit, link
+unchanged → delete confirm → empty list). Mutations 4/4 (42/42 in total).
+
+## CP27.4 — Taklifnoma Studio as a Telegram Mini App
+
+- **The button.** With the studio link, the shop's bot now offers
+  "📱 Telegram ichida ochish", a WebAppInfo button to `/studio/app?s=<shop>&b=<bot>`,
+  ONLY when PUBLIC_BASE_URL is https (Telegram opens Mini Apps from https alone).
+  Over http only the link is sent, as before.
+- **No telegram.org script.** `/studio/app` loads only `static/js/studio-app.js`:
+  it reads Telegram's launch data from the URL fragment (`#tgWebAppData=...`,
+  never in a server log), removes it from the address bar, and posts it to
+  `POST /studio/webapp` as JSON with `X-Requested-With: gulbot`, so a
+  cross-site form cannot post it.
+- **The server decides** (`services/studio_webapp.py`):
+  - the key is THIS shop's bot token, by bot/registry's rule (its own stored
+    token, or the process BOT_TOKEN for the one legacy shop);
+  - the HMAC is Telegram's published rule, via the library the bot already uses
+    (`aiogram.utils.web_app.check_webapp_signature`, constant-time compare);
+  - auth_date is at most one hour old and at most a minute in the future;
+  - the data opens ONE session: the sha256 of its own hash is stored under a
+    UNIQUE constraint on the first POST (`studio_webapp_uses`, migration
+    `c27b4d2e8a13`, additive, composite FK to customers); a replay is refused
+    and audited; rows past the window are pruned on the next launch;
+  - the Telegram user must already be this shop's customer, and entitled;
+  - then the same session as a link (`studio.open_session`, now shared).
+- **Not covered:** Telegram Web (web.telegram.org) shows Mini Apps in an
+  iframe; the studio keeps `frame-ancestors 'none'` and SameSite=Lax cookies,
+  so it opens in the Telegram apps (mobile and desktop), not in Telegram Web.
+
+Evidence: migration round-tripped (upgrade → downgrade → upgrade on a
+throwaway DB, single head `c27b4d2e8a13`, models match). 15 tests in
+`tests/test_studio_webapp.py` with launch data crafted by Telegram's rule,
+independently of the code: valid; tampered, stale, future, another shop's
+bot, no hash, garbage, oversize; replay; stranger, other shop's customer,
+paused shop, unknown shop; legacy token; JSON and header required; the page's
+scripts; the button on https and not on http. A real-Chrome run opens
+`/studio/app#tgWebAppData=...` offline and lands in the studio with the
+fragment gone, no foreign request, no CSP violation. Mutations 9/9 (51/51 in
+total).
+
+## CP27.5 — the slim bot: one button into the studio
+
+- **`SHARE_WIZARD_IN_BOT`, default OFF** (`config.share_wizard_in_bot()`, read
+  when a shop bot's dispatcher is built). OFF, `bot/routers.build_routers`
+  registers `share_pages_slim` in place of the wizard and its editors (pages,
+  edit, plan, photo, colours, apology). ON, they come back exactly as they were;
+  their code and tests are kept.
+- **OFF, the pages menu is one button**, "🌐 Taklifnoma yaratish", which sends the
+  studio link (and the Mini App button on https). Nothing the old wizard left
+  goes dead: every menu action and every button it ever sent (`WIZARD_BUTTONS`,
+  a test fails if a new `pg*` factory is not listed) answers with a studio link,
+  and a conversation stopped half-way through it is cleared rather than read as
+  a name or a venue.
+- **Notifications are untouched:** Ha and RSVP messages come from the worker, and
+  the wishes router (a notification with buttons) stays in both modes.
+- **Tests run the wizard ON** (`tests/conftest.py` pins it), so the wizard's own
+  tests keep proving what the flag brings back; `tests/test_share_pages_slim.py`
+  switches it off and tests the default, including a shadow sweep of the slim
+  dispatcher. `make shadow` reads the real default (OFF).
+
+Evidence: `tests/test_share_pages_slim.py` 17 tests (default off and env on,
+one-button menu, five menu actions and six old wizard buttons answer with a
+studio link, every `pg*` factory covered, a half-finished wizard cleared with
+no page made, the slim dispatcher's shadow sweep, the wizard back when on).
+`make shadow` (default off): shop and platform dispatchers clean. Bot, i18n and
+wizard suites with the flag on: 199 passed. Mutations 6/6 (57/57 in total).

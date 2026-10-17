@@ -1,0 +1,11 @@
+{% extends "studio/_layout.html" %}
+{% block main %}
+<section class="panel narrow">
+  <h1>Taklifnoma yaratish</h1>
+  <p>Kirish uchun tugmani bosing. Havola bir martalik.</p>
+  <form method="post" action="/studio/enter">
+    <input type="hidden" name="token" value="{{ v.token }}">
+    <button type="submit" class="primary">Kirish</button>
+  </form>
+</section>
+{% endblock %}

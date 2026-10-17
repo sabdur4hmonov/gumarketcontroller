@@ -71,6 +71,10 @@ class Settings(BaseSettings):
     web_trust_proxy: bool = False
     timezone: str = "Asia/Tashkent"
     environment: str = "local"
+    #: CP27.5: the old step-by-step share-page wizard in the shop bot. OFF by
+    #: default -- pages are made in Taklifnoma Studio and the bot's pages menu is
+    #: one button. True brings the wizard back at once (bot/routers).
+    share_wizard_in_bot: bool = False
     log_level: str = "INFO"
     #: The product's name wherever a person reads it (CP19). The brand is not
     #: decided; this is the ONE place it is written. Read it through
@@ -198,6 +202,13 @@ def production_config_problems(
     ]
     if settings.postgres_password.get_secret_value() == DEV_DEFAULT_PASSWORD:
         problems.append("POSTGRES_PASSWORD is the dev default password")
+    # CP27: studio-only mode (the wizard off) sends customers studio links,
+    # which must open on a phone -- that is https or nothing.
+    if not settings.share_wizard_in_bot and not _pages_are_https(settings):
+        problems.append(
+            "SHARE_WIZARD_IN_BOT is off but PUBLIC_BASE_URL is not https "
+            "(customers' studio links would not open on a phone)"
+        )
     # CP18: a production panel nobody can log into is a panel nobody watches,
     # and a typo in the list must be loud, not a silent lock-out.
     if not parse_admin_ids(settings.platform_admin_telegram_ids):
@@ -234,6 +245,22 @@ def check_production_config(settings: Settings, environ: Mapping[str, str] | Non
             + "\nSet each of these as a real environment variable for this process. "
             "See docs/DEPLOY.md."
         )
+
+
+def _pages_are_https(settings: Settings) -> bool:
+    return settings.public_base_url.strip().startswith("https://")
+
+
+def share_wizard_in_bot() -> bool:
+    """Read when a shop bot's dispatcher is built (bot/routers.build_routers).
+
+    Studio-only mode NEEDS https: a studio link over http does not open on a
+    customer's phone, so without https the old wizard stays, whatever
+    SHARE_WIZARD_IN_BOT says (CP27 fix A2). Production refuses that combination
+    outright (production_config_problems).
+    """
+    settings = get_settings()
+    return settings.share_wizard_in_bot or not _pages_are_https(settings)
 
 
 @lru_cache
