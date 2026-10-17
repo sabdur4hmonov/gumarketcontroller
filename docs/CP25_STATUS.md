@@ -30,6 +30,26 @@ CP27 is built on its own branch `cp27-studio` from `main`, with no CP25 files.
    find why the claim was invisible to another connection under load, and
    whether `main` or this branch can send twice.
 
+   **ROOT CAUSE FOUND, TEST FIXED (2026-10-17, commit b6c044b).** The list was
+   EMPTY: the fake transport's send never ran, so nothing was sent -- the
+   claim was not invisible, and claim-before-send (production code) is not
+   implicated. The `committed_world` fixture set `due_at_utc` with Postgres's
+   `now()` (Docker's VM clock) while the tick ran with the host's
+   `datetime.now(UTC)`; a VM clock ahead of the host left the row not yet due.
+   Reproduced on this branch BEFORE the fix with `now() + interval '1 second'`
+   (`assert [] == ['sending']`). Fix, test-only: the due time comes from the host
+   clock minus one second (CONTRIBUTING, "Time-dependent tests"), and the test
+   first asserts something was sent, with its own message. AFTER: 3/3 alone, file
+   43/43; the old fixture with the skew fails on the new message. It also passed
+   in the loaded cp27 full runs of 2026-10-17 (7,367 and 7,389 tests).
+   Remaining for the next CP25 gate: none for this item beyond the gate itself.
+3. **`DEV_UNLIMITED_PAGES` documented in `.env.example`** (commit ddee5d7):
+   `test_env_example_documents_every_setting` passes again (with
+   test_dev_unlimited_pages and the production guard: 55 passed).
+4. **Still waiting for the owner:** the heavy CP25 capacity runs (they need the
+   owner's RAM; the 500 row failed and 1000 never ran), and the uninspected
+   10-14 gate log above. Nothing heavy was started on 2026-10-17.
+
 ## CURRENT RESUME POINT — read this before chronological history
 
 **DEADLINE STOP — 2026-10-14T10:31:27Z.** The absolute10:30UTC unattended
