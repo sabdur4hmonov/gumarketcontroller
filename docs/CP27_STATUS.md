@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** CP27.1-27.5 done; waiting for the owner's PC test (docs/CP27_MORNING_REPORT.md). Next: owner feedback, then a phone/Mini App run on HTTPS.
+**Now:** CP27 finish (fixes A1-A3) done and gated; CP25 small fixes on codex/cp25-reliability; both branches pushed to origin as a BACKUP (no merge, no PR). Next: the owner's 10-minute review, then merge.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -30,6 +30,10 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.4 Telegram Mini App | c4a2fa3 | green; mutations 51/51 |
 | CP27.5 slim bot (wizard behind SHARE_WIZARD_IN_BOT, off) | 0fbfeb3 | green; mutations 57/57 |
 | End of night gate | 52bba4f | suite 7,367 passed + 1 fixed (.env.example); CP24 matrix + studio browser + infra 492 passed; secrets 0 |
+| Fix A1 no token in any studio URL | 3dcacb5 | upload CSRF in the multipart body; `?csrf=` refused (400); URL/redirect/log walk clean |
+| Fix A2 studio-only needs https | d53e58a | wizard stays over http; production refuses wizard-off + http; .env.example, DEPLOY.md |
+| Fix A3 owner flow automated | 8eaf6cd | 20 screenshots in .cp22-stage/cp27/owner-flow/ (INDEX.txt) |
+| Finish gate | (this run) | suite 7,389 passed / 0 failed / 0 skipped; mutations 63/63 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -47,7 +51,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - Picker categories (to'y / tug'ilgan kun / boshqa) per design are my grouping in `web/studio_designs.py`; edit that dict to regroup.
 - The picker opens on the category of the form's event type; change `category_for_event`.
 - Photos are added on the result screen after creation, not in the form (no JS round trips); move later if wanted.
-- Upload CSRF token travels in the query string (multipart body unreadable by the gate); a JS fetch with a header is the alternative.
+- Upload CSRF token: FIRST field of the multipart body (fix A1, owner's rule); the gate reads only that field; `?csrf=` on any studio URL is 400.
 - Ha/Yo'q date plan shows 3 places and 3 times (service allows 5); raise PLAN_ROWS in web/studio_form.py.
 - Edit keeps the page's map pin unless place 1's new link names a point (`set_venues`); change there to clear it instead.
 - A page's screen is `/studio/page/<id>`; `/studio/done/<id>` is the same screen titled "tayyor" right after creation.
@@ -60,6 +64,8 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - SHARE_WIZARD_IN_BOT defaults OFF; tests/conftest.py pins it ON so the wizard's existing tests keep running; slim mode has its own tests and sweep.
 - Slim mode keeps the wishes router (a notification with buttons); every other old wizard button answers with a studio link.
 - "Mening sahifalarim" in the bot (old "mine" button) now sends the studio link; the list lives at /studio/pages.
+- Over http the bot keeps the wizard whatever SHARE_WIZARD_IN_BOT says (fix A2, owner's rule).
+- Free RAM was 1.20 GiB before the first owner-flow run (rule 1.5); later heavy jobs waited for >= 1.5.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open
