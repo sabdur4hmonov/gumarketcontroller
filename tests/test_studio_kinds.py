@@ -234,8 +234,11 @@ async def _made(client: TestClient, csrf: str, data: dict[str, str]) -> int:
     return int(made.headers["Location"].rsplit("/", 1)[1])
 
 
-def _upload(raw: bytes, name: str = "photo.jpg") -> FormData:
+def _upload(raw: bytes, csrf: str | None, name: str = "photo.jpg") -> FormData:
+    """An upload as the page's form sends it: the CSRF token FIRST, in the body."""
     data = FormData()
+    if csrf is not None:
+        data.add_field("csrf", csrf)
     data.add_field("photo", raw, filename=name, content_type="image/jpeg")
     return data
 
@@ -248,7 +251,7 @@ async def test_a_photo_is_premium(world: dict[str, Any]) -> None:  # noqa: F811
         done = await (await client.get(f"/studio/done/{page_id}")).text()
         assert 'enctype="multipart/form-data"' not in done and "🔒" in done
         refused = await client.post(
-            f"/studio/page/{page_id}/photo?csrf={csrf}", data=_upload(phone_photo(400, 300))
+            f"/studio/page/{page_id}/photo", data=_upload(phone_photo(400, 300), csrf)
         )
         assert refused.status == 422
     assert await db.scalar(text("SELECT count(*) FROM share_page_photos")) == 0
@@ -262,13 +265,13 @@ async def test_a_photo_is_cleaned_and_the_gallery_has_a_limit(world: dict[str, A
         page_id = await _made(client, csrf, form(csrf))
         for _ in range(GALLERY_MAX):
             sent = await client.post(
-                f"/studio/page/{page_id}/photo?csrf={csrf}",
-                data=_upload(phone_photo(400, 300)),
+                f"/studio/page/{page_id}/photo",
+                data=_upload(phone_photo(400, 300), csrf),
                 allow_redirects=False,
             )
             assert sent.status == 303, await sent.text()
         full = await client.post(
-            f"/studio/page/{page_id}/photo?csrf={csrf}", data=_upload(phone_photo(400, 300))
+            f"/studio/page/{page_id}/photo", data=_upload(phone_photo(400, 300), csrf)
         )
         assert full.status == 422 and "chegarasiga" in await full.text()
         junk = await client.post(
@@ -276,12 +279,12 @@ async def test_a_photo_is_cleaned_and_the_gallery_has_a_limit(world: dict[str, A
         )
         assert junk.status == 303
         not_image = await client.post(
-            f"/studio/page/{page_id}/photo?csrf={csrf}", data=_upload(b"not a picture")
+            f"/studio/page/{page_id}/photo", data=_upload(b"not a picture", csrf)
         )
         assert not_image.status == 422
         sent = await client.post(
-            f"/studio/page/{page_id}/photo?csrf={csrf}",
-            data=_upload(phone_photo(2400, 1800)),
+            f"/studio/page/{page_id}/photo",
+            data=_upload(phone_photo(2400, 1800), csrf),
             allow_redirects=False,
         )
         assert sent.status == 303
@@ -300,8 +303,8 @@ async def test_a_yesno_page_keeps_one_photo(world: dict[str, Any]) -> None:  # n
         page_id = await _made(client, csrf, yesno_form(csrf))
         for _ in range(2):
             sent = await client.post(
-                f"/studio/page/{page_id}/photo?csrf={csrf}",
-                data=_upload(phone_photo(400, 300)),
+                f"/studio/page/{page_id}/photo",
+                data=_upload(phone_photo(400, 300), csrf),
                 allow_redirects=False,
             )
             assert sent.status == 303
@@ -330,13 +333,13 @@ async def test_an_oversize_upload_is_refused_before_it_is_read(
     async with TestClient(TestServer(app_for(db))) as client:
         csrf = await log_in(client, db, world["a"], world["ca"])
         page_id = await _made(client, csrf, form(csrf))
-        url = f"/studio/page/{page_id}/photo?csrf={csrf}"
+        url = f"/studio/page/{page_id}/photo"
         # A declared body over the cap: refused from Content-Length, unread.
         huge = b"\xff\xd8" + b"0" * studio_web.UPLOAD_MAX_BYTES
-        assert (await client.post(url, data=_upload(huge))).status == 413
+        assert (await client.post(url, data=_upload(huge, csrf))).status == 413
         # Just over the photo's own cap: the read stops at the cap.
         just_over = b"\xff\xd8" + b"0" * share_page_photos.MAX_INPUT_BYTES
-        response = await client.post(url, data=_upload(just_over))
+        response = await client.post(url, data=_upload(just_over, csrf))
         assert response.status == 422 and "juda katta" in await response.text()
     assert reads == [], "an oversize body reached the photo service"
 
@@ -351,11 +354,13 @@ async def test_an_upload_needs_the_sessions_token_and_its_own_page(world: dict[s
     async with TestClient(TestServer(app_for(db))) as client:
         csrf = await log_in(client, db, world["a"], world["ca"])
         mine = await _made(client, csrf, form(csrf))
-        for url in (f"/studio/page/{mine}/photo", f"/studio/page/{mine}/photo?csrf=nope"):
-            response = await client.post(url, data=_upload(phone_photo(400, 300)))
-            assert response.status == 403, url
+        for token in (None, "nope"):
+            response = await client.post(
+                f"/studio/page/{mine}/photo", data=_upload(phone_photo(400, 300), token)
+            )
+            assert response.status == 403, token
         response = await client.post(
-            f"/studio/page/{theirs}/photo?csrf={csrf}", data=_upload(phone_photo(400, 300))
+            f"/studio/page/{theirs}/photo", data=_upload(phone_photo(400, 300), csrf)
         )
         assert response.status == 404
         cleared = await client.post(

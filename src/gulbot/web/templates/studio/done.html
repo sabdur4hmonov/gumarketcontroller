@@ -49,7 +49,8 @@
   <p class="hint locked-hint">🔒 {{ v.locked_text }}</p>
   {%- else %}
   {%- if v.photos < v.photo_limit or v.photo_limit == 1 %}
-  <form method="post" enctype="multipart/form-data" action="/studio/page/{{ v.page_id }}/photo?csrf={{ v.csrf }}" class="upload">
+  <form method="post" enctype="multipart/form-data" action="/studio/page/{{ v.page_id }}/photo" class="upload">
+    <input type="hidden" name="csrf" value="{{ v.csrf }}">
     <label class="field">
       <span class="label">{% if v.photo_limit == 1 %}Surat (yangisi eskisining o‘rniga){% else %}Surat qo‘shish{% endif %} <span class="opt">({{ v.max_mb }} MB gacha)</span></span>
       <input type="file" name="photo" accept="image/jpeg,image/png,image/webp">

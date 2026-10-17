@@ -42,7 +42,7 @@ from datetime import UTC, date, datetime
 from typing import Any, Final
 from zoneinfo import ZoneInfo
 
-from aiohttp import BodyPartReader, web
+from aiohttp import BodyPartReader, MultipartReader, web
 from multidict import MultiDictProxy
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -145,11 +145,37 @@ def _denied(status: int = 401) -> web.Response:
     return _html(render.render("studio/denied.html", {}), status=status)
 
 
+#: An upload's multipart stream, positioned just after its "csrf" field.
+KEY_MULTIPART: Final[web.RequestKey[MultipartReader]] = web.RequestKey(
+    "studio_multipart", MultipartReader
+)
+#: A CSRF token is 43 characters; its multipart field may not be longer.
+CSRF_FIELD_MAX: Final = 128
+
+
+async def _upload_csrf(request: web.Request) -> str | None:
+    """The token of a multipart upload: its FIRST field, named "csrf", read
+    on its own -- the file after it is left for the handler, unread here."""
+    if request.content_type != "multipart/form-data":
+        return None
+    try:
+        reader = await request.multipart()
+        part = await reader.next()
+    except (ValueError, AssertionError, KeyError):
+        return None  # not a multipart body this server can read
+    if not isinstance(part, BodyPartReader) or part.name != "csrf":
+        return None
+    raw = await part.read_chunk(CSRF_FIELD_MAX)
+    if not part.at_eof():
+        return None  # longer than any token: not one
+    request[KEY_MULTIPART] = reader
+    return raw.decode("utf-8", "replace")
+
+
 async def _submitted_csrf(request: web.Request) -> str | None:
     if _route_key(request) in UPLOAD_ROUTES:
-        token = request.query.get("csrf")
-    else:
-        token = (await request.post()).get("csrf")  # type: ignore[assignment]
+        return await _upload_csrf(request)
+    token = (await request.post()).get("csrf")
     return token if isinstance(token, str) else None
 
 
@@ -159,6 +185,10 @@ async def studio_gate(request: web.Request, handler: Handler) -> web.StreamRespo
         return await handler(request)
     if KEY_STUDIO_SESSIONS not in request.app:
         raise web.HTTPNotFound()  # the studio is not configured in this app
+    if "csrf" in request.query:
+        # A token in a URL leaks into history, logs and Referer headers. No
+        # studio URL ever carries one; a request that does is refused unread.
+        raise web.HTTPBadRequest(text="Bad request")
     if _route_key(request) in PUBLIC_ROUTES:
         return await handler(request)
     async with request.app[KEY_STUDIO_SESSIONS]() as session:
@@ -833,7 +863,7 @@ async def delete(request: web.Request) -> web.Response:
 async def _read_photo(request: web.Request) -> bytes | None:
     """The "photo" part, read at most MAX_INPUT_BYTES + 1 bytes: an oversize
     file is refused without being read to its end."""
-    reader = await request.multipart()
+    reader = request[KEY_MULTIPART]  # the gate has read the "csrf" field
     while True:
         part = await reader.next()
         if part is None:
