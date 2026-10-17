@@ -660,6 +660,9 @@ async def test_the_claim_is_committed_before_telegram_is_called(
     finally:
         await engine.dispose()
 
+    # Two different failures, two messages: nothing sent at all (the row was
+    # never claimed) is not the same as a send whose claim was invisible.
+    assert observed, "nothing was sent: the row was not due or not claimed"
     assert observed == [PingState.SENDING.value], (
         "another connection could not see the claim while the send was in flight"
     )
@@ -814,8 +817,14 @@ def committed_world(settings: Settings):  # type: ignore[no-untyped-def]
         ).fetchone()[0]
         conn.execute(
             "INSERT INTO order_reminders (shop_id, order_id, ping_number, due_at_utc) "
-            "VALUES (%s, %s, 0, now())",
-            (shop, order),
+            "VALUES (%s, %s, 0, %s)",
+            # ONE CLOCK. A second in the past by THIS process's clock -- the one
+            # the tick is handed -- never Postgres's now(): the database runs in
+            # Docker's VM, whose clock can run ahead of the host's, and a row due
+            # "now" by that clock is not yet due by the tick's, so nothing is sent
+            # (failed once under load, 2026-10-16; CONTRIBUTING, "Time-dependent
+            # tests"). Reproduced by `now() + interval '1 second'`.
+            (shop, order, datetime.now(UTC) - timedelta(seconds=1)),
         )
         try:
             yield {"conn": conn, "shop": shop, "order": order, "settings": settings}
