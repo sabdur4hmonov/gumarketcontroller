@@ -6,7 +6,7 @@ Nothing is pushed or merged. No bot polls real Telegram tonight.
 
 ## RESUME POINT (update after every step)
 
-**Now:** end of night: full suite + 480-case CP24 matrix (RAM-gated), secrets scan, morning report. CP27.5 is committed.
+**Now:** CP27.1-27.5 done; waiting for the owner's PC test (docs/CP27_MORNING_REPORT.md). Next: owner feedback, then a phone/Mini App run on HTTPS.
 
 How to run anything here (own DBs, never the CP25 dev DB):
 
@@ -29,6 +29,7 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 | CP27.3 my pages: list, edit, delete, counts | 8f36ce9 | green; mutations 42/42 |
 | CP27.4 Telegram Mini App | c4a2fa3 | green; mutations 51/51 |
 | CP27.5 slim bot (wizard behind SHARE_WIZARD_IN_BOT, off) | 0fbfeb3 | green; mutations 57/57 |
+| End of night gate | 52bba4f | suite 7,367 passed + 1 fixed (.env.example); CP24 matrix + studio browser + infra 492 passed; secrets 0 |
 | Step 0: evening phone test cleaned up | — | cp27 bot + page server stopped; nothing on :8088; launcher deleted; no firewall rule "gulbot-cp27-dev" present |
 
 ## Plan for tonight (in order)
@@ -62,6 +63,8 @@ One heavy job at a time; check free RAM >= 1.5 GiB first.
 - Shadow sweep (8+ min) runs at checkpoints that touch the bot (CP27.2, CP27.5) and at the end, not after web-only CP27.1b.
 
 ## Open
+
+- CP25: DEV_UNLIMITED_PAGES (56309f1) is missing from `.env.example` on codex/cp25-reliability; `test_env_example_documents_every_setting` will fail there until one line is added.
 
 - **order-pings claim test (CP25 item), investigated 2026-10-17:** the loaded failure was `assert [] == ['sending']`, an EMPTY list: the
   fake transport's send_photo never ran, so NO send happened. The message ("another connection could not see the claim") misreads that.
