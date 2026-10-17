@@ -2192,3 +2192,23 @@ studio link, every `pg*` factory covered, a half-finished wizard cleared with
 no page made, the slim dispatcher's shadow sweep, the wizard back when on).
 `make shadow` (default off): shop and platform dispatchers clean. Bot, i18n and
 wizard suites with the flag on: 199 passed. Mutations 6/6 (57/57 in total).
+
+## CP27 merged into main — 2026-10-17
+
+`cp27-studio` (0e351a5) was merged into `main` (0d5072a) with the merge commit
+**e307cbd** (no squash). Alembic has one head after the merge: `c27b4d2e8a13`.
+
+Gate on the merged main: full suite 7,389 passed, 0 failed, 0 skipped; CP24
+browser matrix (480) + studio browser runs (4) + the owner flow (1): 485 passed;
+ruff check/format and strict mypy (194 files) clean; both shadow sweeps (shop,
+platform; default SHARE_WIZARD_IN_BOT) clean; migrations round-tripped upgrade →
+downgrade → upgrade on a throwaway database (48 steps each way) with no model
+drift; secrets scans (the repo scanner and the real configured values, counts
+only) found nothing. The https rule for studio-only mode stays as built.
+
+**For CP25 when it resumes:** `codex/cp25-reliability` adds `a25e1d6c8b90` and
+`a25f2c7d9e10` on top of `a24d9e7b2c10`, the same parent as `c27a1e5d9f01`.
+Merging CP25 into this main therefore leaves two Alembic heads (`a25f2c7d9e10`
+and `c27b4d2e8a13`); CP25 needs ONE merge migration (`alembic merge`) joining
+them, round-tripped like any other, before its gate. (Recorded here because
+`docs/CP25_STATUS.md` lives only on the CP25 branch, which was not touched.)
