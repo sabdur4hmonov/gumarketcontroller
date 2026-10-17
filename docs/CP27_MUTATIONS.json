@@ -1,6 +1,6 @@
 {
-  "caught": 57,
-  "total": 57,
+  "caught": 63,
+  "total": 63,
   "results": [
     {
       "guard": "every /studio route behind the gate",
@@ -220,27 +220,6 @@
       "exit_code": 1
     },
     {
-      "guard": "2: upload size from Content-Length, before reading",
-      "file": "src/gulbot/web/studio.py",
-      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
-      "guard": "2: the upload read stops at the cap",
-      "file": "src/gulbot/web/studio.py",
-      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
-      "guard": "2: an upload needs the session's CSRF token",
-      "file": "src/gulbot/web/studio.py",
-      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
-      "assertion_caught": true,
-      "exit_code": 1
-    },
-    {
       "guard": "2: a date plan needs a place and a time",
       "file": "src/gulbot/web/studio_form.py",
       "test": "tests/test_studio_kinds.py::test_a_custom_question_and_its_mistakes",
@@ -398,6 +377,69 @@
       "guard": "5: the wishes notification router stays",
       "file": "src/gulbot/bot/routers/__init__.py",
       "test": "tests/test_share_pages_slim.py::test_the_slim_dispatcher_passes_the_shadow_sweep",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: upload size from Content-Length, before reading",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: the upload read stops at the cap",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_oversize_upload_is_refused_before_it_is_read",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "2: an upload needs the session's CSRF token",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_kinds.py::test_an_upload_needs_the_sessions_token_and_its_own_page",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: a token in a studio URL is refused unread",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_tokens.py::test_an_upload_without_its_body_token_is_refused",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: the upload's token comes from its body",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_tokens.py::test_the_upload_carries_its_token_in_the_body",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: the upload form's URL carries no token",
+      "file": "src/gulbot/web/templates/studio/done.html",
+      "test": "tests/test_studio_tokens.py::test_no_url_redirect_or_log_line_carries_a_token",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A2: over http the bot keeps the wizard",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_the_wizard_stays_unless_the_pages_are_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A2: production refuses studio-only mode without https",
+      "file": "src/gulbot/config.py",
+      "test": "tests/test_share_pages_slim.py::test_production_refuses_studio_only_mode_without_https",
+      "assertion_caught": true,
+      "exit_code": 1
+    },
+    {
+      "guard": "A1: a non-multipart upload is refused, not a crash",
+      "file": "src/gulbot/web/studio.py",
+      "test": "tests/test_studio_web.py::test_every_post_needs_the_sessions_csrf_token",
       "assertion_caught": true,
       "exit_code": 1
     }

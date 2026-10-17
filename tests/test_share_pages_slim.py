@@ -33,7 +33,7 @@ from gulbot.bot.factory import build_dispatcher
 from gulbot.bot.routers.share_pages_slim import WIZARD_BUTTONS
 from gulbot.bot.shadow_sweep import render_report, sweep
 from gulbot.bot.states import InvitePage
-from gulbot.config import Settings
+from gulbot.config import Settings, production_config_problems
 from gulbot.i18n.catalog import CATALOG
 
 pytestmark = pytest.mark.infra
@@ -45,7 +45,11 @@ STUDIO_LINK = re.compile(r"/studio/enter/[A-Za-z0-9_-]{40,64}")
 
 @pytest.fixture
 def wizard_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    moved = config.get_settings().model_copy(update={"share_wizard_in_bot": False})
+    """Studio-only mode as production runs it: the flag off AND https pages
+    (over http the wizard comes back by itself, see test_http_keeps_the_wizard)."""
+    moved = config.get_settings().model_copy(
+        update={"share_wizard_in_bot": False, "public_base_url": "https://pages.uz"}
+    )
     monkeypatch.setattr(config, "get_settings", lambda: moved)
 
 
@@ -134,3 +138,58 @@ async def test_on_the_wizard_is_back() -> None:
     dispatcher = build_dispatcher(session_factory=None, shop_id=0)  # type: ignore[arg-type]
     names = {r.name for r in dispatcher.sub_routers}
     assert "share_pages" in names and "share_pages_slim" not in names
+
+
+# --- CP27 fix A2: studio-only mode needs https -------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("flag", "base", "wizard"),
+    [
+        (False, "https://pages.uz", False),
+        (False, "http://127.0.0.1:8088", True),  # a studio link would not open on a phone
+        (False, "  http://pages.uz ", True),
+        (True, "https://pages.uz", True),
+        (True, "http://127.0.0.1:8088", True),
+    ],
+)
+def test_the_wizard_stays_unless_the_pages_are_https(
+    monkeypatch: pytest.MonkeyPatch, flag: bool, base: str, wizard: bool
+) -> None:
+    moved = config.get_settings().model_copy(
+        update={"share_wizard_in_bot": flag, "public_base_url": base}
+    )
+    monkeypatch.setattr(config, "get_settings", lambda: moved)
+    assert config.share_wizard_in_bot() is wizard
+
+
+def test_http_keeps_the_wizard_in_the_dispatcher(monkeypatch: pytest.MonkeyPatch) -> None:
+    moved = config.get_settings().model_copy(
+        update={"share_wizard_in_bot": False, "public_base_url": "http://127.0.0.1:8088"}
+    )
+    monkeypatch.setattr(config, "get_settings", lambda: moved)
+    dispatcher = build_dispatcher(session_factory=None, shop_id=0)  # type: ignore[arg-type]
+    names = {r.name for r in dispatcher.sub_routers}
+    assert "share_pages" in names and "share_pages_slim" not in names
+
+
+@pytest.mark.parametrize(
+    ("flag", "base", "refused"),
+    [
+        (False, "http://pages.uz", True),
+        (False, "https://pages.uz", False),
+        (True, "http://pages.uz", False),
+    ],
+)
+def test_production_refuses_studio_only_mode_without_https(
+    flag: bool, base: str, refused: bool
+) -> None:
+    settings = Settings(  # type: ignore[call-arg]
+        _env_file=None,
+        environment="production",
+        share_wizard_in_bot=flag,
+        public_base_url=base,
+    )
+    problems = production_config_problems(settings, environ={})
+    named = [p for p in problems if p.startswith("SHARE_WIZARD_IN_BOT is off")]
+    assert bool(named) is refused, problems

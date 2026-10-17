@@ -202,6 +202,13 @@ def production_config_problems(
     ]
     if settings.postgres_password.get_secret_value() == DEV_DEFAULT_PASSWORD:
         problems.append("POSTGRES_PASSWORD is the dev default password")
+    # CP27: studio-only mode (the wizard off) sends customers studio links,
+    # which must open on a phone -- that is https or nothing.
+    if not settings.share_wizard_in_bot and not _pages_are_https(settings):
+        problems.append(
+            "SHARE_WIZARD_IN_BOT is off but PUBLIC_BASE_URL is not https "
+            "(customers' studio links would not open on a phone)"
+        )
     # CP18: a production panel nobody can log into is a panel nobody watches,
     # and a typo in the list must be loud, not a silent lock-out.
     if not parse_admin_ids(settings.platform_admin_telegram_ids):
@@ -240,9 +247,20 @@ def check_production_config(settings: Settings, environ: Mapping[str, str] | Non
         )
 
 
+def _pages_are_https(settings: Settings) -> bool:
+    return settings.public_base_url.strip().startswith("https://")
+
+
 def share_wizard_in_bot() -> bool:
-    """Read when a shop bot's dispatcher is built (bot/routers.build_routers)."""
-    return get_settings().share_wizard_in_bot
+    """Read when a shop bot's dispatcher is built (bot/routers.build_routers).
+
+    Studio-only mode NEEDS https: a studio link over http does not open on a
+    customer's phone, so without https the old wizard stays, whatever
+    SHARE_WIZARD_IN_BOT says (CP27 fix A2). Production refuses that combination
+    outright (production_config_problems).
+    """
+    settings = get_settings()
+    return settings.share_wizard_in_bot or not _pages_are_https(settings)
 
 
 @lru_cache

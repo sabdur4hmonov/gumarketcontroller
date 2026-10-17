@@ -31,6 +31,7 @@ MINI = "tests/test_studio_webapp.py::"
 WEBAPP = "src/gulbot/services/studio_webapp.py"
 SLIM = "tests/test_share_pages_slim.py::"
 SLIM_ROUTER = "src/gulbot/bot/routers/share_pages_slim.py"
+TOKENS = "tests/test_studio_tokens.py::"
 STUDIO_WEB = "src/gulbot/web/studio.py"
 STUDIO = "src/gulbot/services/studio.py"
 SHARE = "src/gulbot/services/share_pages.py"
@@ -496,6 +497,57 @@ def mutants() -> list[Mutant]:
             "        return (build_share_pages_slim_router(), build_share_page_wishes_router())",
             "        return (build_share_pages_slim_router(),)",
             SLIM + "test_the_slim_dispatcher_passes_the_shadow_sweep",
+        ),
+        # --- CP27 fix A1: no token in a URL -------------------------------------------------
+        Mutant(
+            "A1: a token in a studio URL is refused unread",
+            STUDIO_WEB,
+            '    if "csrf" in request.query:',
+            "    if False:",
+            TOKENS + "test_an_upload_without_its_body_token_is_refused",
+        ),
+        Mutant(
+            "A1: the upload's token comes from its body",
+            STUDIO_WEB,
+            "        return await _upload_csrf(request)",
+            '        return request.query.get("csrf")',
+            TOKENS + "test_the_upload_carries_its_token_in_the_body",
+        ),
+        Mutant(
+            "A1: the upload form's URL carries no token",
+            "src/gulbot/web/templates/studio/done.html",
+            'action="/studio/page/{{ v.page_id }}/photo" class="upload">',
+            'action="/studio/page/{{ v.page_id }}/photo?csrf={{ v.csrf }}" class="upload">',
+            TOKENS + "test_no_url_redirect_or_log_line_carries_a_token",
+        ),
+        Mutant(
+            "A1: a non-multipart upload is refused, not a crash",
+            STUDIO_WEB,
+            # Both defences go together: either alone already refuses.
+            '    if request.content_type != "multipart/form-data":\n'
+            "        return None\n"
+            "    try:\n"
+            "        reader = await request.multipart()\n"
+            "        part = await reader.next()\n"
+            "    except (ValueError, AssertionError, KeyError):\n"
+            "        return None  # not a multipart body this server can read\n",
+            "    reader = await request.multipart()\n    part = await reader.next()\n",
+            WEB + "test_every_post_needs_the_sessions_csrf_token",
+        ),
+        # --- CP27 fix A2: studio-only mode needs https --------------------------------------
+        Mutant(
+            "A2: over http the bot keeps the wizard",
+            "src/gulbot/config.py",
+            "    return settings.share_wizard_in_bot or not _pages_are_https(settings)",
+            "    return settings.share_wizard_in_bot",
+            SLIM + "test_the_wizard_stays_unless_the_pages_are_https",
+        ),
+        Mutant(
+            "A2: production refuses studio-only mode without https",
+            "src/gulbot/config.py",
+            "    if not settings.share_wizard_in_bot and not _pages_are_https(settings):",
+            "    if False:",
+            SLIM + "test_production_refuses_studio_only_mode_without_https",
         ),
     ]
 
